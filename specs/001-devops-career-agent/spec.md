@@ -5,6 +5,15 @@
 **Status**: Draft  
 **Input**: User description: "create an AI agent that will assist an employee with advancing his or her career path in DevOps, the main technologies to focus on are Jenkins, Azure DevOps and GitLab CI for CICD orchestration, Kubernetes, ArgoCD, HELM, DotNet, MSI and Advanced Installer, Windows administration, Opeshift, Linux, Docker, Docker-Compose, managing certificates, managing secrets using hashicorp vault, Ansible, Terraform, VMWare, AWS, MLOPS, SecOps and more can be added in the future"
 
+## Clarifications
+
+### Session 2026-07-08
+
+- Q: How should pilot success for immediate next-step identification and relevance be measured? -> A: Short post-session survey: next-step yes/no and relevance 1-5.
+- Q: What security and data boundary applies to the initial proof of concept? -> A: Non-production PoC; exclude regulated HR records, performance-review data, secrets, and production employee datasets; defer security/privacy hardening.
+- Q: What must each roadmap recommendation include to be considered practical? -> A: Skill area, experience-level fit, time horizon, concrete next action, and reason it matters.
+- Q: How should unsupported or not-yet-covered skill topics be handled? -> A: State the topic is not covered yet, offer the closest supported DevOps topics, and avoid inventing detailed guidance.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Career Roadmap Creation (Priority: P1)
@@ -78,7 +87,9 @@ get an updated plan based on new inputs.
   DevOps.
 - An employee is already experienced in one area but needs a pivot to a
   different specialization.
-- An employee requests guidance on a topic not yet covered by the assistant.
+- An employee requests guidance on a topic not yet covered by the assistant;
+  the assistant states the topic is not covered yet, offers the closest
+  supported DevOps topics, and avoids inventing detailed guidance.
 - An employee wants advice that depends on local policy, certifications, or
   internal career ladders.
 - A request mixes career growth guidance with performance management or HR
@@ -106,13 +117,20 @@ get an updated plan based on new inputs.
   without requiring the core career-guidance flow to change.
 - **FR-007**: The system MUST produce recommendations that are practical,
   role-relevant, and appropriate to the employee's stated experience level.
+- **FR-008**: Each roadmap recommendation MUST include a skill area, experience-
+  level fit, time horizon, concrete next action, and reason the step matters.
+- **FR-009**: For unsupported skill topics, the system MUST state the topic is
+  not covered yet, offer the closest supported DevOps topics, and avoid
+  inventing detailed guidance.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Employee Profile**: The employee's current role, experience, interests,
   goals, and constraints.
 - **Career Roadmap**: A prioritized sequence of milestones and next actions
-  tailored to the employee.
+  tailored to the employee. Each recommendation includes a skill area,
+  experience-level fit, time horizon, concrete next action, and reason it
+  matters.
 - **Skill Area**: A DevOps topic such as CI/CD, Kubernetes, GitOps, cloud,
   security, automation, or platform operations.
 - **Progress Check-In**: A later update showing completed steps, new goals, and
@@ -124,10 +142,11 @@ get an updated plan based on new inputs.
 
 - **SC-001**: An employee can receive an initial career roadmap within a
   single guided session.
-- **SC-002**: At least 80% of pilot users can identify one immediate next step
-  after using the assistant.
-- **SC-003**: At least 85% of reviewed sessions produce guidance that the user
-  rates as relevant to their current role or target role.
+- **SC-002**: At least 80% of pilot users answer yes in a short post-session
+  survey when asked whether they can identify one immediate next step after
+  using the assistant.
+- **SC-003**: At least 85% of pilot users rate the session guidance 4 or 5 on a
+  1-5 post-session relevance scale for their current role or target role.
 - **SC-004**: Employees can revisit the assistant and get an updated plan that
   reflects new goals or completed work without restarting from scratch.
 - **SC-005**: New topic areas can be added to the guidance scope and made
@@ -145,3 +164,7 @@ get an updated plan based on new inputs.
   growth activities appropriate to the employee's current level.
 - The assistant should remain useful even when the employee's starting point is
   vague or incomplete.
+- Initial proof-of-concept use is non-production only. It excludes regulated HR
+  records, performance-review data, secrets, and production employee datasets;
+  security/privacy hardening, retention controls, and access controls are
+  deferred until production readiness.

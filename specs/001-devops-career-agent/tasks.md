@@ -71,17 +71,23 @@ an actionable roadmap without needing any other story.
 ### Implementation for User Story 1
 
 - [ ] T010 [P] [US1] Define roadmap intake and response contracts in
-  `src/agent/contracts/roadmap.py`
+  `src/agent/contracts/roadmap.py`, including required recommendation fields:
+  skill area, experience-level fit, time horizon, concrete next action, and
+  reason the step matters
 - [ ] T011 [US1] Implement the roadmap synthesis service that converts employee
-  context into prioritized milestones in `src/agent/roadmap_service.py`
+  context into prioritized milestones with skill area, experience-level fit,
+  time horizon, concrete next action, and reason-it-matters fields in
+  `src/agent/roadmap_service.py`
 - [ ] T012 [P] [US1] Implement employee profile and roadmap persistence in
   `src/storage/roadmap_repository.py`
 - [ ] T013 [US1] Expose the roadmap creation flow through the API in
   `src/api/routes/roadmap.py`
 - [ ] T014 [US1] Add roadmap presentation formatting and follow-up prompt
-  generation in `src/agent/roadmap_presenter.py`
-- [ ] T015 [US1] Add pytest coverage for roadmap intake validation, roadmap
-  synthesis, and single-session roadmap creation in
+  generation that consistently displays each recommendation's skill area,
+  experience-level fit, time horizon, concrete next action, and reason it
+  matters in `src/agent/roadmap_presenter.py`
+- [ ] T015 [US1] Add pytest coverage for roadmap intake validation, required
+  recommendation fields, roadmap synthesis, and single-session roadmap creation in
   `tests/unit/agent/test_roadmap_service.py` and
   `tests/integration/test_roadmap_flow.py`
 
@@ -108,13 +114,14 @@ useful answer without needing a full roadmap first.
   GitLab CI, Kubernetes, ArgoCD, Helm, .NET, MSI, Advanced Installer, Windows,
   OpenShift, Linux, Docker, Docker Compose, certificates, Vault, Ansible,
   Terraform, VMware, AWS, MLOps, and SecOps in `src/knowledge/topics/`
-- [ ] T019 [US2] Implement topic normalization and future-extension rules in
-  `src/skills/resolver.py`
+- [ ] T019 [US2] Implement topic normalization, unsupported-topic fallback, and
+  future-extension rules in `src/skills/resolver.py`, including closest
+  supported-topic suggestions and no detailed guidance for unsupported topics
 - [ ] T020 [US2] Expose the skill guidance flow through the API in
   `src/api/routes/skills.py`
-- [ ] T021 [US2] Add pytest coverage for topic resolution, skill catalog loading,
-  and standalone skill guidance in `tests/unit/skills/test_catalog.py`,
-  `tests/unit/skills/test_resolver.py`, and
+- [ ] T021 [US2] Add pytest coverage for topic resolution, unsupported-topic
+  fallback behavior, skill catalog loading, and standalone skill guidance in
+  `tests/unit/skills/test_catalog.py`, `tests/unit/skills/test_resolver.py`, and
   `tests/integration/test_skill_guidance_flow.py`
 
 **Checkpoint**: At this point, User Stories 1 and 2 should both work
