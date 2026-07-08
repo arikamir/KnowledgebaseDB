@@ -31,7 +31,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Spec, plan, and tasks describe the same scoped outcome.
+- [ ] User stories are independently testable and ordered by priority.
+- [ ] Unknowns are resolved or explicitly marked `NEEDS CLARIFICATION` / `TODO(...)`.
+- [ ] Each story has a verification strategy, test plan, or documented exception.
+- [ ] Documentation and runtime guidance updates are included when behavior or
+      workflow changes.
+- [ ] Any added complexity is justified and tied to a specific requirement.
 
 ## Project Structure
 

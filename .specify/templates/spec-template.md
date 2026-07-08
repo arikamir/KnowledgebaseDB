@@ -11,6 +11,8 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
+  Keep each story's scope narrow enough that it can be planned, implemented,
+  and verified without depending on lower-priority stories.
   
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
@@ -79,7 +81,9 @@
 
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
+  Fill them out with the right functional requirements. Every requirement should
+  be traceable to at least one prioritized user story and expressible as a test,
+  validation, or measurable outcome.
 -->
 
 ### Functional Requirements
