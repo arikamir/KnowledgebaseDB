@@ -13,6 +13,10 @@
 - Q: What security and data boundary applies to the initial proof of concept? -> A: Non-production PoC; exclude regulated HR records, performance-review data, secrets, and production employee datasets; defer security/privacy hardening.
 - Q: What must each roadmap recommendation include to be considered practical? -> A: Skill area, experience-level fit, time horizon, concrete next action, and reason it matters.
 - Q: How should unsupported or not-yet-covered skill topics be handled? -> A: State the topic is not covered yet, offer the closest supported DevOps topics, and avoid inventing detailed guidance.
+- Q: How should prior roadmap and progress context be handled across sessions? -> A: Retain prior roadmaps, progress check-ins, and guidance across sessions.
+- Q: What identity should be used to persist roadmap and progress history across sessions? -> A: Use the host application's existing employee identity as the stable key.
+- Q: How many clarifying questions are allowed before the first roadmap is produced? -> A: Up to 3 clarifying questions.
+- Q: What should happen if the employee still has not provided enough context after the clarifying-question limit? -> A: Generate a best-effort roadmap and state the assumptions explicitly.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -122,6 +126,9 @@ get an updated plan based on new inputs.
 - **FR-009**: For unsupported skill topics, the system MUST state the topic is
   not covered yet, offer the closest supported DevOps topics, and avoid
   inventing detailed guidance.
+- **FR-010**: If sufficient context is still missing after the allowed
+  clarifying questions, the system MUST produce a best-effort roadmap and
+  explicitly state the assumptions used.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -141,7 +148,7 @@ get an updated plan based on new inputs.
 ### Measurable Outcomes
 
 - **SC-001**: An employee can receive an initial career roadmap within a
-  single guided session.
+  single guided session after no more than 3 clarifying questions.
 - **SC-002**: At least 80% of pilot users answer yes in a short post-session
   survey when asked whether they can identify one immediate next step after
   using the assistant.
@@ -164,6 +171,10 @@ get an updated plan based on new inputs.
   growth activities appropriate to the employee's current level.
 - The assistant should remain useful even when the employee's starting point is
   vague or incomplete.
+- The assistant retains prior roadmaps, progress check-ins, and guidance across
+  sessions so returning employees can continue from where they left off.
+- The assistant uses the host application's existing employee identity as the
+  stable key for stored roadmaps and progress history.
 - Initial proof-of-concept use is non-production only. It excludes regulated HR
   records, performance-review data, secrets, and production employee datasets;
   security/privacy hardening, retention controls, and access controls are

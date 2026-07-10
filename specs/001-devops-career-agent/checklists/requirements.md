@@ -47,6 +47,9 @@
   all represented as separate requirements? [Coverage, Spec §User Stories]
 - [ ] CHK004 Are the assumptions and exclusions complete enough to explain the
   assistant's internal career-guidance scope? [Gap, Spec §Assumptions]
+- [ ] CHK025 Are the intake requirements complete enough to capture current
+  role, target role, available time, and learning constraints without relying
+  on hidden assumptions? [Completeness, Spec §FR-001]
 
 ## Requirement Clarity
 
@@ -58,6 +61,9 @@
   observable criteria rather than subjective language? [Clarity, Spec §FR-007]
 - [ ] CHK008 Is the boundary between career guidance and HR decisions written in
   precise terms? [Clarity, Spec §FR-005]
+- [ ] CHK026 Is "best-effort roadmap" defined clearly enough to describe what
+  the assistant must still include when context remains thin? [Clarity,
+  Spec §FR-010]
 
 ## Requirement Consistency
 
@@ -68,6 +74,9 @@
 - [ ] CHK011 Are the listed skill areas consistent with the broader DevOps
   domains named in the feature input and assumptions? [Consistency,
   Spec §FR-003]
+- [ ] CHK027 Do the intake-limit, fallback, and retained-history requirements
+  describe the same conversation flow across the clarification, story, and
+  assumption sections? [Consistency, Spec §FR-010 / SC-001 / Assumptions]
 
 ## Acceptance Criteria Quality
 
@@ -79,6 +88,9 @@
 - [ ] CHK014 Are the success criteria technology-agnostic and focused on
   employee outcomes rather than implementation detail? [Measurability,
   Spec §Success Criteria]
+- [ ] CHK028 Can the "no more than 3 clarifying questions" condition be
+  objectively verified from the written success criteria? [Measurability,
+  Spec §SC-001]
 
 ## Scenario Coverage
 
@@ -86,6 +98,8 @@
   covered across the three user stories? [Coverage, Spec §User Scenarios & Testing]
 - [ ] CHK016 Are scenarios covered for employees who begin with vague goals or
   limited career context? [Gap, Spec §Edge Cases]
+- [ ] CHK029 Are scenario requirements defined for returning employees whose
+  prior roadmap history already exists? [Coverage, Spec §FR-004]
 
 ## Edge Case Coverage
 
@@ -93,11 +107,17 @@
   or internal career-ladder decisions? [Gap, Spec §Edge Cases]
 - [ ] CHK018 Are requirements defined for topics that are not yet in the skill
   catalog but may be added later? [Coverage, Spec §FR-006]
+- [ ] CHK030 Are requirements defined for the case where the host application's
+  employee identity is unavailable, duplicated, or changes over time? [Gap,
+  Spec §Assumptions]
 
 ## Non-Functional Requirements
 
 - [ ] CHK019 Are privacy and sensitivity expectations for employee career data
   documented clearly enough for reviewers? [Gap, Spec §Assumptions]
+- [ ] CHK031 Are response-time expectations for the initial roadmap and topic
+  guidance documented in the requirements or intentionally deferred out of
+  scope? [Gap, Spec §Success Criteria / Plan]
 
 ## Dependencies & Assumptions
 
@@ -115,3 +135,5 @@
 - [ ] CHK024 Do any requirements conflict with the assumption that the assistant
   should remain useful when the employee's starting point is vague? [Conflict,
   Spec §Assumptions]
+- [ ] CHK032 Do the "not covered yet" and "newly added later" topic rules avoid
+  overlapping interpretations? [Conflict, Spec §FR-006 / FR-009]
