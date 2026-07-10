@@ -21,12 +21,12 @@ validated, and delivered independently.
 
 **Purpose**: Project initialization and base repository structure
 
-- [ ] T001 Create the project package skeleton in `src/agent/`, `src/skills/`,
+- [x] T001 Create the project package skeleton in `src/agent/`, `src/skills/`,
   `src/knowledge/`, `src/storage/`, `src/api/`, `tests/unit/`,
   `tests/integration/`, and `tests/contract/`
-- [ ] T002 Initialize Python project metadata, dependency declarations, and
+- [x] T002 Initialize Python project metadata, dependency declarations, and
   build scripts in `pyproject.toml`
-- [ ] T003 [P] Add repository hygiene and local-development defaults in
+- [x] T003 [P] Add repository hygiene and local-development defaults in
   `.gitignore` and `.env.example`
 
 ---
@@ -38,20 +38,20 @@ can be completed
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Define the shared feature schemas for employee profiles, skill
+- [x] T004 Define the shared feature schemas for employee profiles, skill
   areas, roadmaps, roadmap steps, and progress check-ins in
   `src/knowledge/schemas.py`
-- [ ] T005 [P] Implement database connectivity, session handling, and schema
+- [x] T005 [P] Implement database connectivity, session handling, and schema
   bootstrap code in `src/storage/database.py`
-- [ ] T006 [P] Implement application settings, structured logging, and shared
+- [x] T006 [P] Implement application settings, structured logging, and shared
   error types in `src/agent/settings.py`, `src/agent/logging.py`, and
   `src/agent/errors.py`
-- [ ] T007 Create the API application bootstrap and router registration in
+- [x] T007 Create the API application bootstrap and router registration in
   `src/api/app.py` and `src/api/router.py`
-- [ ] T008 Implement career-guidance boundary rules that detect HR,
+- [x] T008 Implement career-guidance boundary rules that detect HR,
   performance-management, and employee-evaluation requests in
   `src/agent/policy.py`
-- [ ] T009 Add pytest coverage for HR and performance-management boundary
+- [x] T009 Add pytest coverage for HR and performance-management boundary
   prompts in `tests/unit/agent/test_policy.py` and
   `tests/integration/test_hr_boundary_flow.py`
 
@@ -70,26 +70,26 @@ an actionable roadmap without needing any other story.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [P] [US1] Define roadmap intake and response contracts in
+- [x] T010 [P] [US1] Define roadmap intake and response contracts in
   `src/agent/contracts/roadmap.py`, including required recommendation fields:
   skill area, experience-level fit, time horizon, concrete next action, and
   reason the step matters
-- [ ] T011 [US1] Implement the roadmap synthesis service that converts employee
+- [x] T011 [US1] Implement the roadmap synthesis service that converts employee
   context into prioritized milestones with skill area, experience-level fit,
   time horizon, concrete next action, and reason-it-matters fields in
   `src/agent/roadmap_service.py`, including the first-pass ordering rules for
   immediate, near-term, and longer-term steps, the 3-question intake cap, and
   best-effort fallback with explicit assumptions when context remains thin
-- [ ] T012 [P] [US1] Implement employee profile and roadmap persistence in
+- [x] T012 [P] [US1] Implement employee profile and roadmap persistence in
   `src/storage/roadmap_repository.py`
-- [ ] T013 [US1] Expose the roadmap creation flow through the API in
+- [x] T013 [US1] Expose the roadmap creation flow through the API in
   `src/api/routes/roadmap.py`
-- [ ] T014 [US1] Add roadmap presentation formatting and follow-up prompt
+- [x] T014 [US1] Add roadmap presentation formatting and follow-up prompt
   generation that consistently displays each recommendation's skill area,
   experience-level fit, time horizon, concrete next action, and reason it
   matters in `src/agent/roadmap_presenter.py`, using a stable ordering that
   matches the synthesis service
-- [ ] T015 [US1] Add pytest coverage for roadmap intake validation, required
+- [x] T015 [US1] Add pytest coverage for roadmap intake validation, required
   recommendation fields, roadmap synthesis, and single-session roadmap creation
   in `tests/unit/agent/test_roadmap_service.py` and
   `tests/integration/test_roadmap_flow.py`, including a case that confirms the
@@ -112,22 +112,22 @@ useful answer without needing a full roadmap first.
 
 ### Implementation for User Story 2
 
-- [ ] T016 [P] [US2] Build the extensible skill catalog loader and topic
+- [x] T016 [P] [US2] Build the extensible skill catalog loader and topic
   registry in `src/skills/catalog.py`
-- [ ] T017 [US2] Implement topic guidance synthesis for a named skill area in
+- [x] T017 [US2] Implement topic guidance synthesis for a named skill area in
   `src/agent/skill_guidance_service.py`, returning the topic summary, current-
   level fit, practical next action, and common pitfalls for the requested skill
-- [ ] T018 [P] [US2] Seed the initial skill content for Jenkins, Azure DevOps,
+- [x] T018 [P] [US2] Seed the initial skill content for Jenkins, Azure DevOps,
   GitLab CI, Kubernetes, ArgoCD, Helm, .NET, MSI, Advanced Installer, Windows,
   OpenShift, Linux, Docker, Docker Compose, certificates, Vault, Ansible,
   Terraform, VMware, AWS, MLOps, and SecOps in `src/knowledge/topics/`
-- [ ] T019 [US2] Implement topic normalization, unsupported-topic fallback, and
+- [x] T019 [US2] Implement topic normalization, unsupported-topic fallback, and
   future-extension rules in `src/skills/resolver.py`, including closest
   supported-topic suggestions and no detailed guidance for unsupported topics,
   with explicit handling for newly added topics that are not yet active
-- [ ] T020 [US2] Expose the skill guidance flow through the API in
+- [x] T020 [US2] Expose the skill guidance flow through the API in
   `src/api/routes/skills.py`
-- [ ] T021 [US2] Add pytest coverage for topic resolution, unsupported-topic
+- [x] T021 [US2] Add pytest coverage for topic resolution, unsupported-topic
   fallback behavior, skill catalog loading, and standalone skill guidance in
   `tests/unit/skills/test_catalog.py`, `tests/unit/skills/test_resolver.py`, and
   `tests/integration/test_skill_guidance_flow.py`, including a fallback case for
@@ -148,19 +148,19 @@ revised plan without rebuilding everything from scratch.
 
 ### Implementation for User Story 3
 
-- [ ] T022 [P] [US3] Define progress check-in request and response contracts in
+- [x] T022 [P] [US3] Define progress check-in request and response contracts in
   `src/agent/contracts/progress.py`
-- [ ] T023 [US3] Implement progress checkpoint persistence in
+- [x] T023 [US3] Implement progress checkpoint persistence in
   `src/storage/progress_repository.py`
-- [ ] T024 [US3] Implement roadmap revision logic that updates recommendations
+- [x] T024 [US3] Implement roadmap revision logic that updates recommendations
   from completed steps in `src/agent/progress_service.py`, preserving the
   existing roadmap structure while removing or de-prioritizing completed steps
-- [ ] T025 [P] [US3] Expose the progress review and update flow in
+- [x] T025 [P] [US3] Expose the progress review and update flow in
   `src/api/routes/progress.py`
-- [ ] T026 [US3] Preserve roadmap history and revised recommendation summaries
+- [x] T026 [US3] Preserve roadmap history and revised recommendation summaries
   in `src/agent/roadmap_revision.py`, including a clear distinction between the
   prior roadmap snapshot and the updated plan
-- [ ] T027 [US3] Add pytest coverage for progress checkpoint persistence,
+- [x] T027 [US3] Add pytest coverage for progress checkpoint persistence,
   roadmap revision, and returning an updated plan without restarting in
   `tests/unit/agent/test_progress_service.py` and
   `tests/integration/test_progress_flow.py`, including a scenario that verifies
@@ -174,18 +174,18 @@ revised plan without rebuilding everything from scratch.
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T028 [P] Update implementation notes, operator guidance, and
+- [x] T028 [P] Update implementation notes, operator guidance, and
   proof-of-concept security/privacy scope exclusions in
   `specs/001-devops-career-agent/quickstart.md`
-- [ ] T029 [P] Refine roadmap copy and topic descriptions for consistency in
+- [x] T029 [P] Refine roadmap copy and topic descriptions for consistency in
   `src/agent/roadmap_presenter.py` and `src/knowledge/topics/`
-- [ ] T030 Add integration wiring, smoke-validation helpers, and response-time
+- [x] T030 Add integration wiring, smoke-validation helpers, and response-time
   checks for roadmap creation, skill guidance, progress review, and HR-boundary
   handling in `src/api/app.py`, `src/api/router.py`,
   `tests/integration/test_smoke_flows.py`, and
   `tests/integration/test_response_time_targets.py`, covering the roadmap p95,
   topic-guidance p95, and HR-boundary smoke paths explicitly
-- [ ] T031 Review and normalize repository documentation references in
+- [x] T031 Review and normalize repository documentation references in
   `AGENTS.md` and `specs/001-devops-career-agent/quickstart.md`
 
 ---

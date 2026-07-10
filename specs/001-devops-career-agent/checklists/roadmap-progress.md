@@ -6,68 +6,68 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are the roadmap creation inputs fully specified for current role,
+- [x] CHK001 Are the roadmap creation inputs fully specified for current role,
   experience level, target direction, and learning constraints? [Completeness,
   Spec §FR-001]
-- [ ] CHK002 Are the progress-review inputs fully specified for completed
+- [x] CHK002 Are the progress-review inputs fully specified for completed
   steps, new goals, and revised recommendations? [Completeness, Spec §FR-004 /
   Key Entities]
-- [ ] CHK003 Are the required fields for each roadmap recommendation fully
+- [x] CHK003 Are the required fields for each roadmap recommendation fully
   specified? [Completeness, Spec §FR-008]
 
 ## Requirement Clarity
 
-- [ ] CHK004 Is "prioritized next steps" defined clearly enough to distinguish
+- [x] CHK004 Is "prioritized next steps" defined clearly enough to distinguish
   immediate, near-term, and longer-term recommendations? [Clarity, Spec §FR-002]
-- [ ] CHK005 Is "single guided session" clear enough to support the first
+- [x] CHK005 Is "single guided session" clear enough to support the first
   success criterion? [Ambiguity, Spec §SC-001]
-- [ ] CHK006 Is "without restarting from scratch" defined in a way that
+- [x] CHK006 Is "without restarting from scratch" defined in a way that
   explains what context must be preserved? [Clarity, Spec §SC-004]
 
 ## Requirement Consistency
 
-- [ ] CHK007 Do the roadmap, progress-review, and assumption statements all
+- [x] CHK007 Do the roadmap, progress-review, and assumption statements all
   describe the same continuity behavior across sessions? [Consistency, Spec §FR-004 /
   Assumptions]
-- [ ] CHK008 Are the roadmap presentation requirements consistent with the
+- [x] CHK008 Are the roadmap presentation requirements consistent with the
   recommendation fields named in the functional requirements? [Consistency,
   Spec §FR-007 / FR-008]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK009 Are the roadmap-related success criteria measurable enough to
+- [x] CHK009 Are the roadmap-related success criteria measurable enough to
   verify that the assistant is useful to employees? [Measurability,
   Spec §Success Criteria]
-- [ ] CHK010 Can the post-session survey language be interpreted consistently
+- [x] CHK010 Can the post-session survey language be interpreted consistently
   for both immediate next-step identification and relevance ratings? [Traceability,
   Spec §SC-002 / SC-003]
 
 ## Scenario Coverage
 
-- [ ] CHK011 Are scenarios defined for employees who return with partial
+- [x] CHK011 Are scenarios defined for employees who return with partial
   progress, completed milestones, or changed goals? [Coverage, Spec §User Story 3]
-- [ ] CHK012 Are scenarios defined for employees who have vague goals but still
+- [x] CHK012 Are scenarios defined for employees who have vague goals but still
   need a usable first roadmap? [Coverage, Spec §Edge Cases]
 
 ## Edge Case Coverage
 
-- [ ] CHK013 Are requirements defined for revising a roadmap when the employee
+- [x] CHK013 Are requirements defined for revising a roadmap when the employee
   changes target technologies midstream? [Coverage, Spec §User Story 3]
-- [ ] CHK014 Are requirements defined for handling limited initial context
+- [x] CHK014 Are requirements defined for handling limited initial context
   without blocking roadmap generation? [Gap, Spec §Edge Cases / FR-001]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK015 Are the assumptions about retained session history and returning
+- [x] CHK015 Are the assumptions about retained session history and returning
   users explicitly tied to the progress-review requirements? [Traceability,
   Spec §Assumptions / FR-004]
-- [ ] CHK016 Are dependencies on persisted roadmap and check-in history clearly
+- [x] CHK016 Are dependencies on persisted roadmap and check-in history clearly
   documented? [Dependency, Spec §Key Entities]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK017 Is the boundary between roadmap revision and generating a brand-
+- [x] CHK017 Is the boundary between roadmap revision and generating a brand-
   new roadmap unambiguous? [Ambiguity, Spec §FR-004 / SC-004]
-- [ ] CHK018 Do the roadmap-related requirements conflict with the PoC scope
+- [x] CHK018 Do the roadmap-related requirements conflict with the PoC scope
   exclusions for privacy and sensitive employee data? [Conflict, Spec §Assumptions]
 

@@ -95,7 +95,13 @@ get an updated plan based on new inputs.
   the assistant states the topic is not covered yet, offers the closest
   supported DevOps topics, and avoids inventing detailed guidance.
 - An employee wants advice that depends on local policy, certifications, or
-  internal career ladders.
+  internal career ladders; the assistant gives general career guidance, states
+  that organization-specific rules are out of scope, and points to the
+  appropriate internal source.
+- The host application cannot provide a stable employee identity, or the
+  identity changes over time; the assistant treats the session as a fresh
+  context until a stable identity is available and does not merge prior
+  roadmap history into the new identity.
 - A request mixes career growth guidance with performance management or HR
   decisions.
 
@@ -158,6 +164,12 @@ get an updated plan based on new inputs.
   reflects new goals or completed work without restarting from scratch.
 - **SC-005**: New topic areas can be added to the guidance scope and made
   available in future sessions without changing the core user experience.
+- **SC-006**: During the initial internal pilot, initial career-roadmap
+  responses complete within 30 seconds p95.
+- **SC-007**: During the initial internal pilot, topic-specific guidance
+  responses complete within 10 seconds p95.
+- **SC-008**: The initial internal pilot supports up to 10 concurrent
+  employees.
 
 ## Assumptions
 

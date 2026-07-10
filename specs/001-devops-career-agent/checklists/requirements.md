@@ -37,103 +37,103 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are the employee's starting point, target role, and time
+- [x] CHK001 Are the employee's starting point, target role, and time
   constraints all captured in the written requirements? [Completeness,
   Spec §User Story 1]
-- [ ] CHK002 Are the core guidance areas complete enough to cover CI/CD,
+- [x] CHK002 Are the core guidance areas complete enough to cover CI/CD,
   Kubernetes, GitOps, containers, infrastructure, cloud, security, and
   operations as stated in the feature input? [Completeness, Spec §FR-003]
-- [ ] CHK003 Are the roadmap, skill guidance, and progress-review capabilities
+- [x] CHK003 Are the roadmap, skill guidance, and progress-review capabilities
   all represented as separate requirements? [Coverage, Spec §User Stories]
-- [ ] CHK004 Are the assumptions and exclusions complete enough to explain the
+- [x] CHK004 Are the assumptions and exclusions complete enough to explain the
   assistant's internal career-guidance scope? [Gap, Spec §Assumptions]
-- [ ] CHK025 Are the intake requirements complete enough to capture current
+- [x] CHK025 Are the intake requirements complete enough to capture current
   role, target role, available time, and learning constraints without relying
   on hidden assumptions? [Completeness, Spec §FR-001]
 
 ## Requirement Clarity
 
-- [ ] CHK005 Is "personalized DevOps career roadmap" defined clearly enough to
+- [x] CHK005 Is "personalized DevOps career roadmap" defined clearly enough to
   distinguish it from generic advice? [Clarity, Spec §User Story 1]
-- [ ] CHK006 Is "topic-specific guidance" specific enough to avoid ambiguity
+- [x] CHK006 Is "topic-specific guidance" specific enough to avoid ambiguity
   about the depth and shape of the answer? [Ambiguity, Spec §FR-003]
-- [ ] CHK007 Is "practical" in the recommendation requirement expressed with
+- [x] CHK007 Is "practical" in the recommendation requirement expressed with
   observable criteria rather than subjective language? [Clarity, Spec §FR-007]
-- [ ] CHK008 Is the boundary between career guidance and HR decisions written in
+- [x] CHK008 Is the boundary between career guidance and HR decisions written in
   precise terms? [Clarity, Spec §FR-005]
-- [ ] CHK026 Is "best-effort roadmap" defined clearly enough to describe what
+- [x] CHK026 Is "best-effort roadmap" defined clearly enough to describe what
   the assistant must still include when context remains thin? [Clarity,
   Spec §FR-010]
 
 ## Requirement Consistency
 
-- [ ] CHK009 Do the user stories and functional requirements all point to the
+- [x] CHK009 Do the user stories and functional requirements all point to the
   same employee-growth outcome? [Consistency, Spec §User Scenarios & Testing]
-- [ ] CHK010 Do the roadmap, update, and revisit requirements consistently
+- [x] CHK010 Do the roadmap, update, and revisit requirements consistently
   describe whether prior context must be retained? [Consistency, Spec §FR-004]
-- [ ] CHK011 Are the listed skill areas consistent with the broader DevOps
+- [x] CHK011 Are the listed skill areas consistent with the broader DevOps
   domains named in the feature input and assumptions? [Consistency,
   Spec §FR-003]
-- [ ] CHK027 Do the intake-limit, fallback, and retained-history requirements
+- [x] CHK027 Do the intake-limit, fallback, and retained-history requirements
   describe the same conversation flow across the clarification, story, and
   assumption sections? [Consistency, Spec §FR-010 / SC-001 / Assumptions]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK012 Are the success criteria measurable enough to judge whether the
+- [x] CHK012 Are the success criteria measurable enough to judge whether the
   assistant is delivering a usable first roadmap? [Measurability,
   Spec §Success Criteria]
-- [ ] CHK013 Can the 80% and 85% pilot thresholds be interpreted without a
+- [x] CHK013 Can the 80% and 85% pilot thresholds be interpreted without a
   hidden definition of how feedback is collected? [Traceability, Spec §SC-002]
-- [ ] CHK014 Are the success criteria technology-agnostic and focused on
+- [x] CHK014 Are the success criteria technology-agnostic and focused on
   employee outcomes rather than implementation detail? [Measurability,
   Spec §Success Criteria]
-- [ ] CHK028 Can the "no more than 3 clarifying questions" condition be
+- [x] CHK028 Can the "no more than 3 clarifying questions" condition be
   objectively verified from the written success criteria? [Measurability,
   Spec §SC-001]
 
 ## Scenario Coverage
 
-- [ ] CHK015 Are primary, alternate, and follow-up career-guidance scenarios
+- [x] CHK015 Are primary, alternate, and follow-up career-guidance scenarios
   covered across the three user stories? [Coverage, Spec §User Scenarios & Testing]
-- [ ] CHK016 Are scenarios covered for employees who begin with vague goals or
+- [x] CHK016 Are scenarios covered for employees who begin with vague goals or
   limited career context? [Gap, Spec §Edge Cases]
-- [ ] CHK029 Are scenario requirements defined for returning employees whose
+- [x] CHK029 Are scenario requirements defined for returning employees whose
   prior roadmap history already exists? [Coverage, Spec §FR-004]
 
 ## Edge Case Coverage
 
-- [ ] CHK017 Are requirements defined for requests that intersect with HR policy
+- [x] CHK017 Are requirements defined for requests that intersect with HR policy
   or internal career-ladder decisions? [Gap, Spec §Edge Cases]
-- [ ] CHK018 Are requirements defined for topics that are not yet in the skill
+- [x] CHK018 Are requirements defined for topics that are not yet in the skill
   catalog but may be added later? [Coverage, Spec §FR-006]
-- [ ] CHK030 Are requirements defined for the case where the host application's
+- [x] CHK030 Are requirements defined for the case where the host application's
   employee identity is unavailable, duplicated, or changes over time? [Gap,
   Spec §Assumptions]
 
 ## Non-Functional Requirements
 
-- [ ] CHK019 Are privacy and sensitivity expectations for employee career data
+- [x] CHK019 Are privacy and sensitivity expectations for employee career data
   documented clearly enough for reviewers? [Gap, Spec §Assumptions]
-- [ ] CHK031 Are response-time expectations for the initial roadmap and topic
+- [x] CHK031 Are response-time expectations for the initial roadmap and topic
   guidance documented in the requirements or intentionally deferred out of
   scope? [Gap, Spec §Success Criteria / Plan]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK020 Are dependencies on employee profile data and progress history
+- [x] CHK020 Are dependencies on employee profile data and progress history
   explicitly stated? [Traceability, Spec §Key Entities]
-- [ ] CHK021 Are the assumptions about internal-only use and non-HR scope
+- [x] CHK021 Are the assumptions about internal-only use and non-HR scope
   documented and validated? [Assumption, Spec §Assumptions]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK022 Is "single guided session" defined clearly enough to support the
+- [x] CHK022 Is "single guided session" defined clearly enough to support the
   first success criterion? [Ambiguity, Spec §SC-001]
-- [ ] CHK023 Is the boundary between "core DevOps domains" and future added
+- [x] CHK023 Is the boundary between "core DevOps domains" and future added
   topics unambiguous? [Gap, Spec §FR-006]
-- [ ] CHK024 Do any requirements conflict with the assumption that the assistant
+- [x] CHK024 Do any requirements conflict with the assumption that the assistant
   should remain useful when the employee's starting point is vague? [Conflict,
   Spec §Assumptions]
-- [ ] CHK032 Do the "not covered yet" and "newly added later" topic rules avoid
+- [x] CHK032 Do the "not covered yet" and "newly added later" topic rules avoid
   overlapping interpretations? [Conflict, Spec §FR-006 / FR-009]

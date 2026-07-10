@@ -1,4 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
 
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
 
-#Ignore vscode AI rules
-.github/instructions/codacy.instructions.md
+# Build artifacts
+build/
+dist/
+site/
+
+# SQLite / local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.tmp
+
