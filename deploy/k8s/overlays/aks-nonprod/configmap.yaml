@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devops-career-agent-runtime
+data:
+  APP_NAME: DevOps Career Agent
+  ENVIRONMENT: aks-nonprod
+  DATABASE_URL: sqlite:////app/devops-career-agent.db
+  LOG_LEVEL: INFO
+  MAX_CLARIFYING_QUESTIONS: "3"
+  ROADMAP_P95_SECONDS: "30"
+  TOPIC_GUIDANCE_P95_SECONDS: "10"
+  MAX_CONCURRENT_EMPLOYEES: "10"
+  TOPIC_CATALOG_PATH: /app/src/knowledge/topics/topics.json

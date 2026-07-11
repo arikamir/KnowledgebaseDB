@@ -1,0 +1,7 @@
+namespace: devops-career-agent-nonprod
+resources:
+  - ../../base
+  - configmap.yaml
+images:
+  - name: devops-career-agent
+    digest: sha256:REPLACE_WITH_IMMUTABLE_DIGEST
