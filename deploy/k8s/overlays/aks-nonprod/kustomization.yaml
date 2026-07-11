@@ -6,4 +6,4 @@ resources:
 images:
   - name: devops-career-agent
     newName: acrdevopscareernonprod.azurecr.io/devops-career-agent
-    digest: sha256:e9d3542f2e7b0c3f8b5af5d579e1de571a7bd7e145cd3ead470ce118b09b5bae
+    digest: sha256:c388547f83eb7e3c0494055eaebe568a2480cea667387dc7012142296fdc0a1b
