@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teardown Azure App Resources"
+  short_description: "Safely destroy this app Azure infrastructure"
+  default_prompt: "Use $teardown-azure-app-resources to plan and safely remove this application Azure infrastructure."
