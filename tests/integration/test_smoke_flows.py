@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 
+def test_root_redirects_to_browser_documentation(client):
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+    assert client.get(response.headers["location"]).status_code == 200
+
+
 def test_smoke_endpoints_respond(client):
     health = client.get("/health")
     assert health.status_code == 200
@@ -33,4 +41,3 @@ def test_smoke_endpoints_respond(client):
         },
     )
     assert skills.status_code == 200
-

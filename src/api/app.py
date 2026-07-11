@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from agent.errors import BoundaryViolationError, CareerAgentError, ValidationError
 from agent.logging import configure_logging
@@ -19,6 +19,10 @@ def create_app(settings: AppSettings | None = None, container: AppContainer | No
 
     app = FastAPI(title=resolved_settings.app_name)
     app.state.container = resolved_container
+
+    @app.get("/", include_in_schema=False)
+    def root() -> RedirectResponse:
+        return RedirectResponse(url=app.docs_url or "/docs")
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -44,4 +48,3 @@ def create_app(settings: AppSettings | None = None, container: AppContainer | No
 
 
 app = create_app()
-

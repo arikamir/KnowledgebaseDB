@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -37,7 +38,7 @@ def test_container_and_aks_contract_exposes_expected_runtime_values():
     assert "path: /health" in deployment
     assert "port: 80" in service
     assert "targetPort: http" in service
-    assert "digest: sha256:REPLACE_WITH_IMMUTABLE_DIGEST" in overlay
+    assert re.search(r"digest: sha256:[0-9a-f]{64}$", overlay, re.MULTILINE)
     assert "sqlite:////app/devops-career-agent.db" in configmap
 
 
