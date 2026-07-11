@@ -135,8 +135,14 @@ Verify:
   of core application code. A presentation-only UI change and a composition-only
   BFF change both build/test against an unchanged frozen core artifact.
 - Local field guidance appears within 1,000 ms of the initiating event in every
-  supported validation case; at least 95% of successful roadmap/guidance results
-  are visibly and accessibly ready within 1,000 ms of browser `responseEnd`.
+  supported validation case. For at least 95% of successful roadmap and guidance
+  results, no more than 1,000 ms elapses between
+  `career.result.fetch-resolved`, recorded after parsing and validating the
+  complete payload, and `career.result.accessible-render-committed`.
+- SC-043 performance verification runs separate roadmap and guidance scenarios
+  using `performance-profile-v1`, records 100 measured attempts per scenario
+  after warm-up, retains failures and timeouts in the denominator, and proves
+  roadmap p95 is at most 30 seconds and guidance p95 is at most 10 seconds.
 - UI, BFF, and core outage states are distinguishable.
 - Each service can roll forward/back without rebuilding the other two.
 - UI-to-core NetworkPolicy denial and BFF-to-core allowance are effective.
@@ -161,10 +167,11 @@ Verify:
 
 ## Optimized Azure deployment
 
-1. Provision or reuse ACR, Key Vault, Azure Managed Redis, Azure Database for
-   PostgreSQL Flexible Server, Log Analytics/Application Insights, and the AKS
-   Workload Identity bindings. Keep their identifiers in environment outputs,
-   not source code.
+1. Validate and reuse the existing target ACR, including AKS kubelet `AcrPull`,
+   publisher `AcrPush`, and deployer/controller denial boundaries. Provision or
+   reuse Key Vault, Azure Managed Redis, Azure Database for PostgreSQL Flexible
+   Server, Log Analytics/Application Insights, and AKS Workload Identity
+   bindings. Keep resource identifiers in environment outputs, not source code.
 2. Configure a Jenkins multibranch job to load the root `Jenkinsfile`. Permit
    Azure publication/deployment only from the protected ref; PRs validate only.
    Configure the target environment lock and milestone behavior.

@@ -46,16 +46,18 @@ and authoritative JSON API
 with its field/status region within one second of the initiating browser event;
 at least 95% of successful roadmap and guidance results become visibly and
 accessibly ready within one second of the browser fetch resolving with the
-complete validated success payload; preserve roadmap
-30-second p95 and guidance 10-second p95 core targets; support 10 concurrent
-pilot users
+complete validated success payload; preserve the SC-043 roadmap 30-second and
+guidance 10-second core p95 targets under 10 concurrent pilot-user workloads
 **Constraints**: Browser calls only `/bff/v1`; BFF calls private core `/api/v1`;
 20-30 minute learning sessions; 3-5 review questions; 80% completion threshold;
-responsive from 320px; WCAG 2.2 AA-oriented behavior; runtime configuration
-without rebuild; immutable image digests; no OAuth token in UI; 30-minute idle
-and 8-hour absolute sessions; daily Entra reconciliation; 90-day departed-user
-retention ceiling; actor-scoped idempotency; protected-branch-only delivery;
-distinct publisher/deployer ACI identities; no fallback Azure credential
+responsive from 320px; keyboard operability, visible focus, meaningful labels
+and headings, announced status and error changes, correct error associations,
+no focus traps, and no primary-content horizontal scrolling as required by
+FR-013, FR-014, SC-005, and SC-006; runtime configuration without rebuild;
+immutable image digests; no OAuth token in UI; 30-minute idle and 8-hour absolute
+sessions; daily Entra reconciliation; 90-day departed-user retention ceiling;
+actor-scoped idempotency; protected-branch-only delivery; distinct
+publisher/deployer ACI identities; no fallback Azure credential
 **Scale/Scope**: One Entra tenant, four UI journeys, three application services,
 one Redis dependency, one PostgreSQL database, and up to 10 concurrent employees
 
@@ -149,6 +151,8 @@ tests/
 |-- contract/
 |-- integration/
 |-- ci/
+|-- performance/
+|   `-- performance-profile-v1.json
 `-- unit/
 
 deploy/k8s/
@@ -255,7 +259,7 @@ Phase 0 is complete in [research.md](./research.md). Key decisions are:
 | Browser -> BFF | `/bff/v1`, opaque host-only cookie, CSRF | Origin, session, input, and expiry checks |
 | BFF -> core | Private `/api/v1`, delegated core token | Signature, issuer, tenant, audience, client, scope, subject |
 | Machine -> core | Private `/api/v1`, app-only token | Approved client and dedicated application role |
-| UI/BFF/core -> Azure | Separate workload identities | Least-privilege dependency-specific RBAC |
+| BFF/core/gateway -> Azure | Separate workload identities; UI has none by default | Least-privilege dependency-specific RBAC; AKS kubelet identity performs ACR pulls |
 
 Detailed behavior is defined in [auth-ui-contract.md](./contracts/auth-ui-contract.md),
 [learning-ui-contract.md](./contracts/learning-ui-contract.md), and
@@ -303,9 +307,11 @@ token acquisition. Core machine consumers use separate app-only roles.
 
 ### Azure topology
 
-Terraform provisions or imports ACR dependencies, Key Vault, Managed Redis,
-PostgreSQL, monitoring, workload identities, Application Gateway for Containers,
-DNS/certificates, Entra registrations, Jenkins identities, and evidence storage.
+Deployment reuses the existing target ACR after validating its identity, network
+reachability, AKS kubelet `AcrPull`, and Jenkins publisher `AcrPush` boundaries.
+Terraform provisions or imports Key Vault, Managed Redis, PostgreSQL, monitoring,
+workload identities, Application Gateway for Containers, DNS/certificates, Entra
+registrations, Jenkins identities, and evidence storage.
 Gateway routes `/` to UI and `/bff/*` to BFF; core and data services remain
 private. Kubernetes default-deny policies allow only declared service hops.
 

@@ -392,13 +392,17 @@ release-manifest evidence, not durable learner data.
 
 - `journey`, `operation`, `sample_id`
 - `validation_event_at`, `guidance_visible_at`
-- `response_end_at`, `accessible_result_ready_at`
-- derived `validation_ms`, `result_render_ms`, `success`
+- `fetch_resolved_at`, recorded after the complete response body is parsed and
+  validated
+- `accessible_result_ready_at`
+- `core_request_started_at`, `core_response_completed_at`
+- derived `validation_ms`, `result_render_ms`, `core_execution_ms`, `success`
+- `performance_profile_version`, `fixture_set_digest`, `warmup`, `outcome`
 
 Validation checks require every supported local-error sample at or below 1,000
 ms. Result checks require at least 95% of successful roadmap and guidance samples
-at or below 1,000 ms from browser `responseEnd`; core execution time is measured
-separately.
+at or below 1,000 ms from `career.result.fetch-resolved`. Core execution is
+measured independently using the versioned SC-043 workload profile.
 
 ### CertificateRotationObservation
 

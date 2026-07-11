@@ -188,8 +188,19 @@
   replica-safe sessions. Core tests token claims, owner isolation, migrations,
   lifecycle, scoring, and provider contracts. Deployment tests routing,
   NetworkPolicy, trace continuity, outage isolation, and independent rollback.
-  Browser timing marks measure local-validation event-to-guidance time and
-  `responseEnd`-to-accessible-result-ready time. Normal certificate rotation
+  Browser timing marks measure local-validation event-to-guidance time and the
+  elapsed time from `career.result.fetch-resolved`, recorded after the complete
+  response body is parsed and validated, to
+  `career.result.accessible-render-committed`. Core performance uses
+  `performance-profile-v1`: two independent roadmap and guidance scenarios,
+  each with 10 concurrent workers, two excluded successful warm-up requests per
+  worker, and 10 measured requests per worker. The committed fixture set spans
+  approved beginner, intermediate, and advanced profiles and supported guidance
+  topics. Measurement uses a monotonic clock from core ASGI request entry through
+  completion of response serialization. Nearest-rank p95 is calculated over all
+  100 measured valid attempts per scenario; failures and timeouts remain in the
+  denominator.
+  Normal certificate rotation
   tests both a fresh authorization-code callback and an existing-session token
   refresh through every BFF replica before the old certificate can retire.
   Dependency tests build frozen core artifacts while changing UI presentation or

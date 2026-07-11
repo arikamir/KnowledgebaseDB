@@ -71,7 +71,7 @@
 
 ### Identity and platform prerequisites
 
-- [ ] T045 Implement read-only Azure and AKS readiness reporting in scripts/azure/preflight-ui-platform.sh
+- [ ] T045 Implement read-only Azure and AKS readiness reporting, including reusable target-ACR existence, reachability, AKS kubelet `AcrPull`, publisher `AcrPush`, and deployer/controller registry-denial checks, in scripts/azure/preflight-ui-platform.sh
 - [ ] T046 Provision Key Vault, Managed Redis, PostgreSQL, private networking, and monitoring in infra/azure/key-vault.tf, infra/azure/redis.tf, infra/azure/postgresql.tf, infra/azure/private-networking.tf, and infra/azure/monitoring.tf
 - [ ] T047 Provision the delivery-evidence container, custom evidence-writer role, Azure ABAC environment/stage prefix conditions, immutable-storage policy, and Entra-group reader RBAC in infra/azure/delivery-evidence-storage.tf
 - [ ] T048 Assign the configured Evidence Hold Managers Entra group a custom role limited to hold metadata and permitted immutable-policy extension in infra/azure/delivery-evidence-hold-managers.tf and infra/azure/outputs.tf
@@ -247,7 +247,7 @@
 - [ ] T145 [P] Add machine outage independence/private route tests in tests/integration/test_machine_consumer_flow.py
 - [ ] T146 [P] Add supported and unsupported UI/BFF and BFF/core capability-range, version-header, pre-downstream-call, pre-idempotency, pre-mutation, and unsaved-input compatibility tests in tests/contract/test_version_compatibility.py
 - [ ] T147 [P] Add outage diagnosis and trace continuity tests in tests/integration/test_service_outages.py
-- [ ] T148 [P] Add 10-user concurrency, browser fetch-resolution-to-accessibility-tree performance marks, 95th-percentile result-render timing, and separate backend-latency verification in tests/integration/test_ui_feature_performance.py
+- [ ] T148 [P] Define the versioned SC-043 workload, approved profile/topic fixtures, fixture digest, two-request-per-worker warm-up, two independent 10-worker scenarios, 100 measured attempts per scenario, monotonic core ASGI timing boundary, nearest-rank p95 calculation, failure/timeout denominator treatment, browser fetch-resolution-to-accessibility-tree marks, and separate core/BFF/browser evidence in tests/performance/performance-profile-v1.json and tests/integration/test_ui_feature_performance.py
 - [ ] T149 [P] Add UI-only, BFF-only, core-only, multi-service, shared-contract, shared-build, documentation-only, first-build, missing-baseline, and audited rebuild-all change-plan tests in tests/ci/test_change_plan.py
 - [ ] T150 [P] Add protected-ref, validation-only PR, cancellation, agent-loss, Azure-denial, stale-build, concurrent-build, digest-only, controller-audit lifecycle/recovery, evidence-gate failure, evidence-completeness, forward/reverse mutation-journal, ordered-rollout, and scoped-rollback contracts in tests/ci/test_jenkins_delivery.py
 - [ ] T151 [P] Add Jenkins cloud `azure`, provisioning-service-principal scope/expiry, publisher/deployer ACI template, provisioning/connection failure, wrong-template, wrong-UAMI, wrong-subscription, forbidden ACR/AKS access, and Azure-RBAC-denial tests in tests/ci/test_jenkins_azure_agent.py
