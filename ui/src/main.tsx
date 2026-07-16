@@ -5,6 +5,7 @@ import { App } from "./app/App";
 import "./styles/global.css";
 import "./styles/app.css";
 import "./features/roadmap/routes";
+import "./features/guidance/routes";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

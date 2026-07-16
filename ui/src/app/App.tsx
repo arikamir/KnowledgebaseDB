@@ -2,6 +2,7 @@ import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { registeredRoutes } from "./route-registry";
 import { SessionTimeoutDialog } from "../components/SessionTimeoutDialog";
+import { ProfileProvider } from "./profile-context";
 
 function Home() {
   return (
@@ -21,7 +22,8 @@ export function App() {
   const routes = registeredRoutes();
   useEffect(() => { main.current?.focus(); }, [location.pathname]);
   return (
-    <div className="app-shell">
+    <ProfileProvider>
+      <div className="app-shell">
       <header><Link className="brand" to="/">DevOps Career Agent</Link></header>
       <nav aria-label="Primary"><Link to="/">Home</Link>{routes.map((route) => <Link key={route.id} to={route.path}>{route.navigationLabel}</Link>)}</nav>
       <main id="main-content" ref={main} tabIndex={-1}>
@@ -32,6 +34,7 @@ export function App() {
         </Routes>
       </main>
       <SessionTimeoutDialog onContinue={async () => {}} onExpired={() => {}} />
-    </div>
+      </div>
+    </ProfileProvider>
   );
 }

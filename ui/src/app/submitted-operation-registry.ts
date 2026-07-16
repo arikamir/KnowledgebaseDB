@@ -46,7 +46,7 @@ export class SubmittedOperationRegistry {
       .catch((error: unknown): OperationResolution<T> => {
         const code = error instanceof Error ? error.message : "";
         if (code === "STALE_AUTHENTICATION_EPOCH") return { state: "failed_to_save", error };
-        if (/timeout|unavailable|network/i.test(code)) return { state: "save_unknown", error };
+        if (/timeout|network|CORE_UNAVAILABLE|CAPABILITY_METADATA_UNAVAILABLE|SESSION_DEPENDENCY_UNAVAILABLE/i.test(code)) return { state: "save_unknown", error };
         return { state: "failed_to_save", error };
       })
       .then((result) => {

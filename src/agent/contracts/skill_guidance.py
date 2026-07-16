@@ -26,6 +26,7 @@ class SkillGuidanceResponse(BaseModel):
     topic_summary: str
     current_level_fit: str
     practical_next_action: str
+    lab_references: list[dict[str, object]] = Field(default_factory=list)
     common_pitfalls: list[str] = Field(default_factory=list)
     related_topics: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
@@ -37,4 +38,3 @@ class TopicGuidanceEnvelope(BaseModel):
 
     status: Literal["ready", "fallback"] = "ready"
     guidance: SkillGuidanceResponse
-

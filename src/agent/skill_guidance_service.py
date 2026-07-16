@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.contracts.skill_guidance import SkillGuidanceResponse, TopicGuidanceRequest
+from api.errors import ApiProblem
+from knowledge.schemas import SkillArea
 from skills.catalog import SkillCatalog
 from skills.resolver import TopicResolution, resolve_topic
 
@@ -12,6 +14,54 @@ from skills.resolver import TopicResolution, resolve_topic
 @dataclass(slots=True)
 class SkillGuidanceService:
     catalog: SkillCatalog
+
+    def resolve_active_topic(self, requested_topic: str) -> SkillArea:
+        """Classify a topic before any idempotency key or domain work is claimed."""
+        topic = requested_topic.strip()
+        if not topic or len(topic) > 128:
+            raise ApiProblem(
+                422,
+                "VALIDATION_FAILED",
+                "Guidance request validation failed",
+                retryable=False,
+                field_errors={"topic": ["Enter a topic between 1 and 128 characters."]},
+            )
+        try:
+            matches = self.catalog.exact_matches(topic)
+        except Exception as error:
+            raise ApiProblem(
+                503,
+                "CAPABILITY_METADATA_UNAVAILABLE",
+                "Guidance catalog is unavailable",
+                retryable=True,
+            ) from error
+        if len(matches) != 1:
+            raise ApiProblem(
+                422,
+                "GUIDANCE_TOPIC_UNINTERPRETABLE",
+                "Guidance topic could not be interpreted",
+                retryable=False,
+                field_errors={"topic": ["Choose one unambiguous topic from the guidance catalog."]},
+            )
+        match = matches[0]
+        state = self.catalog.topic_state(topic)
+        if state != "active":
+            retryable = state == "unavailable"
+            message = "This topic is temporarily unavailable." if retryable else "This topic has been retired."
+            raise ApiProblem(
+                422,
+                "GUIDANCE_TOPIC_UNAVAILABLE",
+                "Guidance topic is unavailable",
+                detail=message,
+                retryable=retryable,
+                field_errors={"topic": [message]},
+            )
+        return match
+
+    def generate_active_guidance(
+        self, request: TopicGuidanceRequest, topic: SkillArea
+    ) -> SkillGuidanceResponse:
+        return self._guidance_for_topic(request, topic)
 
     def generate_guidance(self, request: TopicGuidanceRequest) -> SkillGuidanceResponse:
         resolution = resolve_topic(request.topic, self.catalog)
@@ -22,6 +72,11 @@ class SkillGuidanceService:
         if topic is None:
             return self._fallback_guidance(request, resolution)
 
+        return self._guidance_for_topic(request, topic, resolution.reason)
+
+    def _guidance_for_topic(
+        self, request: TopicGuidanceRequest, topic: SkillArea, reason: str | None = None
+    ) -> SkillGuidanceResponse:
         experience_level = str(request.employee_profile.experience_level or "unknown")
         topic_summary = topic.description
         fit = f"{topic.current_level_fit} Current context: {experience_level}."
@@ -30,7 +85,7 @@ class SkillGuidanceService:
         if request.employee_profile.target_role:
             next_action = f"{next_action} Aim it toward {request.employee_profile.target_role}."
 
-        notes = [resolution.reason]
+        notes = [reason or f"{topic.name} is an active catalog topic."]
         if request.request_text:
             notes.append("Tailored to the question the employee asked.")
 
@@ -78,4 +133,3 @@ class SkillGuidanceService:
             suggestions=suggestions[:3],
             notes=notes,
         )
-

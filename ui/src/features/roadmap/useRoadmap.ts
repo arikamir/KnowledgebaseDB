@@ -2,10 +2,9 @@ import { useState } from "react";
 import { bffRequest } from "../../bff/client";
 import { PersistenceMachine } from "../../app/persistence-state";
 import { submittedOperations } from "../../app/submitted-operation-registry";
+import { useProfile, type EditableProfile } from "../../app/profile-context";
 
-export interface RoadmapInput {
-  role: string; experienceLevel: string; targetRole: string; availableTimePerWeek: number;
-}
+export type RoadmapInput = EditableProfile;
 export interface RoadmapResultValue {
   status: "ready" | "needsMoreInfo";
   roadmap?: { id: string; goal_summary?: string; goalSummary?: string; milestones: Array<{ id?: string; title: string; concrete_next_action?: string; concreteNextAction?: string }> };
@@ -14,7 +13,7 @@ export interface RoadmapResultValue {
 
 export function useRoadmap() {
   const [result, setResult] = useState<RoadmapResultValue | null>(null);
-  const [input, setInput] = useState<RoadmapInput>({ role: "", experienceLevel: "", targetRole: "", availableTimePerWeek: 0 });
+  const { profile: input, setProfile: setInput } = useProfile();
   const [persistence] = useState(() => new PersistenceMachine());
   const [snapshot, setSnapshot] = useState(persistence.snapshot);
 

@@ -6,4 +6,10 @@ nav { border-bottom: 1px solid #c7d0df; }
 button, a { min-height: 2.75rem; padding: .625rem; }
 button:focus-visible, a:focus-visible, [tabindex="-1"]:focus-visible { outline: 2px solid #0067c5; outline-offset: 3px; }
 .timeout-dialog { background: white; border: 1px solid #13213c; inset: 20% 1rem auto; margin: auto; max-width: 32rem; padding: 1.5rem; position: fixed; }
+.error-summary { border-left: .3rem solid #b42318; padding: .75rem 1rem; }
+form { display: grid; gap: .75rem; max-width: 44rem; }
+label { display: grid; gap: .25rem; }
+input, select { font: inherit; min-height: 2.75rem; padding: .5rem; width: 100%; }
+[aria-invalid="true"] { border: 2px solid #b42318; }
+.lab-card { border: 1px solid #c7d0df; margin-block: 1rem; padding: 1rem; }
 @media (max-width: 480px) { nav { align-items: stretch; flex-direction: column; } }

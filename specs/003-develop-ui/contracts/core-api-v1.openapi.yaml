@@ -826,6 +826,7 @@ components:
         topic:
           type: string
           minLength: 1
+          maxLength: 128
           description: Active ID or alias from supported-guidance-topics-v1.yaml.
         employee_profile:
           $ref: "#/components/schemas/EmployeeProfileInput"
@@ -1602,6 +1603,7 @@ components:
         - prerequisites
         - estimated_minutes
         - cost_status
+        - availability_status
         - destination_url
       properties:
         id:
@@ -1620,6 +1622,9 @@ components:
         cost_status:
           type: string
           enum: [free, paid, subscription, unknown]
+        availability_status:
+          type: string
+          enum: [active, unavailable, retired]
         destination_url:
           type: string
           format: uri
@@ -1656,5 +1661,7 @@ components:
             type: array
             items:
               type: string
+        retryable:
+          type: boolean
         correlation_id:
           type: string

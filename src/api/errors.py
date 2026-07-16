@@ -12,6 +12,8 @@ class ApiProblem(Exception):
     title: str
     detail: str | None = None
     retry_after: int | None = None
+    retryable: bool | None = None
+    field_errors: dict[str, list[str]] | None = None
 
     def body(self, correlation_id: str) -> dict[str, object]:
         body: dict[str, object] = {
@@ -19,8 +21,12 @@ class ApiProblem(Exception):
             "title": self.title,
             "status": self.status,
             "code": self.code,
-            "correlationId": correlation_id,
+            "correlation_id": correlation_id,
         }
         if self.detail:
             body["detail"] = self.detail
+        if self.retryable is not None:
+            body["retryable"] = self.retryable
+        if self.field_errors:
+            body["field_errors"] = self.field_errors
         return body
