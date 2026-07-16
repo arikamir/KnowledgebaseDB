@@ -1,0 +1,11 @@
+:root {
+  color: #13213c;
+  background: #f7f9fc;
+  font-family: Inter, system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+main { margin: 0 auto; max-width: 72rem; padding: 2rem 1rem; }
+:focus-visible { outline: 3px solid #0067c5; outline-offset: 3px; }

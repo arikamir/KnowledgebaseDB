@@ -50,10 +50,12 @@ fixes SC-043 operation pairing, pinned BFF/core contract digests,
 generated-mapper drift verification, fixtures, deterministic assignment,
 45-second roadmap/20-second guidance hard timeouts, full-profile and fixture-set
 digests, evidence schema, and percentile policy. The separate approved
-`tests/performance/interaction-performance-profile-v1.json` fixes SC-050's
-eight learning, review, progress, session, logout, and callback scenarios,
-scenario-specific BFF/core contract bindings and timing boundaries,
-deterministic fixtures, two warm-ups per worker, 5-second hard timeout,
+`tests/performance/interaction-performance-profile-v1.json` plus its exact-byte
+digest-bound `tests/performance/interaction-performance-fixtures-v1.json` fixes
+SC-050's eight learning, review, progress, session, logout, and callback
+scenarios, scenario-specific BFF/core contract bindings and timing boundaries,
+schema-valid state/requests, fixed UUIDv5/token/time derivation, canonical
+per-attempt derived-input SHA-256 evidence with two known-answer vectors, two warm-ups per worker, 5-second hard timeout,
 100-attempt denominator, nearest-rank p95, full-profile and fixture-set digests,
 and evidence schema. Every locally detectable validation error is associated
 with its field/status region within one second of the initiating browser event;
@@ -62,8 +64,10 @@ accessibly ready within one second of the browser fetch resolving with the
 complete validated success payload; preserve the SC-043 roadmap 30-second and
 guidance 10-second core p95 targets under 10 concurrent pilot-user workloads
 and satisfy every SC-050 scenario at 95 of 100 attempts within five seconds
-under 10 concurrent workers. Failures and timeouts remain in each profile's
-fixed denominator.
+under 10 concurrent workers. Its callback scenario measures only deterministic
+post-provider-exchange BFF processing through redirect emission and prohibits a
+live provider or network exchange. Failures and timeouts remain in each
+profile's fixed denominator.
 **Constraints**: Browser calls only `/bff/v1`; BFF calls private core `/api/v1`;
 20-30 minute learning sessions; 3-5 review questions; 80% completion threshold;
 responsive from 320px; keyboard operability, visible focus, meaningful labels
@@ -251,6 +255,7 @@ tests/
 |-- integration/
 |-- ci/
 |-- performance/
+|   |-- interaction-performance-fixtures-v1.json
 |   |-- interaction-performance-profile-v1.json
 |   `-- performance-profile-v1.json
 `-- unit/
@@ -698,8 +703,8 @@ rather than earlier local authoring. Every obligation must also have a valid row
 empty, duplicate, out-of-order, or unknown-task mapping blocks implementation
 and release. CI also verifies the readiness manifest's declared digest, derived
 per-case fixture digests, operation set, and exact denominator arithmetic plus
-both performance profiles' full-profile digests, fixture-set digests, pinned
-BFF/core contract digests, generated-mapper digest/drift gates where applicable,
+both performance profiles' full-profile digests, the interaction fixture set's
+exact-byte digest and derivation rules, pinned BFF/core contract digests, generated-mapper digest/drift gates where applicable,
 evidence schemas, assignments, timing boundaries, and timeout policies; neither test code nor a runtime
 environment may replace those approved inputs.
 

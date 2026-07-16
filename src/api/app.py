@@ -10,6 +10,8 @@ from agent.logging import configure_logging
 from agent.settings import AppSettings, load_settings
 from api.route_helpers import AppContainer, build_container
 from api.router import api_router
+from api.middleware import correlation_middleware
+from api.routes.health import router as health_router
 
 
 def create_app(settings: AppSettings | None = None, container: AppContainer | None = None) -> FastAPI:
@@ -19,6 +21,8 @@ def create_app(settings: AppSettings | None = None, container: AppContainer | No
 
     app = FastAPI(title=resolved_settings.app_name)
     app.state.container = resolved_container
+    app.state.identity_repository = resolved_container.identity_repository
+    app.middleware("http")(correlation_middleware)
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
@@ -44,6 +48,7 @@ def create_app(settings: AppSettings | None = None, container: AppContainer | No
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
     app.include_router(api_router)
+    app.include_router(health_router)
     return app
 
 

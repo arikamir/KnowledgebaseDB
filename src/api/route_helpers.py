@@ -14,6 +14,7 @@ from skills.catalog import SkillCatalog, load_default_catalog
 from storage.database import DatabaseManager
 from storage.progress_repository import ProgressRepository
 from storage.roadmap_repository import RoadmapRepository
+from storage.identity_repository import IdentityRepository
 
 
 @dataclass(slots=True)
@@ -26,6 +27,7 @@ class AppContainer:
     roadmap_service: RoadmapService
     skill_guidance_service: SkillGuidanceService
     progress_service: ProgressService
+    identity_repository: IdentityRepository
 
 
 def build_container(settings: AppSettings | None = None) -> AppContainer:
@@ -45,6 +47,7 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
         progress_repository=progress_repository,
         roadmap_service=roadmap_service,
     )
+    identity_repository = IdentityRepository(database)
     return AppContainer(
         settings=resolved_settings,
         database=database,
@@ -54,6 +57,7 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
         roadmap_service=roadmap_service,
         skill_guidance_service=skill_guidance_service,
         progress_service=progress_service,
+        identity_repository=identity_repository,
     )
 
 
@@ -71,4 +75,3 @@ def get_skill_guidance_service(request: Request) -> SkillGuidanceService:
 
 def get_progress_service(request: Request) -> ProgressService:
     return get_container(request).progress_service
-

@@ -34,12 +34,17 @@ reviewed version increment;
 an implementation-generated substitute is not authoritative.
 
 The approved [interaction performance profile](../../../tests/performance/interaction-performance-profile-v1.json)
-fixes the eight SC-050 operations, BFF/core contract bindings, deterministic
-fixtures and assignment, scenario-specific monotonic timing boundaries,
+and its exact-byte digest-bound [fixture set](../../../tests/performance/interaction-performance-fixtures-v1.json)
+fix the eight SC-050 operations, BFF/core contract bindings, schema-valid state
+and requests, UUIDv5/token/time derivation, deterministic assignment, canonical
+per-attempt derived-input SHA-256 evidence and two known-answer vectors, scenario-specific monotonic timing boundaries,
 warm-up, five-second timeout, 100-attempt denominator, nearest-rank p95,
 required evidence schema, full-profile digest, and fixture-set digest. Editing
 this profile likewise requires a reviewed version increment; runtime or test
-code cannot substitute another scenario or boundary.
+code cannot substitute another scenario or boundary. The callback scenario uses
+only the approved deterministic in-process provider result and starts after
+that result returns; live Entra authorization/code exchange and external
+provider network time are outside SC-050.
 
 The following words are normative:
 
@@ -81,13 +86,13 @@ Authority is divided by subject; there is no silent general-purpose precedence:
 | Architecture, technology, ownership, and sequencing | `plan.md`, `data-model.md`, and `tasks.md` for their named subjects | A sequencing or ownership conflict blocks the affected task and every dependent checkpoint. |
 | HTTP schemas and operation compatibility | `bff-api-v1.openapi.yaml` and `core-api-v1.openapi.yaml` | OpenAPI is authoritative for wire shape; conflicting prose or generated code blocks implementation and release. |
 | Authentication, learning, delivery, and readiness behavior | The corresponding specialized contract, this contract, and `supported-guidance-topics-v1.yaml` | Specialized contracts refine the spec. Conflicts between specialized contracts, OpenAPI, security boundaries, or the spec block the affected task and release. |
-| Approved test denominators and performance inputs | `tests/fixtures/readiness-scenario-manifest-v1.yaml`, `tests/performance/performance-profile-v1.json`, and `tests/performance/interaction-performance-profile-v1.json` | Digest, schema, denominator, timing-boundary, or mapping drift blocks the consuming checkpoint. |
+| Approved test denominators and performance inputs | `tests/fixtures/readiness-scenario-manifest-v1.yaml`, `tests/performance/performance-profile-v1.json`, `tests/performance/interaction-performance-profile-v1.json`, and `tests/performance/interaction-performance-fixtures-v1.json` | Digest, schema, denominator, fixture derivation, provider mode, timing-boundary, or mapping drift blocks the consuming checkpoint. |
 | Requirement-to-task/evidence mapping | `requirements-traceability.md` | The exact structural rules below apply; prose elsewhere cannot excuse a bad row. |
 | Live environment facts and protected-delivery authority | The reviewed bootstrap manifest and immutable evidence produced by the tasks named in `tasks.md` | Planning assumptions, Terraform state access by Jenkins, and runtime/test substitutions are never authoritative. |
 
 Before T001 starts, the constitution, spec, plan, data model, research, quickstart,
 tasks, all four specialized contracts, both OpenAPI files, the guidance catalog,
-the readiness scenario manifest, both performance profiles, all three active
+the readiness scenario manifest, both performance profiles, the interaction-performance fixture set, all three active
 checklists, and the traceability matrix MUST exist and be internally
 well-formed. A traceability evidence path may be absent before implementation
 only when its row names the exact task that will produce it; all normative input
@@ -194,7 +199,7 @@ journaled reverse rollback and verification rules; an irreversible migration
 uses forward recovery and keeps protected delivery blocked.
 
 Any edit to the constitution, spec, plan, data model, tasks, normative contract,
-OpenAPI, catalog, readiness manifest, performance profile, traceability matrix,
+OpenAPI, catalog, readiness manifest, performance profile or bound fixture set, traceability matrix,
 or prerequisite source invalidates checklist answers and approvals whose cited
 inputs or digests changed. Revalidation starts with T030/T034 structural and
 drift checks, then reruns affected story/release validators using the archived

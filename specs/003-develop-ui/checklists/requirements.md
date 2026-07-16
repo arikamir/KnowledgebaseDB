@@ -42,7 +42,7 @@
 - Jenkins delivery is specified through the existing Azure cloud node named
   `azure`; the plan and tasks must remain synchronized with that identifier.
 - **Completed 2026-07-16**: CHK001-CHK040 were revalidated against the current 75 FRs, 50 SCs, specialized contracts, `contracts/implementation-readiness-contract.md`, `plan.md`, `tasks.md`, and the 125-row `requirements-traceability.md`. The readiness contract supplies the primary-journey, dependency, lab, timing/versioning, persistence/idempotency, pilot, measurement, accessibility/browser, service-level, and prerequisite evidence cited by the checklist. Jenkins and Azure edge cases are governed by `contracts/jenkins-delivery-contract.md`; auth and learning boundaries remain governed by their specialized contracts.
-- CHK031 is additionally resolved by SC-050, `plan.md` §Technical Context, `tests/performance/interaction-performance-profile-v1.json`, and T157, which define eight 10-concurrent-worker, 100-attempt, failure-inclusive five-second interaction scenarios without changing the approved SC-043 roadmap/guidance profile.
+- CHK031 is additionally resolved by SC-050, `plan.md` §Technical Context, `tests/performance/interaction-performance-profile-v1.json`, its structured digest-bound fixture set, and T157, which define eight 10-concurrent-worker, 100-attempt, failure-inclusive five-second interaction scenarios, the deterministic post-provider-exchange callback boundary, and canonical per-attempt SHA-256 evidence with two known-answer vectors without changing the approved SC-043 roadmap/guidance profile.
 - This file is an active input to, but not a replacement for, `implementation-gate.md`; both must have zero unchecked items at `SETUP_READY`.
 
 ## Full-Feature Requirement Completeness

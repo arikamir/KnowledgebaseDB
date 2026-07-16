@@ -5,11 +5,11 @@
   "approvedOn": "2026-07-16",
   "approvalAuthority": "Feature specification owner",
   "fixtureDigestAlgorithm": "sha256",
-  "fixtureDigestScope": "UTF-8 bytes of the fixtures array serialized as recursively key-sorted compact JSON with no trailing newline",
-  "fixtureDigest": "9d29c287685a478128f7f313045ddf176bf763e5b065ec504758f7a9af7d286e",
+  "fixtureDigestScope": "Exact UTF-8 bytes of tests/performance/interaction-performance-fixtures-v1.json as committed, including LF line endings and the final newline",
+  "fixtureDigest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "1863a4fe2e3fde282f77c255b3342bae53631bcb9666e4e1626616ba6a18ad15",
+  "profileDigest": "e7242fe90f3833d99155469eaa759ed8c18af34f47ee984e2bbcee4ba9604703",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
@@ -31,11 +31,40 @@
     "thresholdMs": 5000,
     "requiredThresholdPassesPerScenario": 95,
     "concurrencyRule": "All ten workers wait at a barrier before each request ordinal, then each issues exactly one request and waits for it to finish before the next barrier.",
-    "fixtureAssignment": "Each scenario has exactly one approved fixture. Every worker uses that fixture with a unique actor/session/idempotency-key namespace derived only from scenario, workerIndex, and requestOrdinal; warm-up ordinals are 0-1 and measured ordinals reset to 0-9.",
+    "fixtureAssignment": "Load only the digest-matched fixtureSet.path. Select the fixture whose key exactly equals the scenario. Resolve every placeholder with the fixture set's fixed RFC 4122 UUIDv5, SHA-256 token, phase, workerIndex, requestOrdinal, and timestamp rules; warm-up ordinals are 0-1 and measured ordinals reset to 0-9. Reject any missing, extra, unresolved, non-schema-valid, or nondeterministically derived value before warm-up.",
     "warmupFailurePolicy": "Both warm-up requests per worker must succeed within 5000 milliseconds. Any failure aborts the profile as failed and cannot be replaced or excluded.",
     "timeoutPolicy": "Cancel at 5000 milliseconds. A timeout or non-success response remains one of the 100 measured attempts, is a threshold failure, retains its raw outcome, and contributes 5000 milliseconds to nearest-rank p95.",
     "percentile": "nearest-rank p95 over all 100 measured values; rank=ceil(0.95*100)=95 after ascending sort",
     "clock": "A monotonic clock in the process that owns each scenario boundary; wall-clock timestamps may be retained only as supplemental evidence.",
+    "evidenceApplicability": "providerMode is approved_deterministic_in_process_fixture for authentication_callback and the literal not_applicable for every other scenario; all other required evidence fields are mandatory for every measured observation.",
+    "derivedInputDigestAlgorithm": "sha256",
+    "derivedInputDigestScope": "UTF-8 bytes of the derivedInputDigestObject serialized as recursively key-sorted compact JSON with array order preserved, no insignificant whitespace, and no trailing newline.",
+    "derivedInputDigestObject": {
+      "requiredFieldsInOrderForReviewOnly": [
+        "profileId",
+        "fixtureSetId",
+        "caseId",
+        "scenario",
+        "phase",
+        "workerIndex",
+        "requestOrdinal",
+        "operationId",
+        "materializedState",
+        "materializedRequest",
+        "providerResult"
+      ],
+      "materializedRequestRequiredFields": [
+        "method",
+        "pathAndQuery",
+        "headers",
+        "body"
+      ],
+      "materializationPolicy": "Resolve fixture inheritance, overrides, constants, templates, UUIDv5 values, tokens, and timestamps before constructing this object. Reject missing, extra, unknown, or unresolved fields/placeholders. Object-key order does not affect the canonical bytes; array order is preserved.",
+      "providerResultPolicy": "Use the exact materialized providerResult for authentication_callback and JSON null for every other scenario. An absent request body is JSON null.",
+      "bindingPolicy": "profileId and fixtureSetId bind the derived input to the approved artifact identities. profileDigest and fixtureDigest remain mandatory adjacent evidence but are excluded from this object to prevent circular known-answer dependencies.",
+      "sensitiveDataPolicy": "Only approved synthetic fixture values may be included. Real credentials, tokens, cookies, authorization codes, or personal identifiers are prohibited."
+    },
+    "knownAnswerVectorPolicy": "Before any warm-up, independently recalculate both knownAnswerVectors in the bound fixture set using derivedInputDigestAlgorithm and derivedInputDigestScope; any missing vector, field mismatch, or digest mismatch fails the profile.",
     "scenarios": {
       "focused_learning_read": {
         "operationId": "getBrowserLearningSession",
@@ -82,71 +111,41 @@
       "authentication_callback": {
         "operationId": "completeLogin",
         "route": "GET /bff/v1/auth/callback",
-        "timingStart": "BFF callback-handler entry after the provider request reaches the BFF.",
+        "providerMode": "approved_deterministic_in_process_fixture",
+        "timingStart": "First callback-handler instruction after the approved provider fixture returns its validated token result.",
         "timingStop": "Emission of the post-bootstrap 303 redirect after session activation.",
-        "excludedTime": "Employee interaction and Entra time before the callback request reaches the BFF."
+        "excludedTime": "Employee interaction, live Entra authorization/code exchange, and every external provider network interval."
       }
     }
   },
-  "fixtures": [
-    {
-      "caseId": "sc050-focused-learning-read-001",
-      "scenario": "focused_learning_read",
-      "stateFixture": "Active employee with one published, started learning session and readable current cursor.",
-      "requestFixture": "Valid employee session cookie and deterministic employee-owned learning-session ID."
-    },
-    {
-      "caseId": "sc050-focused-learning-mutation-001",
-      "scenario": "focused_learning_mutation",
-      "stateFixture": "Active employee with one started learning session and one incomplete required step.",
-      "requestFixture": "Valid session, Origin, CSRF token, contract version, deterministic step ID, and actor-scoped idempotency key."
-    },
-    {
-      "caseId": "sc050-review-submission-001",
-      "scenario": "review_submission",
-      "stateFixture": "Active employee with one in-progress review attempt whose complete deterministic answer set has been persisted.",
-      "requestFixture": "Valid session, Origin, CSRF token, contract version, review-attempt ID, and actor-scoped idempotency key."
-    },
-    {
-      "caseId": "sc050-progress-persistence-001",
-      "scenario": "progress_persistence",
-      "stateFixture": "Active employee with one deterministic owned roadmap and stable milestone keys.",
-      "requestFixture": "Valid generated progress request, session, Origin, CSRF token, contract version, and actor-scoped idempotency key."
-    },
-    {
-      "caseId": "sc050-bff-session-bootstrap-001",
-      "scenario": "bff_session_bootstrap",
-      "stateFixture": "Validated active employee token and no existing EmployeeIdentity or Redis session for the fixture subject.",
-      "requestFixture": "Deterministic validated tenant/subject bootstrap request and empty session namespace."
-    },
-    {
-      "caseId": "sc050-bff-session-refresh-001",
-      "scenario": "bff_session_refresh",
-      "stateFixture": "Active non-expired Redis session whose idle timestamp is eligible for authoritative touch.",
-      "requestFixture": "Valid opaque BFF session cookie."
-    },
-    {
-      "caseId": "sc050-bff-logout-001",
-      "scenario": "bff_logout",
-      "stateFixture": "Active Redis session with its matching logout CSRF token.",
-      "requestFixture": "Valid opaque cookie, exact Origin, and matching logout CSRF token."
-    },
-    {
-      "caseId": "sc050-authentication-callback-001",
-      "scenario": "authentication_callback",
-      "stateFixture": "Valid unexpired authorization state, deterministic active employee authorization code exchange, and no active BFF session.",
-      "requestFixture": "Valid callback code/state whose provider exchange and core bootstrap use deterministic approved test doubles."
-    }
-  ],
+  "fixtureSet": {
+    "path": "tests/performance/interaction-performance-fixtures-v1.json",
+    "digestAlgorithm": "sha256",
+    "digest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
+    "requiredFixtureKeys": [
+      "focused_learning_read",
+      "focused_learning_mutation",
+      "review_submission",
+      "progress_persistence",
+      "bff_session_bootstrap",
+      "bff_session_refresh",
+      "bff_logout",
+      "authentication_callback"
+    ]
+  },
   "requiredEvidenceFields": [
     "profileId",
     "profileDigest",
     "fixtureDigest",
+    "fixtureSetPath",
+    "fixtureKey",
+    "derivedInputDigest",
     "bffContractDigest",
     "coreContractDigest",
     "caseId",
     "scenario",
     "operationId",
+    "providerMode",
     "workerIndex",
     "requestOrdinal",
     "environment",

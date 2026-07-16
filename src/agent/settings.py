@@ -23,6 +23,12 @@ class AppSettings:
     roadmap_p95_seconds: float = 30.0
     topic_guidance_p95_seconds: float = 10.0
     max_concurrent_employees: int = 10
+    entra_tenant_id: str = "00000000-0000-0000-0000-000000000000"
+    entra_issuer: str = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"
+    entra_core_audience: str = "api://career-agent-core"
+    entra_bff_client_id: str = "00000000-0000-0000-0000-000000000001"
+    entra_employee_scope: str = "CareerAgent.Access"
+    allowed_signing_algorithms: tuple[str, ...] = ("RS256",)
     topic_catalog_path: str = str(
         Path(__file__).resolve().parents[1] / "knowledge" / "topics" / "topics.json"
     )
@@ -47,6 +53,14 @@ class AppSettings:
             ),
             max_concurrent_employees=int(
                 _env_value(source, "MAX_CONCURRENT_EMPLOYEES", str(defaults.max_concurrent_employees))
+            ),
+            entra_tenant_id=_env_value(source, "ENTRA_TENANT_ID", defaults.entra_tenant_id),
+            entra_issuer=_env_value(source, "ENTRA_ISSUER", defaults.entra_issuer),
+            entra_core_audience=_env_value(source, "ENTRA_CORE_AUDIENCE", defaults.entra_core_audience),
+            entra_bff_client_id=_env_value(source, "ENTRA_BFF_CLIENT_ID", defaults.entra_bff_client_id),
+            entra_employee_scope=_env_value(source, "ENTRA_EMPLOYEE_SCOPE", defaults.entra_employee_scope),
+            allowed_signing_algorithms=tuple(
+                part.strip() for part in _env_value(source, "ENTRA_SIGNING_ALGORITHMS", "RS256").split(",") if part.strip()
             ),
             topic_catalog_path=_env_value(source, "TOPIC_CATALOG_PATH", defaults.topic_catalog_path),
         )

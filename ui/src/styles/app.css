@@ -1,0 +1,9 @@
+.app-shell { min-height: 100vh; }
+header, nav { align-items: center; display: flex; gap: 1rem; padding: 1rem; }
+header { background: #13213c; color: white; }
+.brand { color: inherit; font-size: 1.25rem; font-weight: 700; }
+nav { border-bottom: 1px solid #c7d0df; }
+button, a { min-height: 2.75rem; padding: .625rem; }
+button:focus-visible, a:focus-visible, [tabindex="-1"]:focus-visible { outline: 2px solid #0067c5; outline-offset: 3px; }
+.timeout-dialog { background: white; border: 1px solid #13213c; inset: 20% 1rem auto; margin: auto; max-width: 32rem; padding: 1.5rem; position: fixed; }
+@media (max-width: 480px) { nav { align-items: stretch; flex-direction: column; } }

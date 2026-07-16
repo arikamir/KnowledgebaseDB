@@ -1,0 +1,5 @@
+{
+  "bffBasePath": "/bff/v1",
+  "environmentName": "local",
+  "telemetryEnabled": false
+}

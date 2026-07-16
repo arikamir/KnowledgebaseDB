@@ -47,9 +47,12 @@ read and validate both of these authorities:
 
 The readiness contract also freezes two approved test inputs: the
 [universal scenario manifest](../../tests/fixtures/readiness-scenario-manifest-v1.yaml)
-and [core performance profile](../../tests/performance/performance-profile-v1.json).
+and [core performance profile](../../tests/performance/performance-profile-v1.json),
+plus the [interaction performance profile](../../tests/performance/interaction-performance-profile-v1.json)
+and its [digest-bound fixture set](../../tests/performance/interaction-performance-fixtures-v1.json).
 Recompute the manifest digest, every derived per-case fixture digest, the
-performance profile's full-profile and fixture-set digests, and its pinned
+performance profiles' full-profile/fixture-set digests, the interaction fixture
+set's exact-byte digest and derivation rules, and their pinned
 BFF/core contract-byte digests; regenerate and digest the mapper; and reject
 schema, evidence-field, operation-set, mapper, case-count, fixture, assignment,
 or timeout drift before implementation or verification.
@@ -462,7 +465,8 @@ corresponding tasks are completed. Verify change-plan fixtures for UI-only,
 BFF-only, core-only, shared/all, mixed-path-union/no-clearing/reason-deduplication,
 each BFF/core OpenAPI document, the guidance
 catalog, the implementation-readiness contract, the 125-row traceability
-matrix, readiness-manifest-only, either performance-profile-only, provision/teardown
+matrix, readiness-manifest-only, either performance-profile-only,
+interaction-performance-fixture-only, provision/teardown
 skill executable/template changes, docs-only, first/missing-baseline,
 invalid-supplied-baseline, and audited rebuild-all cases. Assert the archived
 plan contains all three service

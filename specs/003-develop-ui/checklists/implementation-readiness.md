@@ -73,4 +73,4 @@
 - Record unresolved gaps inline and update the normative artifact before marking the item complete.
 - Re-run cross-artifact analysis after resolving this formal gate and before implementation.
 - **Completed 2026-07-13**: 40/40 items passed after digest, schema, denominator, traceability, and independent final-audit validation.
-- **Revalidated 2026-07-16**: SC-050 and the approved interaction-performance profile extend the inventory to 125 ordered rows while preserving 198 mapped tasks and the independent SC-043 profile.
+- **Revalidated 2026-07-16**: SC-050, the approved interaction-performance profile, and its structured exact-byte digest-bound fixture set extend the inventory to 125 ordered rows while preserving 198 mapped tasks and the independent SC-043 profile; callback timing is explicitly post-provider-exchange application processing, and canonical per-attempt SHA-256 evidence is fixed by two known-answer vectors.
