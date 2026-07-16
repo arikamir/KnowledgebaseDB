@@ -98,6 +98,12 @@ class RoadmapService:
             follow_up_prompt=presentation.follow_up_prompt,
         )
 
+    def create_owned_roadmap(self, request: RoadmapIntakeRequest, *, employee_identity_id: str | None = None, machine_principal_id: str | None = None) -> RoadmapIntakeResponse:
+        result = self.create_roadmap(request)
+        if result.status == "ready" and result.roadmap is not None:
+            self.repository.save_owned_roadmap(result.roadmap, employee_identity_id=employee_identity_id, machine_principal_id=machine_principal_id)
+        return result
+
     def build_roadmap(
         self,
         profile: EmployeeProfile,

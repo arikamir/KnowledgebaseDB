@@ -45,12 +45,13 @@ class SigningKeyCache:
     refresh: Callable[[], tuple[dict[str, Any], datetime]]
 
     def key(self, kid: str, now: datetime) -> Any:
-        if kid in self.keys and now - self.refreshed_at <= timedelta(hours=24):
+        age = now - self.refreshed_at
+        if kid in self.keys and age <= timedelta(hours=6):
             return self.keys[kid]
         try:
             keys, refreshed_at = self.refresh()
         except Exception as error:
-            if kid in self.keys and now - self.refreshed_at <= timedelta(hours=24):
+            if kid in self.keys and age <= timedelta(hours=24):
                 return self.keys[kid]
             raise BearerValidationError("AUTH_KEY_METADATA_UNAVAILABLE", 503) from error
         self.keys, self.refreshed_at = keys, refreshed_at

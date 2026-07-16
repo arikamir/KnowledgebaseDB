@@ -85,6 +85,16 @@ def test_unknown_kid_refreshes_exactly_once_and_rejects_after_success():
     assert len(calls) == 1
 
 
+def test_known_key_refreshes_after_six_hours_but_falls_back_only_until_24_hours():
+    calls = []
+    cache = SigningKeyCache({"known": "cached-key"}, NOW - timedelta(hours=7), lambda: (calls.append(True) or (_ for _ in ()).throw(RuntimeError("offline"))))
+    assert cache.key("known", NOW) == "cached-key"
+    assert len(calls) == 1
+    cache.refreshed_at = NOW - timedelta(hours=25)
+    with pytest.raises(BearerValidationError, match="AUTH_KEY_METADATA_UNAVAILABLE"):
+        cache.key("known", NOW)
+
+
 @pytest.mark.parametrize(
     "operation,case",
     [(operation, case) for operation in AUTH_MATRIX["delegated"]["operations"] for case in AUTH_MATRIX["delegated"]["case_suffixes"]],

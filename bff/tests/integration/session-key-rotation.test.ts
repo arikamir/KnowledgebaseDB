@@ -21,4 +21,12 @@ describe("session key rotation", () => {
     const current = new EncryptionKeyRing([{ version: "new", key: Buffer.alloc(32, 2), mode: "active" }]);
     expect(() => current.decrypt(encrypted)).toThrow("SESSION_KEY_RETIRED");
   });
+
+  it("revokes every session indexed by a compromised key version", async () => {
+    const backend = new MemorySessionBackend();
+    const store = new EncryptedSessionStore(backend, new EncryptionKeyRing([{ version: "compromised", key: Buffer.alloc(32, 1), mode: "active" }]));
+    await store.save(session);
+    expect(await store.revokeKeyVersion("compromised")).toBe(1);
+    expect(await store.load(session.sessionId)).toBeNull();
+  });
 });

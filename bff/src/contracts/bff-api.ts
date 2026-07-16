@@ -113,3 +113,1589 @@ export const BFF_OPERATIONS = [
   }
 ] as const;
 export type BffOperationId = typeof BFF_OPERATIONS[number]["operationId"];
+export const BFF_COMPONENT_SCHEMAS = [
+  {
+    "$id": "urn:contract:BffCapabilities",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "bffContractVersion",
+      "bffApiSchemaVersion",
+      "acceptedUiContractRange",
+      "core",
+      "featureFlags"
+    ],
+    "properties": {
+      "bffContractVersion": {
+        "type": "string"
+      },
+      "bffApiSchemaVersion": {
+        "type": "string",
+        "const": "1.0.0"
+      },
+      "acceptedUiContractRange": {
+        "type": "string"
+      },
+      "core": {
+        "$ref": "urn:contract:CoreCompatibility#"
+      },
+      "featureFlags": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:CoreCompatibility",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "contractVersion",
+      "acceptedBffContractRange",
+      "apiSchemaVersion",
+      "guidanceTopicCatalogVersion",
+      "compatible"
+    ],
+    "properties": {
+      "contractVersion": {
+        "type": "string"
+      },
+      "acceptedBffContractRange": {
+        "type": "string"
+      },
+      "apiSchemaVersion": {
+        "type": "string"
+      },
+      "guidanceTopicCatalogVersion": {
+        "type": "string"
+      },
+      "compatible": {
+        "type": "boolean"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:BrowserSessionState",
+    "oneOf": [
+      {
+        "$ref": "urn:contract:AuthenticatedSession#"
+      },
+      {
+        "$ref": "urn:contract:MissingSession#"
+      }
+    ]
+  },
+  {
+    "$id": "urn:contract:AuthenticatedSession",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "authenticated",
+      "user",
+      "csrfToken",
+      "idleExpiresAt",
+      "absoluteExpiresAt"
+    ],
+    "properties": {
+      "authenticated": {
+        "type": "boolean",
+        "const": true
+      },
+      "user": {
+        "$ref": "urn:contract:SessionUser#"
+      },
+      "csrfToken": {
+        "type": "string",
+        "minLength": 16
+      },
+      "idleExpiresAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "absoluteExpiresAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:MissingSession",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "authenticated",
+      "reason"
+    ],
+    "properties": {
+      "authenticated": {
+        "type": "boolean",
+        "const": false
+      },
+      "reason": {
+        "type": "string",
+        "const": "missing"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:SessionUser",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "displayName"
+    ],
+    "properties": {
+      "displayName": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:EmployeeProfileInput",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "role",
+      "experienceLevel",
+      "targetRole",
+      "availableTimePerWeek"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Compatibility relationship only; never grants authority."
+      },
+      "role": {
+        "type": "string",
+        "minLength": 1
+      },
+      "experienceLevel": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "beginner",
+          "intermediate",
+          "advanced",
+          "lead"
+        ]
+      },
+      "targetRole": {
+        "type": "string",
+        "minLength": 1
+      },
+      "targetSpecializations": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "availableTimePerWeek": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "learningPreferences": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:RoadmapCreateRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "employeeProfile"
+    ],
+    "properties": {
+      "employeeProfile": {
+        "$ref": "urn:contract:EmployeeProfileInput#"
+      },
+      "requestText": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "clarifyingQuestionsAsked": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:GuidanceRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "topic",
+      "employeeProfile"
+    ],
+    "properties": {
+      "topic": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Active ID or alias from supported-guidance-topics-v1.yaml."
+      },
+      "employeeProfile": {
+        "$ref": "urn:contract:EmployeeProfileInput#"
+      },
+      "requestText": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ProgressCheckInRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "roadmapId"
+    ],
+    "properties": {
+      "employeeProfileId": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "deprecated": true,
+        "description": "Compatibility relationship only; never grants authority."
+      },
+      "roadmapId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "notes": {
+        "type": "string",
+        "default": ""
+      },
+      "completedSteps": {
+        "type": "array",
+        "description": "Legacy milestone title and skill-area references retain their documented trim/case-insensitive all-matches behavior.",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "completedMilestoneKeys": {
+        "type": "array",
+        "description": "Preferred unambiguous stable keys. An unknown key is a 422 error.",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+        }
+      },
+      "newGoals": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReviewAnswerRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "answerKey"
+    ],
+    "properties": {
+      "answerKey": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:LabReportRequest",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "reason"
+    ],
+    "properties": {
+      "reason": {
+        "type": "string",
+        "enum": [
+          "unavailable",
+          "unsuitable",
+          "cost_mismatch",
+          "other"
+        ]
+      },
+      "comment": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "maxLength": 1000
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:RoadmapResult",
+    "oneOf": [
+      {
+        "$ref": "urn:contract:ReadyRoadmapResult#"
+      },
+      {
+        "$ref": "urn:contract:NeedsMoreInfoRoadmapResult#"
+      }
+    ],
+    "discriminator": {
+      "propertyName": "status",
+      "mapping": {
+        "ready": "#/components/schemas/ReadyRoadmapResult",
+        "needs_more_info": "#/components/schemas/NeedsMoreInfoRoadmapResult"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReadyRoadmapResult",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "status",
+      "roadmapId",
+      "employeeProfileId",
+      "roadmap",
+      "clarifyingQuestions",
+      "assumptions",
+      "presentation",
+      "followUpPrompt"
+    ],
+    "properties": {
+      "status": {
+        "type": "string",
+        "const": "ready"
+      },
+      "roadmapId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "employeeProfileId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "roadmap": {
+        "$ref": "urn:contract:CareerRoadmap#"
+      },
+      "clarifyingQuestions": {
+        "type": "array",
+        "maxItems": 0,
+        "items": {
+          "$ref": "urn:contract:ClarifyingQuestion#"
+        }
+      },
+      "assumptions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "presentation": {
+        "type": "string"
+      },
+      "followUpPrompt": {
+        "type": "string"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:NeedsMoreInfoRoadmapResult",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "status",
+      "roadmapId",
+      "employeeProfileId",
+      "roadmap",
+      "clarifyingQuestions",
+      "assumptions",
+      "presentation",
+      "followUpPrompt"
+    ],
+    "properties": {
+      "status": {
+        "type": "string",
+        "const": "needs_more_info"
+      },
+      "roadmapId": {
+        "type": "null"
+      },
+      "employeeProfileId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "roadmap": {
+        "type": "null"
+      },
+      "clarifyingQuestions": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "urn:contract:ClarifyingQuestion#"
+        }
+      },
+      "assumptions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "presentation": {
+        "type": "string"
+      },
+      "followUpPrompt": {
+        "type": "string"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ClarifyingQuestion",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "prompt",
+      "whyItMatters"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string",
+        "minLength": 1
+      },
+      "whyItMatters": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:GuidanceResult",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "requestedTopic",
+      "supported",
+      "topicSummary",
+      "currentLevelFit",
+      "practicalNextAction",
+      "labReferences",
+      "suggestions",
+      "commonPitfalls",
+      "relatedTopics",
+      "notes"
+    ],
+    "properties": {
+      "requestedTopic": {
+        "type": "string"
+      },
+      "resolvedTopic": {
+        "type": "string"
+      },
+      "supported": {
+        "type": "boolean",
+        "const": true
+      },
+      "topicSummary": {
+        "type": "string"
+      },
+      "currentLevelFit": {
+        "type": "string"
+      },
+      "practicalNextAction": {
+        "type": "string"
+      },
+      "labReferences": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:LabReference#"
+        }
+      },
+      "suggestions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "commonPitfalls": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "relatedTopics": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "notes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:CareerRoadmap",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "employeeProfileId",
+      "goalSummary",
+      "currentFocus",
+      "milestones",
+      "status",
+      "assumptions",
+      "clarifyingQuestionsAsked",
+      "createdAt",
+      "updatedAt"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "employeeProfileId": {
+        "type": "string"
+      },
+      "previousRoadmapId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "goalSummary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "currentFocus": {
+        "type": "string",
+        "minLength": 1
+      },
+      "milestones": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "urn:contract:RoadmapMilestone#"
+        }
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "active",
+          "revised",
+          "completed"
+        ]
+      },
+      "assumptions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "clarifyingQuestionsAsked": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:RoadmapMilestone",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "milestoneKey",
+      "ordinal",
+      "title",
+      "skillArea",
+      "experienceLevelFit",
+      "timeHorizon",
+      "concreteNextAction",
+      "reasonItMatters",
+      "completionState",
+      "priority",
+      "supportingNotes"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "milestoneKey": {
+        "type": "string",
+        "minLength": 1
+      },
+      "ordinal": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "skillArea": {
+        "type": "string",
+        "minLength": 1
+      },
+      "experienceLevelFit": {
+        "type": "string"
+      },
+      "timeHorizon": {
+        "type": "string",
+        "enum": [
+          "immediate",
+          "near_term",
+          "long_term"
+        ]
+      },
+      "concreteNextAction": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reasonItMatters": {
+        "type": "string"
+      },
+      "completionState": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "in_progress",
+          "completed"
+        ]
+      },
+      "priority": {
+        "type": "integer"
+      },
+      "supportingNotes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:LabReference",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "provider",
+      "objective",
+      "prerequisites",
+      "estimatedMinutes",
+      "costStatus",
+      "destinationUrl"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "objective": {
+        "type": "string"
+      },
+      "prerequisites": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "estimatedMinutes": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "costStatus": {
+        "type": "string",
+        "enum": [
+          "free",
+          "paid",
+          "subscription",
+          "unknown"
+        ]
+      },
+      "destinationUrl": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:LearningSession",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "roadmapId",
+      "title",
+      "objective",
+      "estimatedMinutes",
+      "status",
+      "currentStepOrdinal",
+      "steps"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "roadmapId": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "objective": {
+        "type": "string"
+      },
+      "estimatedMinutes": {
+        "type": "integer",
+        "minimum": 20,
+        "maximum": 30
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "not_started",
+          "in_progress",
+          "retry_required",
+          "completed"
+        ]
+      },
+      "currentStepOrdinal": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:LearningStep#"
+        }
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:LearningStep",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "ordinal",
+      "stepType",
+      "title",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "ordinal": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "stepType": {
+        "type": "string",
+        "enum": [
+          "reading",
+          "activity",
+          "lab",
+          "review"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "completed"
+        ]
+      },
+      "labReference": {
+        "oneOf": [
+          {
+            "$ref": "urn:contract:LabReference#"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReviewAttempt",
+    "oneOf": [
+      {
+        "$ref": "urn:contract:InProgressReviewAttempt#"
+      },
+      {
+        "$ref": "urn:contract:SubmittedReviewAttempt#"
+      }
+    ],
+    "discriminator": {
+      "propertyName": "status",
+      "mapping": {
+        "in_progress": "#/components/schemas/InProgressReviewAttempt",
+        "submitted": "#/components/schemas/SubmittedReviewAttempt"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:InProgressReviewAttempt",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "attemptNumber",
+      "status",
+      "questions",
+      "answers",
+      "startedAt",
+      "scorePercent",
+      "passed",
+      "submittedAt"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "attemptNumber": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "status": {
+        "type": "string",
+        "const": "in_progress"
+      },
+      "questions": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 5,
+        "items": {
+          "$ref": "urn:contract:ReviewQuestion#"
+        }
+      },
+      "answers": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:PersistedReviewAnswer#"
+        }
+      },
+      "startedAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "scorePercent": {
+        "type": "null"
+      },
+      "passed": {
+        "type": "null"
+      },
+      "submittedAt": {
+        "type": "null"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:SubmittedReviewAttempt",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "attemptNumber",
+      "status",
+      "questions",
+      "answers",
+      "startedAt",
+      "scorePercent",
+      "passed",
+      "submittedAt"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "attemptNumber": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "status": {
+        "type": "string",
+        "const": "submitted"
+      },
+      "questions": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 5,
+        "items": {
+          "$ref": "urn:contract:ReviewQuestion#"
+        }
+      },
+      "answers": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 5,
+        "items": {
+          "$ref": "urn:contract:PersistedReviewAnswer#"
+        }
+      },
+      "startedAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "scorePercent": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "passed": {
+        "type": "boolean"
+      },
+      "submittedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReviewQuestion",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "ordinal",
+      "prompt",
+      "choices"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "ordinal": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "prompt": {
+        "type": "string",
+        "minLength": 1
+      },
+      "choices": {
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "description": "Correct keys are excluded."
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:PersistedReviewAnswer",
+    "type": "object",
+    "additionalProperties": false,
+    "description": "Safe restoration DTO for an answered question; no authoritative correct key for any unanswered question is exposed.",
+    "required": [
+      "questionId",
+      "submittedAnswerKey",
+      "correct",
+      "explanation",
+      "answeredAt"
+    ],
+    "properties": {
+      "questionId": {
+        "type": "string"
+      },
+      "submittedAnswerKey": {
+        "type": "string"
+      },
+      "correct": {
+        "type": "boolean"
+      },
+      "explanation": {
+        "type": "string",
+        "minLength": 1
+      },
+      "answeredAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReviewAnswerFeedback",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "questionId",
+      "submittedAnswerKey",
+      "correct",
+      "explanation",
+      "answeredAt"
+    ],
+    "properties": {
+      "questionId": {
+        "type": "string"
+      },
+      "submittedAnswerKey": {
+        "type": "string"
+      },
+      "correct": {
+        "type": "boolean"
+      },
+      "explanation": {
+        "type": "string",
+        "minLength": 1
+      },
+      "answeredAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ReviewResult",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "attemptId",
+      "scorePercent",
+      "passed",
+      "sessionStatus",
+      "nextAction"
+    ],
+    "properties": {
+      "attemptId": {
+        "type": "string"
+      },
+      "scorePercent": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "passed": {
+        "type": "boolean"
+      },
+      "sessionStatus": {
+        "type": "string",
+        "enum": [
+          "retry_required",
+          "completed"
+        ]
+      },
+      "nextAction": {
+        "$ref": "urn:contract:NextAction#"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ProgressReview",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "revision",
+      "presentation",
+      "followUpPrompt",
+      "checkIn",
+      "roadmapId",
+      "currentStatus",
+      "gaps",
+      "milestones",
+      "nextAction"
+    ],
+    "properties": {
+      "revision": {
+        "$ref": "urn:contract:RoadmapRevision#"
+      },
+      "presentation": {
+        "type": "string"
+      },
+      "followUpPrompt": {
+        "type": "string"
+      },
+      "checkIn": {
+        "$ref": "urn:contract:ProgressCheckIn#"
+      },
+      "roadmapId": {
+        "type": "string"
+      },
+      "currentStatus": {
+        "type": "string"
+      },
+      "gaps": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "milestones": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:RoadmapMilestone#"
+        }
+      },
+      "nextAction": {
+        "$ref": "urn:contract:NextAction#"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:RoadmapRevision",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "priorRoadmap",
+      "updatedRoadmap",
+      "completedSteps",
+      "normalizedMilestoneKeys",
+      "newGoals",
+      "summary",
+      "createdAt"
+    ],
+    "properties": {
+      "priorRoadmap": {
+        "$ref": "urn:contract:CareerRoadmap#"
+      },
+      "updatedRoadmap": {
+        "$ref": "urn:contract:CareerRoadmap#"
+      },
+      "completedSteps": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "normalizedMilestoneKeys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "newGoals": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "summary": {
+        "type": "string"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ProgressCheckIn",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "employeeProfileId",
+      "roadmapId",
+      "notes",
+      "completedSteps",
+      "normalizedMilestoneKeys",
+      "newGoals",
+      "updatedRecommendations",
+      "createdAt"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "employeeProfileId": {
+        "type": "string"
+      },
+      "roadmapId": {
+        "type": "string"
+      },
+      "notes": {
+        "type": "string"
+      },
+      "completedSteps": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "normalizedMilestoneKeys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "newGoals": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "updatedRecommendations": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:RoadmapMilestone#"
+        }
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:NextAction",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "kind",
+      "title",
+      "reason",
+      "target"
+    ],
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "retry_material",
+          "resume_session",
+          "continue_milestone",
+          "review_roadmap"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1
+      },
+      "target": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  {
+    "$id": "urn:contract:ProblemDetails",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "type",
+      "title",
+      "status",
+      "code",
+      "traceId",
+      "retryable",
+      "fieldErrors"
+    ],
+    "properties": {
+      "type": {
+        "type": "string",
+        "format": "uri"
+      },
+      "title": {
+        "type": "string"
+      },
+      "status": {
+        "type": "integer",
+        "minimum": 400,
+        "maximum": 599
+      },
+      "detail": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "code": {
+        "type": "string"
+      },
+      "traceId": {
+        "type": "string"
+      },
+      "retryable": {
+        "type": "boolean"
+      },
+      "fieldErrors": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "field",
+            "messages"
+          ],
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+] as const;
+export const BFF_ROUTE_SCHEMAS = {
+  "getBffCapabilities": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:BffCapabilities#"
+      }
+    }
+  },
+  "getBrowserSession": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:BrowserSessionState#"
+      }
+    }
+  },
+  "beginLogin": {
+    "querystring": {
+      "type": "object",
+      "properties": {
+        "return_to": {
+          "type": "string",
+          "pattern": "^/(?!/)(?!.*[\\\\\\x00-\\x1F\\x7F#])(?!.*%(?:2[fF]|5[cC])).*$"
+        }
+      },
+      "required": []
+    }
+  },
+  "completeLogin": {
+    "querystring": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 16
+        }
+      },
+      "required": [
+        "code",
+        "state"
+      ]
+    }
+  },
+  "logout": {},
+  "listBrowserRoadmaps": {
+    "response": {
+      "200": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:CareerRoadmap#"
+        }
+      }
+    }
+  },
+  "createBrowserRoadmap": {
+    "body": {
+      "$ref": "urn:contract:RoadmapCreateRequest#"
+    },
+    "response": {
+      "200": {
+        "$ref": "urn:contract:RoadmapResult#"
+      }
+    }
+  },
+  "getBrowserRoadmap": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:CareerRoadmap#"
+      }
+    }
+  },
+  "createBrowserGuidance": {
+    "body": {
+      "$ref": "urn:contract:GuidanceRequest#"
+    },
+    "response": {
+      "200": {
+        "$ref": "urn:contract:GuidanceResult#"
+      }
+    }
+  },
+  "createBrowserProgressCheckIn": {
+    "body": {
+      "$ref": "urn:contract:ProgressCheckInRequest#"
+    },
+    "response": {
+      "200": {
+        "$ref": "urn:contract:ProgressReview#"
+      }
+    }
+  },
+  "getBrowserProgressReview": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:ProgressReview#"
+      }
+    }
+  },
+  "listBrowserLearningSessions": {
+    "response": {
+      "200": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:LearningSession#"
+        }
+      }
+    }
+  },
+  "getBrowserLearningSession": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:LearningSession#"
+      }
+    }
+  },
+  "startBrowserLearningSession": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:LearningSession#"
+      }
+    }
+  },
+  "completeBrowserLearningStep": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "stepId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "stepId"
+      ]
+    },
+    "response": {
+      "200": {
+        "$ref": "urn:contract:LearningSession#"
+      }
+    }
+  },
+  "listBrowserReviewAttempts": {
+    "response": {
+      "200": {
+        "type": "array",
+        "items": {
+          "$ref": "urn:contract:ReviewAttempt#"
+        }
+      }
+    }
+  },
+  "createBrowserReviewAttempt": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:InProgressReviewAttempt#"
+      }
+    }
+  },
+  "getBrowserReviewAttempt": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:ReviewAttempt#"
+      }
+    }
+  },
+  "answerBrowserReviewQuestion": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "questionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "questionId"
+      ]
+    },
+    "body": {
+      "$ref": "urn:contract:ReviewAnswerRequest#"
+    },
+    "response": {
+      "200": {
+        "$ref": "urn:contract:ReviewAnswerFeedback#"
+      }
+    }
+  },
+  "submitBrowserReviewAttempt": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:ReviewResult#"
+      }
+    }
+  },
+  "reportBrowserLabReference": {
+    "body": {
+      "$ref": "urn:contract:LabReportRequest#"
+    }
+  },
+  "getBrowserNextLearningAction": {
+    "response": {
+      "200": {
+        "$ref": "urn:contract:NextAction#"
+      }
+    }
+  }
+} as const;

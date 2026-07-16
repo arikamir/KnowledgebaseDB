@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -15,6 +16,8 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 FEATURE = ROOT / "specs/003-develop-ui"
 BFF_CONTRACT = FEATURE / "contracts/bff-api-v1.openapi.yaml"
 CORE_CONTRACT = FEATURE / "contracts/core-api-v1.openapi.yaml"
@@ -23,6 +26,8 @@ PERFORMANCE = ROOT / "tests/performance/performance-profile-v1.json"
 INTERACTION = ROOT / "tests/performance/interaction-performance-profile-v1.json"
 INTERACTION_FIXTURES = ROOT / "tests/performance/interaction-performance-fixtures-v1.json"
 CATALOG = FEATURE / "contracts/supported-guidance-topics-v1.yaml"
+FOUNDATION_TEST_MANIFEST = ROOT / "config/us1-foundation-test-manifest-v1.txt"
+FOUNDATION_RUNNER = ROOT / "scripts/ci/validate-us1-foundation.sh"
 
 
 class ContractGateError(RuntimeError):
@@ -147,6 +152,17 @@ def validate_interaction_profile(summaries: Iterable[OpenApiSummary]) -> None:
     fixture_map = fixtures.get("fixtures", {})
     required_keys = profile.get("fixtureSet", {}).get("requiredFixtureKeys")
     require(sorted(scenarios) == sorted(fixture_map) == sorted(required_keys), f"{INTERACTION}: fixture/scenario mismatch")
+    case_ids = [value.get("caseId") for value in fixture_map.values()]
+    require(all(isinstance(value, str) and value for value in case_ids) and len(case_ids) == len(set(case_ids)), f"{INTERACTION_FIXTURES}: unique case IDs required")
+    grammar = fixtures.get("derivation", {}).get("placeholderGrammar", {})
+    require(set(grammar) == {"${constant:name}", "${uuidv5:field}", "${token:field}", "${time:field}", "${template:path}"}, f"{INTERACTION_FIXTURES}: placeholder grammar drift")
+    require(fixtures.get("derivation", {}).get("workerIndexRange") == [0, 9], f"{INTERACTION_FIXTURES}: worker range")
+    require(fixtures.get("derivation", {}).get("measuredRequestOrdinalRange") == [0, 9], f"{INTERACTION_FIXTURES}: ordinal range")
+    placeholders = re.findall(r"\$\{([^}]+)\}", json.dumps(fixture_map, ensure_ascii=False))
+    require(all(value.split(":", 1)[0] in {"constant", "uuidv5", "token", "time", "template"} for value in placeholders), f"{INTERACTION_FIXTURES}: unresolved placeholder class")
+    for scenario, fixture in fixture_map.items():
+        require(fixture.get("operationId") == scenarios[scenario].get("operationId"), f"{INTERACTION_FIXTURES}: operation mismatch for {scenario}")
+        require((ROOT / fixture.get("contractPath", "")).is_file(), f"{INTERACTION_FIXTURES}: missing contract binding for {scenario}")
     all_operations = set().union(*(summary.operation_ids for summary in summaries))
     require(all(value.get("operationId") in all_operations for value in scenarios.values()), f"{INTERACTION}: unknown operation")
     callback = scenarios.get("authentication_callback", {})
@@ -214,6 +230,54 @@ def validate_readiness_manifest() -> None:
             require(group["denominator_per_operation"] == len(suffixes), f"{READINESS}: {name} per-operation denominator")
             require(actual == len(operations) * len(suffixes), f"{READINESS}: {name} operation expansion")
 
+    case_digests: set[str] = set()
+    for group_name, group in groups.items():
+        matrices = [group[key] for key in ("delegated", "machine") if isinstance(group.get(key), dict)] or [group]
+        for matrix in matrices:
+            cases: list[tuple[str, dict[str, Any]]] = []
+            if isinstance(matrix.get("cases"), list):
+                cases = [(case_id, {}) for case_id in matrix["cases"]]
+            elif isinstance(matrix.get("cases_by_operation"), dict):
+                cases = [
+                    (matrix["case_id_template"].format(operation=operation, case_suffix=suffix), {"operation": operation, "case_suffix": suffix})
+                    for operation, suffixes in matrix["cases_by_operation"].items() for suffix in suffixes
+                ]
+            elif isinstance(matrix.get("operations"), list) and isinstance(matrix.get("case_suffixes"), list):
+                cases = [
+                    (matrix["case_id_template"].format(operation=operation, case_suffix=suffix), {"operation": operation, "case_suffix": suffix})
+                    for operation in matrix["operations"] for suffix in matrix["case_suffixes"]
+                ]
+            for case_id, parameters in cases:
+                payload = {"case_id": case_id, "manifest_digest": manifest["manifest_digest"], "parameter_values": parameters}
+                case_digest = sha256_bytes(canonical_json(payload))
+                require(case_digest not in case_digests, f"{READINESS}: duplicate derived case digest in {group_name}")
+                case_digests.add(case_digest)
+    require(len(case_digests) >= 300 and all(re.fullmatch(r"[a-f0-9]{64}", value) for value in case_digests), f"{READINESS}: derived case digest coverage")
+
+
+def validate_foundation_runner() -> None:
+    require(FOUNDATION_TEST_MANIFEST.is_file() and FOUNDATION_RUNNER.is_file(), "US1 foundation runner artifacts missing")
+    paths = [line.strip() for line in FOUNDATION_TEST_MANIFEST.read_text(encoding="utf-8").splitlines() if line.strip()]
+    require(paths == sorted(set(paths)), "US1 foundation manifest must be sorted and duplicate-free")
+    require(all(not any(character in path for character in "*?[") for path in paths), "US1 foundation manifest prohibits globs")
+    require(all((ROOT / path).is_file() for path in paths), "US1 foundation manifest must contain exact existing files")
+    required = {
+        "ui/tests/unit/persistence-state.test.ts", "ui/tests/e2e/persistence-status.spec.ts",
+        "ui/tests/e2e/navigation-session.spec.ts", "tests/integration/test_postgres_entra.py",
+        "tests/unit/test_next_action_foundation.py", "bff/tests/integration/redis-entra.test.ts",
+    }
+    require(required.issubset(paths), "US1 foundation manifest missing required owner tests")
+    runner = FOUNDATION_RUNNER.read_text(encoding="utf-8")
+    for command in ("validate-api-contracts.sh", "generate_contracts.py --check", "run typecheck", "playwright test"):
+        require(command in runner, f"US1 foundation runner missing {command}")
+
+
+def validate_generated_drift() -> None:
+    from scripts.ci.generate_contracts import generated_files
+
+    for path, expected in generated_files().items():
+        require(path.is_file() and path.read_text(encoding="utf-8") == expected, f"generated contract drift: {path.relative_to(ROOT)}")
+
 
 def validate_catalog() -> None:
     catalog = load_yaml(CATALOG)
@@ -262,6 +326,8 @@ def validate_all(write_digests: bool = False) -> dict[str, str]:
     validate_readiness_manifest()
     validate_catalog()
     validate_traceability()
+    validate_foundation_runner()
+    validate_generated_drift()
     digests = {"bff-api-v1": bff.digest, "core-api-v1": core.digest}
     if write_digests:
         for name, digest in digests.items():

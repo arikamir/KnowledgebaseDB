@@ -109,6 +109,14 @@ class IdempotencyRepository:
             record.last_heartbeat_at = now
             record.execution_lease_expires_at = now + LEASE
 
+    def reconcile_expired_lease(self, record_id: str, committed_result: tuple[int, dict[str, Any], str | None] | None) -> IdempotencyDecision:
+        """Resolve resource/outbox state before the sole allowed restart."""
+        if committed_result is None:
+            return IdempotencyDecision("restart", record_id)
+        status, body, resource_reference = committed_result
+        self.succeed(record_id, status, body, resource_reference)
+        return IdempotencyDecision("replay", record_id, status, body)
+
     def succeed(self, record_id: str, status: int, body: dict[str, Any], resource_reference: str | None = None) -> None:
         now = self.now()
         with self.database.session() as session:

@@ -15,6 +15,7 @@ from storage.database import DatabaseManager
 from storage.progress_repository import ProgressRepository
 from storage.roadmap_repository import RoadmapRepository
 from storage.identity_repository import IdentityRepository
+from storage.idempotency_repository import IdempotencyRepository
 
 
 @dataclass(slots=True)
@@ -28,6 +29,7 @@ class AppContainer:
     skill_guidance_service: SkillGuidanceService
     progress_service: ProgressService
     identity_repository: IdentityRepository
+    idempotency_repository: IdempotencyRepository
 
 
 def build_container(settings: AppSettings | None = None) -> AppContainer:
@@ -48,6 +50,7 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
         roadmap_service=roadmap_service,
     )
     identity_repository = IdentityRepository(database)
+    idempotency_repository = IdempotencyRepository(database)
     return AppContainer(
         settings=resolved_settings,
         database=database,
@@ -58,6 +61,7 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
         skill_guidance_service=skill_guidance_service,
         progress_service=progress_service,
         identity_repository=identity_repository,
+        idempotency_repository=idempotency_repository,
     )
 
 

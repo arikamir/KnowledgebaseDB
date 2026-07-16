@@ -135,6 +135,34 @@ reach the BFF while no UI route reaches core directly.
 
 ## Verification
 
+### Roadmap-only local MVP (non-release)
+
+This checkpoint demonstrates only User Story 1. It is **not a protected release**
+and does not claim that the T194 Azure/Jenkins release gate has passed.
+
+1. Start PostgreSQL, Redis, core, BFF, and UI with `docker compose up --build`.
+2. Open `http://localhost:5173/roadmaps` and sign in through the configured
+   local/test identity adapter.
+3. Enter a current role, experience level, target role, and weekly hours.
+4. Submit once and verify the ordered roadmap and milestones are announced and
+   remain keyboard accessible.
+5. Refresh and verify the owner-scoped roadmap restores from core persistence.
+6. Repeat with another employee fixture and verify the first employee's
+   roadmap cannot be listed or retrieved.
+7. Inject a core outage, retry with the same operation key, and verify entered
+   profile values remain while the UI reports the indeterminate save state.
+
+At this checkpoint navigation exposes only Home and Roadmap. Guidance,
+learning, review, and progress routes remain inactive until their story gates
+pass. Run the reproducible foundation and US1 checks with:
+
+```bash
+scripts/ci/validate-us1-foundation.sh
+.venv/bin/pytest tests/contract/test_roadmap_v1_contract.py tests/integration/test_owned_roadmap_flow.py
+npm --prefix bff test -- roadmaps.test.ts
+npm --prefix ui run test:e2e -- --project=chromium-current tests/e2e/roadmap.spec.ts
+```
+
 ```bash
 scripts/ci/validate-api-contracts.sh
 uv run pytest

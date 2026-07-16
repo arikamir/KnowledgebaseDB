@@ -7,6 +7,11 @@ from collections.abc import Callable
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from dataclasses import dataclass
+from pathlib import Path
+from datetime import datetime, timezone
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 router = APIRouter()
 
@@ -39,3 +44,24 @@ def _safe_check(check: Callable[[], bool]) -> bool:
         return bool(check())
     except Exception:
         return False
+
+
+@dataclass(frozen=True, slots=True)
+class MountedKeyMaterialProbe:
+    certificate_path: Path
+    private_key_path: Path
+    version_path: Path
+    expected_version: str
+    expected_sans: frozenset[str]
+
+    def __call__(self) -> bool:
+        if self.version_path.read_text(encoding="utf-8").strip() != self.expected_version:
+            return False
+        certificate = x509.load_pem_x509_certificate(self.certificate_path.read_bytes())
+        serialization.load_pem_private_key(self.private_key_path.read_bytes(), password=None)
+        now = datetime.now(timezone.utc)
+        if certificate.not_valid_after_utc <= now or certificate.not_valid_before_utc > now:
+            return False
+        extension = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        sans = frozenset(extension.value.get_values_for_type(x509.DNSName))
+        return self.expected_sans.issubset(sans)

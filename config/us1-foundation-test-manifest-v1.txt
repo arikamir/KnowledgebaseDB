@@ -23,6 +23,7 @@ tests/integration/test_postgres_entra.py
 tests/unit/test_next_action_foundation.py
 ui/tests/e2e/navigation-session.spec.ts
 ui/tests/e2e/persistence-status.spec.ts
+ui/tests/unit/auth-epoch.test.ts
 ui/tests/unit/bff-contract-drift.test.ts
 ui/tests/unit/compatibility.test.ts
 ui/tests/unit/persistence-state.test.ts

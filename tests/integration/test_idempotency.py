@@ -61,12 +61,23 @@ def test_different_actor_same_key_isolated(repository, operation):
 
 
 def test_process_restart_expired_lease_recovers_once(repository, clock, operation):
-    claim(repository, operation)
+    initial = claim(repository, operation)
     clock[0] += timedelta(seconds=61)
-    assert claim(repository, operation).action == "recover"
+    recovered = claim(repository, operation)
+    assert recovered.action == "recover"
+    assert repository.reconcile_expired_lease(initial.record_id, None).action == "restart"
     clock[0] += timedelta(seconds=61)
     with pytest.raises(IdempotencyConflict, match="IDEMPOTENCY_IN_PROGRESS"):
         claim(repository, operation)
+
+
+def test_expired_lease_reconciles_a_committed_resource_without_restart(repository, clock, operation):
+    initial = claim(repository, operation)
+    clock[0] += timedelta(seconds=61)
+    assert claim(repository, operation).action == "recover"
+    decision = repository.reconcile_expired_lease(initial.record_id, (201, {"id": "resource"}, "resource"))
+    assert decision.action == "replay"
+    assert claim(repository, operation).body == {"id": "resource"}
 
 
 def test_timeout_after_commit_replays(repository, operation):

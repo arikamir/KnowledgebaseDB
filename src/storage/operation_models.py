@@ -17,6 +17,9 @@ class IdempotencyRecord(Base):
         UniqueConstraint("actor_type", "actor_id", "operation", "idempotency_key", name="uq_idempotency_scope"),
         CheckConstraint("actor_type IN ('employee','application')", name="ck_idempotency_actor_type"),
         CheckConstraint("status IN ('processing','succeeded','retryable_failed','final_failed')", name="ck_idempotency_status"),
+        CheckConstraint("execution_lease_expires_at > last_heartbeat_at", name="ck_idempotency_lease_after_heartbeat"),
+        CheckConstraint("status NOT IN ('processing','retryable_failed') OR expires_at IS NULL", name="ck_live_idempotency_not_expiring"),
+        CheckConstraint("status NOT IN ('succeeded','final_failed') OR response_status IS NOT NULL", name="ck_terminal_idempotency_has_status"),
     )
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     actor_type: Mapped[str] = mapped_column(String(16), nullable=False)

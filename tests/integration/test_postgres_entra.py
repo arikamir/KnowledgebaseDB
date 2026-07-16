@@ -1,6 +1,7 @@
 import pytest
 
-from storage.database import PersistenceUnavailable, PostgresEntraConnectionFactory
+from datetime import datetime, timedelta, timezone
+from storage.database import EntraAccessToken, PersistenceUnavailable, PostgresEntraConnectionFactory, ProactiveEntraTokenProvider
 
 
 def test_entra_connection_retries_at_exact_intervals_and_refreshes_token():
@@ -37,3 +38,19 @@ def test_token_acquisition_failure_uses_same_retry_budget():
     with pytest.raises(PersistenceUnavailable):
         factory()
     assert len(calls) == 3
+
+
+def test_token_provider_refreshes_proactively_and_can_be_invalidated():
+    now = [datetime(2026, 7, 16, tzinfo=timezone.utc)]
+    issued = []
+    def acquire():
+        token = EntraAccessToken(f"token-{len(issued) + 1}", now[0] + timedelta(minutes=10))
+        issued.append(token)
+        return token
+    provider = ProactiveEntraTokenProvider(acquire, now=lambda: now[0])
+    assert provider() == "token-1"
+    assert provider() == "token-1"
+    now[0] += timedelta(minutes=6)
+    assert provider() == "token-2"
+    provider.invalidate()
+    assert provider() == "token-3"

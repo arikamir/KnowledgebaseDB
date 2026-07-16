@@ -6,15 +6,20 @@ import { healthRoutes } from "./routes/health.js";
 import { capabilityRoutes } from "./routes/capabilities.js";
 import { authRoutes } from "./routes/auth.js";
 import { internalLifecycleRoutes } from "./routes/internal-lifecycle.js";
+import { installGeneratedSchemas } from "./plugins/generated-validation.js";
+import { installFoundationRoutes } from "./routes/registry.js";
+import "./routes/roadmaps.js";
 
 export function buildApp(config: BffConfig) {
   const app = Fastify({ logger: true, trustProxy: true });
   Object.assign(app, { config });
+  installGeneratedSchemas(app);
   void app.register(helmet, { contentSecurityPolicy: false });
   void app.register(cookie);
   void app.register(healthRoutes);
   void app.register(capabilityRoutes);
   void app.register(authRoutes);
   void app.register(internalLifecycleRoutes);
+  void installFoundationRoutes(app);
   return app;
 }

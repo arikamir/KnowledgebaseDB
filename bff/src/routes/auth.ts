@@ -5,6 +5,7 @@ import { approveSessionActivation, type LifecycleClient } from "../auth/lifecycl
 import { clearSessionCookie, requireCsrf, requireExactOrigin, SESSION_COOKIE, setSessionCookie } from "../auth/browser-session.js";
 import { evaluateSession, touchSession } from "../sessions/session-policy.js";
 import { SessionDependencyUnavailable, type EncryptedSessionStore, type SessionData } from "../sessions/session-store.js";
+import { generatedRouteSchema } from "../plugins/generated-validation.js";
 
 export interface AuthRouteServices {
   sessions: EncryptedSessionStore;
@@ -17,13 +18,13 @@ export interface AuthRouteServices {
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const services = () => (app as unknown as { authServices: AuthRouteServices }).authServices;
 
-  app.get<{ Querystring: { return_to?: string } }>("/bff/v1/auth/login", async (request, reply) => {
+  app.get<{ Querystring: { return_to?: string } }>("/bff/v1/auth/login", { schema: generatedRouteSchema("beginLogin") }, async (request, reply) => {
     const authorization = createAuthorizationRequest(request.query.return_to);
     reply.setCookie("__Host-learning_auth_state", Buffer.from(JSON.stringify(authorization)).toString("base64url"), { path: "/bff/v1/auth/callback", secure: true, httpOnly: true, sameSite: "lax" });
     return reply.redirect(`${services().authorizationUrl}?state=${encodeURIComponent(authorization.state)}&nonce=${encodeURIComponent(authorization.nonce)}&code_challenge=${encodeURIComponent(authorization.codeChallenge)}`, 302);
   });
 
-  app.get<{ Querystring: { code: string; state: string } }>("/bff/v1/auth/callback", async (request, reply) => {
+  app.get<{ Querystring: { code: string; state: string } }>("/bff/v1/auth/callback", { schema: generatedRouteSchema("completeLogin") }, async (request, reply) => {
     const token = await services().exchangeCode(request.query.code, request.query.state);
     const employeeId = await approveSessionActivation(services().lifecycle, token.tenantId, token.objectId);
     const now = new Date();
@@ -37,7 +38,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return reply.redirect(`/roadmaps?employee=${encodeURIComponent(employeeId)}`, 303);
   });
 
-  app.get("/bff/v1/session", async (request, reply) => {
+  app.get("/bff/v1/session", { schema: generatedRouteSchema("getBrowserSession") }, async (request, reply) => {
     const sessionId = request.cookies[SESSION_COOKIE];
     if (!sessionId) return { authenticated: false };
     try {
@@ -53,7 +54,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.post("/bff/v1/auth/logout", async (request, reply) => {
+  app.post("/bff/v1/auth/logout", { schema: generatedRouteSchema("logout") }, async (request, reply) => {
     requireExactOrigin(request, services().publicOrigin);
     const sessionId = request.cookies[SESSION_COOKIE];
     if (sessionId) {

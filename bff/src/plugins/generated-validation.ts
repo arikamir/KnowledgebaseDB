@@ -1,5 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import { BFF_OPERATIONS } from "../contracts/bff-api.js";
+import { BFF_COMPONENT_SCHEMAS, BFF_OPERATIONS, BFF_ROUTE_SCHEMAS, type BffOperationId } from "../contracts/bff-api.js";
+
+export function installGeneratedSchemas(app: FastifyInstance): void {
+  for (const schema of BFF_COMPONENT_SCHEMAS) app.addSchema(schema);
+}
+
+export function generatedRouteSchema(operationId: BffOperationId): object {
+  return BFF_ROUTE_SCHEMAS[operationId];
+}
 
 export function assertGeneratedRouteRegistration(app: FastifyInstance): void {
   const registered = app.printRoutes({ commonPrefix: false });

@@ -30,7 +30,7 @@ class AppSettings:
     entra_employee_scope: str = "CareerAgent.Access"
     allowed_signing_algorithms: tuple[str, ...] = ("RS256",)
     topic_catalog_path: str = str(
-        Path(__file__).resolve().parents[1] / "knowledge" / "topics" / "topics.json"
+        Path(__file__).resolve().parents[2] / "config" / "supported-guidance-topics-v1.yaml"
     )
 
     @classmethod

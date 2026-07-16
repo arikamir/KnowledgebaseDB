@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
 from collections.abc import Callable
 import time
@@ -12,6 +12,8 @@ import time
 from sqlalchemy import DateTime, Integer, JSON, String, create_engine, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.engine import make_url
+import psycopg
 
 
 def utcnow() -> datetime:
@@ -48,6 +50,44 @@ class PostgresEntraConnectionFactory:
                 if attempt < len(self.retry_delays):
                     self.sleep(self.retry_delays[attempt])
         raise PersistenceUnavailable("PERSISTENCE_UNAVAILABLE") from last_error
+
+
+@dataclass(slots=True)
+class EntraAccessToken:
+    token: str
+    expires_at: datetime
+
+
+@dataclass(slots=True)
+class ProactiveEntraTokenProvider:
+    acquire: Callable[[], EntraAccessToken]
+    now: Callable[[], datetime] = utcnow
+    refresh_margin: timedelta = timedelta(minutes=5)
+    _cached: EntraAccessToken | None = None
+
+    def __call__(self) -> str:
+        current = self.now()
+        if self._cached is None or self._cached.expires_at <= current + self.refresh_margin:
+            token = self.acquire()
+            if not token.token or token.expires_at <= current:
+                raise PersistenceUnavailable("PERSISTENCE_UNAVAILABLE")
+            self._cached = token
+        return self._cached.token
+
+    def invalidate(self) -> None:
+        self._cached = None
+
+
+def create_postgres_entra_engine(database_url: str, token_provider: ProactiveEntraTokenProvider) -> Engine:
+    url = make_url(database_url)
+    if not url.drivername.startswith("postgresql") or not url.host or not url.database or not url.username:
+        raise ValueError("A PostgreSQL URL with host, database, and Entra username is required")
+
+    def connect(token: str):
+        return psycopg.connect(host=url.host, port=url.port or 5432, dbname=url.database, user=url.username, password=token, sslmode="require")
+
+    factory = PostgresEntraConnectionFactory(token_provider, connect)
+    return create_engine("postgresql+psycopg://", creator=factory, pool_pre_ping=True, pool_recycle=300, future=True)
 
 
 class EmployeeProfileRecord(Base):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -28,11 +29,14 @@ class SkillCatalog:
     _by_name: dict[str, SkillArea] = field(init=False, default_factory=dict)
     _by_alias: dict[str, SkillArea] = field(init=False, default_factory=dict)
     _search_index: list[str] = field(init=False, default_factory=list)
+    catalog_version: str = "legacy"
+    _states: dict[str, str] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         self._by_name = {}
         self._by_alias = {}
         self._search_index = []
+        self._states = getattr(self, "_states", {})
 
         for topic in self.topics:
             self._by_name[_normalize_text(topic.name)] = topic
@@ -50,7 +54,24 @@ class SkillCatalog:
         if path.is_dir():
             path = path / "topics.json"
 
-        if path.exists():
+        if path.exists() and path.suffix in {".yaml", ".yml"}:
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            source_topics = json.loads((path.parents[1] / document["source_snapshot"]).read_text(encoding="utf-8")) if not Path(document["source_snapshot"]).is_absolute() else json.loads(Path(document["source_snapshot"]).read_text())
+            details = {item["name"]: item for item in source_topics}
+            raw = []
+            states = {}
+            for item in document["topics"]:
+                enriched = dict(details.get(item["name"], {}))
+                enriched.update({"name": item["name"], "category": item["category"], "aliases": item["aliases"], "is_active": item["status"] == "active"})
+                raw.append(enriched)
+                states[_normalize_text(item["id"])] = item["status"]
+                states[_normalize_text(item["name"])] = item["status"]
+                for alias in item["aliases"]:
+                    states[_normalize_text(alias)] = item["status"]
+            catalog = cls(topics=[SkillArea.model_validate(item) for item in raw], catalog_version=document["catalog_version"])
+            catalog._states = states
+            return catalog
+        elif path.exists():
             raw = json.loads(path.read_text(encoding="utf-8"))
         else:
             raise ConfigurationError(f"Skill catalog file not found: {path}")
@@ -59,6 +80,9 @@ class SkillCatalog:
         if not topics:
             raise ConfigurationError("Skill catalog is empty")
         return cls(topics=topics)
+
+    def topic_state(self, name: str) -> str | None:
+        return self._states.get(_normalize_text(name)) or ("active" if self.get_active(name) else None)
 
     def active_topics(self) -> list[SkillArea]:
         return [topic for topic in self.topics if topic.is_active]

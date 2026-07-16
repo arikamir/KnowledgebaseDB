@@ -20,6 +20,8 @@ export interface SessionBackend {
   del(key: string): Promise<void>;
   addOwnerSession(ownerKey: string, sessionId: string): Promise<void>;
   ownerSessions(ownerKey: string): Promise<string[]>;
+  addKeySession(keyVersion: string, sessionId: string): Promise<void>;
+  keySessions(keyVersion: string): Promise<string[]>;
 }
 
 export class EncryptedSessionStore {
@@ -33,6 +35,7 @@ export class EncryptedSessionStore {
     await this.#attempt(async () => {
       await this.backend.set(`session:${session.sessionId}`, JSON.stringify(this.keys.encrypt(session)));
       await this.backend.addOwnerSession(session.ownerKey, session.sessionId);
+      await this.backend.addKeySession(this.keys.activeVersion, session.sessionId);
     });
   }
 
@@ -51,6 +54,14 @@ export class EncryptedSessionStore {
   async revokeOwner(ownerKey: string): Promise<number> {
     return this.#attempt(async () => {
       const sessions = await this.backend.ownerSessions(ownerKey);
+      await Promise.all(sessions.map((sessionId) => this.backend.del(`session:${sessionId}`)));
+      return sessions.length;
+    });
+  }
+
+  async revokeKeyVersion(keyVersion: string): Promise<number> {
+    return this.#attempt(async () => {
+      const sessions = await this.backend.keySessions(keyVersion);
       await Promise.all(sessions.map((sessionId) => this.backend.del(`session:${sessionId}`)));
       return sessions.length;
     });

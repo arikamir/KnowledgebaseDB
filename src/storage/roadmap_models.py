@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+import hashlib
+import re
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -44,3 +46,26 @@ class RoadmapMilestoneRecord(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+def stable_milestone_key(title: str, ordinal: int) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", title.casefold()).strip("-")[:64]
+    suffix = hashlib.sha256(f"{ordinal}:{title.strip()}".encode()).hexdigest()[:10]
+    return f"{normalized or 'milestone'}-{suffix}"
+
+
+def classify_legacy_roadmap(payload: dict[str, Any], owner_verified: bool) -> tuple[str, list[dict[str, Any]]]:
+    milestones = payload.get("milestones")
+    if not owner_verified or not isinstance(milestones, list) or not milestones:
+        return "legacy_only", []
+    enriched: list[dict[str, Any]] = []
+    for ordinal, milestone in enumerate(milestones):
+        if not isinstance(milestone, dict) or not isinstance(milestone.get("title"), str) or not milestone["title"].strip():
+            return "legacy_only", []
+        enriched.append({
+            "milestone_key": stable_milestone_key(milestone["title"], ordinal),
+            "ordinal": ordinal,
+            "title": milestone["title"].strip(),
+            "status": milestone.get("completion_state", "pending"),
+        })
+    return "enriched", enriched
