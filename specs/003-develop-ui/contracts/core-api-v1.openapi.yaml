@@ -1007,17 +1007,29 @@ components:
       required:
         - id
         - roadmap_id
+        - content_version
+        - question_version
+        - lab_reference_versions
         - title
         - objective
         - estimated_minutes
         - status
         - current_step_ordinal
         - steps
+        - retirement
       properties:
         id:
           type: string
         roadmap_id:
           type: string
+        content_version:
+          type: string
+        question_version:
+          type: string
+        lab_reference_versions:
+          type: array
+          items:
+            type: string
         title:
           type: string
         objective:
@@ -1036,6 +1048,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LearningStep"
+        retirement:
+          type: object
+          additionalProperties: false
+          required: [status, security_critical]
+          properties:
+            status:
+              type: string
+              enum: [draft, published, retired]
+            security_critical:
+              type: boolean
+            resume_until:
+              type: [string, "null"]
+              format: date-time
+            replacement_content_id:
+              type: [string, "null"]
+            replacement_content_version:
+              type: [string, "null"]
     ReviewAttempt:
       oneOf:
         - $ref: "#/components/schemas/InProgressReviewAttempt"
@@ -1051,6 +1080,7 @@ components:
       required:
         - id
         - attempt_number
+        - question_snapshot_version
         - status
         - questions
         - answers
@@ -1064,6 +1094,8 @@ components:
         attempt_number:
           type: integer
           minimum: 1
+        question_snapshot_version:
+          type: string
         status:
           type: string
           const: in_progress
@@ -1086,12 +1118,17 @@ components:
           type: "null"
         submitted_at:
           type: "null"
+        latest:
+          type: boolean
+        highest:
+          type: boolean
     SubmittedReviewAttempt:
       type: object
       additionalProperties: false
       required:
         - id
         - attempt_number
+        - question_snapshot_version
         - status
         - questions
         - answers
@@ -1105,6 +1142,8 @@ components:
         attempt_number:
           type: integer
           minimum: 1
+        question_snapshot_version:
+          type: string
         status:
           type: string
           const: submitted
@@ -1132,6 +1171,10 @@ components:
         submitted_at:
           type: string
           format: date-time
+        latest:
+          type: boolean
+        highest:
+          type: boolean
     ReviewAnswerRequest:
       type: object
       additionalProperties: false
@@ -1191,7 +1234,7 @@ components:
     ReviewResult:
       type: object
       additionalProperties: false
-      required: [attempt_id, score_percent, passed, session_status, next_action]
+      required: [attempt_id, score_percent, passed, session_status, missed_question_ids, next_action]
       properties:
         attempt_id:
           type: string
@@ -1204,6 +1247,10 @@ components:
         session_status:
           type: string
           enum: [retry_required, completed]
+        missed_question_ids:
+          type: array
+          items:
+            type: string
         next_action:
           $ref: "#/components/schemas/NextAction"
     ProgressReview:

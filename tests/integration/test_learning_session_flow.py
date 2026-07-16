@@ -60,7 +60,7 @@ def test_failed_attempt_requires_fresh_full_attempt_without_copied_answers(learn
     result = reviews.submit("employee-b", attempt["id"])
     assert result["score_percent"] == 50
     assert result["passed"] is False
-    assert result["next_action"] == "review_missed_concepts"
+    assert result["next_action"]["kind"] == "retry_material"
     assert result["missed_question_ids"] == ["q3", "q4"]
     retry = reviews.start_attempt("employee-b", session["id"])
     assert retry["attempt_number"] == 2

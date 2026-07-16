@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +31,7 @@ class LabReportBody(BaseModel):
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _problem(error: ValueError) -> ApiProblem:
@@ -38,6 +41,7 @@ def _problem(error: ValueError) -> ApiProblem:
 
 
 def _mutation(request: Request, principal: ValidatedPrincipal, operation: str, key: str, payload: dict, execute, success_status: int = 200):
+    started = time.monotonic()
     repository = request.app.state.container.idempotency_repository
     decision = claim_idempotency(repository, actor_type="employee", actor_id=principal.actor_id, operation=operation, key=key, payload=payload)
     if decision.action == "replay" and decision.body is not None:
@@ -46,11 +50,14 @@ def _mutation(request: Request, principal: ValidatedPrincipal, operation: str, k
         result = execute()
     except ReviewRateLimited as error:
         repository.fail(decision.record_id, retryable=True, status=429, body={"code": str(error)}, retry_after_seconds=error.retry_after_seconds)
+        logger.info("learning mutation completed", extra={"operation": operation, "outcome": str(error), "duration_ms": round((time.monotonic() - started) * 1000)})
         raise ApiProblem(429, str(error), "Review retry rate limited", retry_after=error.retry_after_seconds, retryable=True) from error
     except ValueError as error:
         repository.fail(decision.record_id, retryable=False, status=_problem(error).status, body={"code": str(error)})
+        logger.info("learning mutation completed", extra={"operation": operation, "outcome": str(error), "duration_ms": round((time.monotonic() - started) * 1000)})
         raise _problem(error) from error
     repository.succeed(decision.record_id, success_status, jsonable_encoder(result))
+    logger.info("learning mutation completed", extra={"operation": operation, "outcome": "success", "duration_ms": round((time.monotonic() - started) * 1000)})
     return result
 
 
@@ -106,7 +113,11 @@ def submit(attempt_id: str, request: Request, idempotency_key: str = Header(alia
 
 
 @router.post("/lab-references/{lab_reference_id}/reports", status_code=202, operation_id="reportLabReference")
-def report_lab(lab_reference_id: str, body: LabReportBody, request: Request, idempotency_key: str = Header(alias="Idempotency-Key"), session_id: str = Query(min_length=1), principal: ValidatedPrincipal = Depends(employee_principal), service: LearningService = Depends(get_learning_service)):
+def report_lab(lab_reference_id: str, body: LabReportBody, request: Request, idempotency_key: str = Header(alias="Idempotency-Key"), principal: ValidatedPrincipal = Depends(employee_principal), service: LearningService = Depends(get_learning_service)):
+    try:
+        session_id = service.repository.session_for_lab(principal.actor_id, lab_reference_id)
+    except ValueError as error:
+        raise _problem(error) from error
     return _mutation(request, principal, "reportLabReference", idempotency_key, {"session_id": session_id, "lab_reference_id": lab_reference_id, **body.model_dump()}, lambda: service.report_lab(principal.actor_id, session_id, lab_reference_id, body.reason, body.comment), 202)
 
 

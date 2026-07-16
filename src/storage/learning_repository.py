@@ -211,6 +211,14 @@ class LearningRepository:
                 state.reported_at = state.reported_at or now
             return {"id": report.id, "lab_reference_version": lab_reference_version, "reason": reason, "created_at": now}
 
+    def session_for_lab(self, employee_id: str, lab_reference_version: str) -> str:
+        with self.database.session() as session:
+            records = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.employee_identity_id == employee_id).order_by(EmployeeLearningSessionRecord.last_activity_at.desc(), EmployeeLearningSessionRecord.id)).scalars()
+            match = next((record for record in records if lab_reference_version in record.lab_reference_versions), None)
+            if match is None:
+                raise ValueError("LAB_REFERENCE_NOT_FOUND")
+            return match.id
+
     def start_required_clock(self, employee_id: str, session_id: str, started_at: datetime, reason: str = "required_content") -> str:
         with self.database.session() as session:
             session.execute(select(EmployeeLearningSessionRecord.id).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
@@ -287,7 +295,16 @@ class LearningRepository:
 
     @staticmethod
     def _result_dict(attempt, session_status, missed_question_ids):
-        return {"attempt_id": attempt.id, "score_percent": attempt.score_percent, "passed": attempt.passed, "session_status": session_status, "missed_question_ids": missed_question_ids, "next_action": "continue_learning" if attempt.passed else "review_missed_concepts"}
+        return {
+            "attempt_id": attempt.id, "score_percent": attempt.score_percent, "passed": attempt.passed,
+            "session_status": session_status, "missed_question_ids": missed_question_ids,
+            "next_action": {
+                "kind": "continue_milestone" if attempt.passed else "retry_material",
+                "title": "Continue learning" if attempt.passed else "Review missed concepts",
+                "reason": "The review passed." if attempt.passed else "Review the missed concepts before a fresh full attempt.",
+                "target": attempt.session_id,
+            },
+        }
 
     @staticmethod
     def _owned_attempt(session, employee_id, attempt_id):

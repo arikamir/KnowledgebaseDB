@@ -9,17 +9,17 @@
   "fixtureDigest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "c83a426b4f1c986b85d0d7682823b894f4869ade51339f44627a4bef11b93a11",
+  "profileDigest": "02dfa09d5023aad22d90d9e793c6519b21d88ee4c63f7196082d871bef681ae4",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
     "bffContract": {
       "path": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
-      "digest": "2b10d27294ebaa5fb915006e1f08b6922cd7cc5d138d857b88ddfa9b11063577"
+      "digest": "9a19d1205ac94d0197efa9db716ba2e11b36422a40ad59fab220d00fc6815bb9"
     },
     "coreContract": {
       "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
-      "digest": "cae55080cb8e7bd974e5ab40416e6772604cb8bf11cf958269d11ac004fb590c"
+      "digest": "7f606039a81813ad3d35cf1047d2e29bd84bde044aef476084f37f93455a3ca3"
     }
   },
   "execution": {
