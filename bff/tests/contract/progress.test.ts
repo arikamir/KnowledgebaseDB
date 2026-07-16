@@ -77,8 +77,8 @@ const coreReview = {
 const apps: FastifyInstance[] = [];
 afterEach(async () => Promise.all(apps.splice(0).map((app) => app.close())));
 
-async function progressApp(core: (path: string, init: RequestInit) => Promise<Response>) {
-  const app = Fastify();
+async function progressApp(core: (path: string, init: RequestInit) => Promise<Response>, logs?: string[]) {
+  const app = Fastify(logs ? { logger: { stream: { write: (message: string) => { logs.push(message); } } } } : undefined);
   apps.push(app);
   installGeneratedSchemas(app);
   Object.assign(app, { progressServices: { core } });
@@ -225,6 +225,7 @@ describe("progress generated contract and mapping", () => {
       browserHeaders["idempotency-key"],
       browserHeaders["idempotency-key"],
     ]);
+    expect(calls.every(({ init }) => Boolean(new Headers(init.headers).get("X-Correlation-ID")))).toBe(true);
   });
 
   it("loads and maps the latest employee review by encoded roadmap query", async () => {
@@ -242,5 +243,39 @@ describe("progress generated contract and mapping", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ roadmapId: "roadmap-1", checkIn: { id: "check-in-1" } });
     expect(paths).toEqual(["/api/v1/progress/reviews?roadmap_id=roadmap%2Fone"]);
+  });
+
+  it("emits allowlisted success and denial telemetry without personalized values", async () => {
+    const logs: string[] = [];
+    let call = 0;
+    const app = await progressApp(async () => {
+      call += 1;
+      return call === 1
+        ? Response.json(coreReview)
+        : Response.json({
+          type: "https://example.test/problems/not-found", title: "Not found", status: 404,
+          code: "ROADMAP_NOT_FOUND", correlation_id: "core-trace", retryable: false, field_errors: {},
+        }, { status: 404 });
+    }, logs);
+    const request = {
+      method: "POST" as const,
+      url: "/bff/v1/progress/check-ins",
+      headers: browserHeaders,
+      payload: { roadmapId: "roadmap-1", notes: "private-note-value" },
+    };
+
+    await app.inject(request);
+    await app.inject(request);
+
+    const telemetry = logs
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .filter((entry) => entry.msg === "progress request completed");
+    expect(telemetry).toHaveLength(2);
+    expect(telemetry[0]).toMatchObject({ routeClass: "progress_mutation", outcome: "success", statusCode: 200 });
+    expect(telemetry[1]).toMatchObject({ routeClass: "progress_mutation", outcome: "denied", statusCode: 404, denialCode: "ROADMAP_NOT_FOUND" });
+    const encoded = JSON.stringify(telemetry);
+    expect(encoded).not.toContain("private-note-value");
+    expect(encoded).not.toContain(browserHeaders["idempotency-key"]);
+    expect(encoded).not.toContain("roadmap-1");
   });
 });

@@ -272,7 +272,7 @@ Azure deployment is not claimed until T194 and the complete release gates pass.
 - [X] T148 [P] [US4] Implement status/gap/milestone result in ui/src/features/progress/ProgressReview.tsx
 - [X] T149 [US4] Integrate generated progress contracts, exact persistence/auth-epoch state, authoritative roadmap/latest-review reload after refresh or `ROADMAP_VERSION_CONFLICT`, preserved notes, a new key only after that authoritative conflict reload, shared submitted-operation guarding, and the isolated route, then activate/register only the progress descriptor through the Foundation registry API in ui/src/features/progress/useProgress.ts and ui/src/features/progress/routes.tsx
 - [X] T150 [US4] Integrate persistence status into ui/src/features/progress/ProgressForm.tsx and ui/src/features/progress/useProgress.ts
-- [ ] T151 [US4] Add progress trace and denial telemetry in bff/src/routes/progress.ts and src/api/routes/progress.py
+- [X] T151 [US4] Add progress trace and denial telemetry in bff/src/routes/progress.ts and src/api/routes/progress.py
 
 **Checkpoint**: All four stories are independently functional.
 

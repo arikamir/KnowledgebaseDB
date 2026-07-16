@@ -311,3 +311,32 @@ def test_next_action_falls_back_without_querying_learning_tables(client, app_con
     assert response.status_code == 200, response.text
     assert response.json()["next_action"]["kind"] == "continue_milestone"
     assert not any("learning_" in statement or "review_attempt" in statement for statement in statements)
+
+
+def test_progress_denial_telemetry_is_traceable_and_excludes_personal_values(
+    client, app_container, caplog
+):
+    roadmap = create_owned_roadmap(app_container, employee="telemetry-owner")
+    client.app.state.validate_delegated_token = lambda _token: employee_principal("telemetry-foreign")
+    caplog.set_level("INFO", logger="api.routes.progress")
+
+    response = client.post(
+        "/api/v1/progress/check-ins",
+        headers=progress_headers("progress-telemetry-key-0001"),
+        json={"roadmap_id": roadmap.id, "notes": "private-progress-note"},
+    )
+
+    assert response.status_code == 404
+    event = next(
+        record for record in caplog.records
+        if record.name == "api.routes.progress" and record.outcome == "denied"
+    )
+    assert event.route_class == "progress_mutation"
+    assert event.status_code == 404
+    assert event.denial_code == "ROADMAP_NOT_FOUND"
+    assert event.actor_type == "employee"
+    assert event.trace_id == response.headers["x-correlation-id"]
+    encoded = str(event.__dict__)
+    assert roadmap.id not in encoded
+    assert "private-progress-note" not in encoded
+    assert "progress-telemetry-key-0001" not in encoded

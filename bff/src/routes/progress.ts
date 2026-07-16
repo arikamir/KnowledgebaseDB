@@ -30,6 +30,7 @@ function coreHeaders(request: FastifyRequest, json = false): Record<string, stri
   const headers: Record<string, string> = {
     "X-BFF-Contract-Version": "1.0.0",
     "X-Core-Contract-Digest": CORE_CONTRACT_DIGEST,
+    "X-Correlation-ID": request.id,
   };
   if (json) headers["Content-Type"] = "application/json";
   const idempotencyKey = request.headers["idempotency-key"];
@@ -43,14 +44,34 @@ async function relay(
   core: ProgressRouteServices["core"],
   path: string,
   init: RequestInit,
+  routeClass: "progress_mutation" | "progress_review",
 ): Promise<unknown> {
+  const startedAt = performance.now();
   try {
     const response = await core(path, init);
     const body = await response.json() as Record<string, unknown>;
+    request.server.log.info({
+      traceId: request.id,
+      routeClass,
+      durationMs: Math.round(performance.now() - startedAt),
+      outcome: response.ok ? "success" : "denied",
+      dependencyOutcome: "core_available",
+      statusCode: response.status,
+      denialCode: response.ok || typeof body.code !== "string" ? undefined : body.code,
+    }, "progress request completed");
     return reply
       .code(response.status)
       .send(response.ok ? toBrowserProgressReview(body) : toBrowserProgressProblem(body));
   } catch {
+    request.server.log.error({
+      traceId: request.id,
+      routeClass,
+      durationMs: Math.round(performance.now() - startedAt),
+      outcome: "dependency_unavailable",
+      dependencyOutcome: "core_unavailable",
+      statusCode: 503,
+      denialCode: "CORE_UNAVAILABLE",
+    }, "progress dependency failed");
     return reply.code(503).send({
       type: "about:blank",
       title: "Core is unavailable",
@@ -78,6 +99,15 @@ export const progressRoutes: FastifyPluginAsync = async (app) => {
       );
       grouped.set(field, [...(grouped.get(field) ?? []), issue.message ?? "Invalid value"]);
     }
+    request.server.log.info({
+      traceId: request.id,
+      routeClass: request.method === "POST" ? "progress_mutation" : "progress_review",
+      durationMs: 0,
+      outcome: "denied",
+      dependencyOutcome: "not_called",
+      statusCode: 422,
+      denialCode: "VALIDATION_FAILED",
+    }, "progress request denied");
     return reply.code(422).type("application/problem+json").send({
       type: "https://knowledgebasedb.invalid/problems/validation-failed",
       title: "Request validation failed",
@@ -92,7 +122,7 @@ export const progressRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Body: BrowserProgressCheckInRequest }>(
     "/bff/v1/progress/check-ins",
-    { schema: generatedRouteSchema("createBrowserProgressCheckIn") },
+    { schema: generatedRouteSchema("createBrowserProgressCheckIn"), logLevel: "silent" },
     (request, reply) => relay(
       request,
       reply,
@@ -103,18 +133,20 @@ export const progressRoutes: FastifyPluginAsync = async (app) => {
         headers: coreHeaders(request, true),
         body: JSON.stringify(toCoreProgressCheckIn(request.body)),
       },
+      "progress_mutation",
     ),
   );
 
   app.get<{ Querystring: { roadmapId: string } }>(
     "/bff/v1/progress/reviews",
-    { schema: generatedRouteSchema("getBrowserProgressReview") },
+    { schema: generatedRouteSchema("getBrowserProgressReview"), logLevel: "silent" },
     (request, reply) => relay(
       request,
       reply,
       services().core,
       `/api/v1/progress/reviews?roadmap_id=${encodeURIComponent(request.query.roadmapId)}`,
       { method: "GET", headers: coreHeaders(request) },
+      "progress_review",
     ),
   );
 };
