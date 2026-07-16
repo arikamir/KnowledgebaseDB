@@ -1625,7 +1625,24 @@ export const BFF_ROUTE_SCHEMAS = {
       ]
     }
   },
-  "logout": {},
+  "logout": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "origin"
+      ]
+    }
+  },
   "listBrowserRoadmaps": {
     "response": {
       "200": {
@@ -1637,6 +1654,34 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "createBrowserRoadmap": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:RoadmapCreateRequest#"
     },
@@ -1647,6 +1692,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "getBrowserRoadmap": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:CareerRoadmap#"
@@ -1654,6 +1711,34 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "createBrowserGuidance": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:GuidanceRequest#"
     },
@@ -1664,6 +1749,34 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "createBrowserProgressCheckIn": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:ProgressCheckInRequest#"
     },
@@ -1674,6 +1787,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "getBrowserProgressReview": {
+    "querystring": {
+      "type": "object",
+      "properties": {
+        "roadmapId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "roadmapId"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ProgressReview#"
@@ -1681,6 +1806,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "listBrowserLearningSessions": {
+    "querystring": {
+      "type": "object",
+      "properties": {
+        "roadmapId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "roadmapId"
+      ]
+    },
     "response": {
       "200": {
         "type": "array",
@@ -1691,6 +1828,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "getBrowserLearningSession": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:LearningSession#"
@@ -1698,6 +1847,46 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "startBrowserLearningSession": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:LearningSession#"
@@ -1708,13 +1897,46 @@ export const BFF_ROUTE_SCHEMAS = {
     "params": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
         "stepId": {
           "type": "string",
           "minLength": 1
         }
       },
       "required": [
+        "id",
         "stepId"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
       ]
     },
     "response": {
@@ -1724,6 +1946,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "listBrowserReviewAttempts": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "response": {
       "200": {
         "type": "array",
@@ -1734,6 +1968,46 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "createBrowserReviewAttempt": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:InProgressReviewAttempt#"
@@ -1741,6 +2015,18 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "getBrowserReviewAttempt": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ReviewAttempt#"
@@ -1751,13 +2037,46 @@ export const BFF_ROUTE_SCHEMAS = {
     "params": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
         "questionId": {
           "type": "string",
           "minLength": 1
         }
       },
       "required": [
+        "id",
         "questionId"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
       ]
     },
     "body": {
@@ -1770,6 +2089,46 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "submitBrowserReviewAttempt": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ReviewResult#"
@@ -1777,11 +2136,63 @@ export const BFF_ROUTE_SCHEMAS = {
     }
   },
   "reportBrowserLabReference": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-ui-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "x-csrf-token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "x-ui-contract-version",
+        "idempotency-key",
+        "x-csrf-token",
+        "origin"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:LabReportRequest#"
     }
   },
   "getBrowserNextLearningAction": {
+    "querystring": {
+      "type": "object",
+      "properties": {
+        "roadmapId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "roadmapId"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:NextAction#"

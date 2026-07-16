@@ -44,20 +44,30 @@ def _fastify_refs(value: Any) -> Any:
 def fastify_schemas(path: Path) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
     components = [dict({"$id": f"urn:contract:{name}"}, **_fastify_refs(schema)) for name, schema in document.get("components", {}).get("schemas", {}).items()]
+    component_parameters = document.get("components", {}).get("parameters", {})
     routes: dict[str, dict[str, Any]] = {}
     for _route, path_item in document["paths"].items():
         for method, operation in path_item.items():
             if method.lower() not in {"get", "put", "post", "delete", "patch"}:
                 continue
             schema: dict[str, Any] = {}
-            parameters = operation.get("parameters", [])
+            parameters = []
+            for parameter in operation.get("parameters", []):
+                reference = parameter.get("$ref") if isinstance(parameter, dict) else None
+                if isinstance(reference, str) and reference.startswith("#/components/parameters/"):
+                    parameter = component_parameters[reference.rsplit("/", 1)[-1]]
+                parameters.append(parameter)
             for location, target in (("query", "querystring"), ("path", "params"), ("header", "headers")):
                 selected = [parameter for parameter in parameters if parameter.get("in") == location]
                 if selected:
+                    def property_name(parameter: dict[str, Any]) -> str:
+                        name = parameter["name"]
+                        return name.lower() if location == "header" else name
+
                     schema[target] = {
                         "type": "object",
-                        "properties": {parameter["name"]: _fastify_refs(parameter.get("schema", {})) for parameter in selected},
-                        "required": [parameter["name"] for parameter in selected if parameter.get("required")],
+                        "properties": {property_name(parameter): _fastify_refs(parameter.get("schema", {})) for parameter in selected},
+                        "required": [property_name(parameter) for parameter in selected if parameter.get("required")],
                     }
             body = operation.get("requestBody", {}).get("content", {}).get("application/json", {}).get("schema")
             if body:

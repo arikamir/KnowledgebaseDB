@@ -41,13 +41,14 @@ describe("browser authentication session", () => {
     const backend = new MemorySessionBackend();
     const sessions = new EncryptedSessionStore(backend, new EncryptionKeyRing([{ version: "v1", key: Buffer.alloc(32, 1), mode: "active" }]));
     const now = new Date();
-    const session: SessionData = { sessionId: "opaque", ownerKey: "tenant:owner", csrfToken: "csrf", issuedAt: now.toISOString(), lastSeenAt: now.toISOString(), idleExpiresAt: new Date(now.getTime() + 1_000_000).toISOString(), absoluteExpiresAt: new Date(now.getTime() + 2_000_000).toISOString() };
+    const csrfToken = "csrf-token-value-0001";
+    const session: SessionData = { sessionId: "opaque", ownerKey: "tenant:owner", csrfToken, issuedAt: now.toISOString(), lastSeenAt: now.toISOString(), idleExpiresAt: new Date(now.getTime() + 1_000_000).toISOString(), absoluteExpiresAt: new Date(now.getTime() + 2_000_000).toISOString() };
     await sessions.save(session);
     const app = buildApp(loadConfig({})); apps.push(app);
     Object.assign(app, { authServices: { sessions, publicOrigin: "https://app.test" } });
-    const denied = await app.inject({ method: "POST", url: "/bff/v1/auth/logout", headers: { origin: "https://evil.test", "x-csrf-token": "csrf" }, cookies: { "__Host-learning_session": "opaque" } });
+    const denied = await app.inject({ method: "POST", url: "/bff/v1/auth/logout", headers: { origin: "https://evil.test", "x-csrf-token": csrfToken }, cookies: { "__Host-learning_session": "opaque" } });
     expect(denied.statusCode).toBe(403);
-    const response = await app.inject({ method: "POST", url: "/bff/v1/auth/logout", headers: { origin: "https://app.test", "x-csrf-token": "csrf" }, cookies: { "__Host-learning_session": "opaque" } });
+    const response = await app.inject({ method: "POST", url: "/bff/v1/auth/logout", headers: { origin: "https://app.test", "x-csrf-token": csrfToken }, cookies: { "__Host-learning_session": "opaque" } });
     expect(response.statusCode).toBe(303);
     expect(response.headers["set-cookie"]).toContain("Max-Age=0");
   });

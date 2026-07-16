@@ -1667,6 +1667,16 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "bootstrapEmployeeSession": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:SessionEligibility#"
@@ -1674,6 +1684,16 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "listRoadmaps": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "type": "array",
@@ -1684,6 +1704,23 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "createRoadmap": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:RoadmapCreateRequest#"
     },
@@ -1706,6 +1743,16 @@ export const CORE_ROUTE_SCHEMAS = {
         "roadmap_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:CareerRoadmap#"
@@ -1713,6 +1760,23 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "createGuidance": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:GuidanceRequest#"
     },
@@ -1723,6 +1787,23 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "createProgressCheckIn": {
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:ProgressCheckInRequest#"
     },
@@ -1745,6 +1826,16 @@ export const CORE_ROUTE_SCHEMAS = {
         "roadmap_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ProgressReview#"
@@ -1764,6 +1855,16 @@ export const CORE_ROUTE_SCHEMAS = {
         "roadmap_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "type": "array",
@@ -1774,6 +1875,35 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "startLearningSession": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:LearningSession#"
@@ -1781,6 +1911,28 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "getLearningSession": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:LearningSession#"
@@ -1791,13 +1943,35 @@ export const CORE_ROUTE_SCHEMAS = {
     "params": {
       "type": "object",
       "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "step_id": {
           "type": "string",
           "minLength": 1
         }
       },
       "required": [
+        "session_id",
         "step_id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
       ]
     },
     "response": {
@@ -1807,6 +1981,28 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "listReviewAttempts": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
+    },
     "response": {
       "200": {
         "type": "array",
@@ -1817,6 +2013,35 @@ export const CORE_ROUTE_SCHEMAS = {
     }
   },
   "createReviewAttempt": {
+    "params": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_id"
+      ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ReviewAttempt#"
@@ -1835,6 +2060,16 @@ export const CORE_ROUTE_SCHEMAS = {
       "required": [
         "attempt_id"
       ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
     },
     "response": {
       "200": {
@@ -1860,6 +2095,23 @@ export const CORE_ROUTE_SCHEMAS = {
         "question_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:ReviewAnswerRequest#"
     },
@@ -1882,6 +2134,23 @@ export const CORE_ROUTE_SCHEMAS = {
         "attempt_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "response": {
       "200": {
         "$ref": "urn:contract:ReviewResult#"
@@ -1901,6 +2170,23 @@ export const CORE_ROUTE_SCHEMAS = {
         "lab_reference_id"
       ]
     },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        },
+        "idempotency-key": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "idempotency-key"
+      ]
+    },
     "body": {
       "$ref": "urn:contract:LabReportRequest#"
     }
@@ -1917,6 +2203,16 @@ export const CORE_ROUTE_SCHEMAS = {
       "required": [
         "roadmap_id"
       ]
+    },
+    "headers": {
+      "type": "object",
+      "properties": {
+        "x-bff-contract-version": {
+          "type": "string",
+          "pattern": "^1\\.[0-9]+\\.[0-9]+$"
+        }
+      },
+      "required": []
     },
     "response": {
       "200": {

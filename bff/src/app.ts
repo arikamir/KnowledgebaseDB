@@ -11,6 +11,7 @@ import { installFoundationRoutes } from "./routes/registry.js";
 import "./routes/roadmaps.js";
 import "./routes/guidance.js";
 import "./routes/learning.js";
+import "./routes/progress.js";
 
 export function buildApp(config: BffConfig) {
   const app = Fastify({ logger: true, trustProxy: true });
