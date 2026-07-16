@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
+import os
 import re
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[2]
 TERRAFORM = ROOT / "infra/azure/delivery-evidence-storage.tf"
+MANAGER = ROOT / "scripts/ci/manage-evidence-hold.sh"
+RECONCILER = ROOT / "deploy/k8s/base/evidence-hold-reconciler"
 
 
 def source() -> str:
@@ -90,3 +95,163 @@ def test_storage_surfaces_are_private_versioned_and_keyless() -> None:
     assert text.count("allow_nested_items_to_be_public = false") == 2
     assert len(re.findall(r'min_tls_version\s*=\s*"TLS1_2"', text)) == 2
     assert text.count("versioning_enabled  = true") == 2
+
+
+def inventory(tmp_path: Path) -> Path:
+    path = tmp_path / "inventory.json"
+    path.write_text(json.dumps({
+        "schemaVersion": 1,
+        "evidenceSetId": "nonprod/build-42",
+        "inventoryComplete": True,
+        "expectedVersionCount": 2,
+        "storageAccount": "stevidence0001",
+        "container": "delivery-evidence",
+        "versions": [
+            {"blob": "deliveries/nonprod/build-42/pre/plan.json", "versionId": "2026-07-17T00:00:00Z", "immutableUntil": "2026-10-15T00:00:00Z"},
+            {"blob": "deliveries/nonprod/build-42/post/result.json", "versionId": "2026-07-17T00:01:00Z", "immutableUntil": "2026-10-15T00:01:00Z"},
+        ],
+    }))
+    return path
+
+
+def run_manager(
+    tmp_path: Path, *args: str, role: str = "manager", now: str = "2026-07-17T12:00:00Z",
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(MANAGER), *args, "--state-dir", str(tmp_path / "state"),
+         "--audit-dir", str(tmp_path / "audit"), "--now", now],
+        cwd=ROOT, env=os.environ | {"EVIDENCE_HOLD_ROLE": role}, text=True, capture_output=True,
+    )
+
+
+def test_manager_validates_complete_exact_version_inventory_and_180_day_ceiling(tmp_path: Path) -> None:
+    created = run_manager(
+        tmp_path, "create", "--inventory", str(inventory(tmp_path)), "--hold-id", "incident-42",
+        "--owner", "platform-operator-1", "--reason", "incident investigation",
+        "--incident", "INC-42", "--expires-at", "2026-12-01T12:00:00Z",
+    )
+    assert created.returncode == 0, created.stderr
+    state = json.loads((tmp_path / "state/incident-42.json").read_text())
+    assert state["status"] == "applying"
+    assert len(state["versions"]) == state["expectedVersionCount"] == 2
+    assert all(item["desiredHold"] is True for item in state["versions"])
+    assert list((tmp_path / "audit").glob("*.jsonl"))
+
+    rejected = run_manager(
+        tmp_path, "create", "--inventory", str(inventory(tmp_path)), "--hold-id", "too-long",
+        "--owner", "platform-operator-1", "--reason", "incident investigation",
+        "--incident", "INC-43", "--expires-at", "2027-02-01T12:00:00Z",
+    )
+    assert rejected.returncode != 0
+    assert not (tmp_path / "state/too-long.json").exists()
+
+
+def test_only_manager_requests_changes_and_only_reconciler_touches_azure(tmp_path: Path) -> None:
+    inv = inventory(tmp_path)
+    denied = run_manager(tmp_path, "create", "--inventory", str(inv), "--hold-id", "denied", role="reconciler")
+    assert denied.returncode != 0
+    source = MANAGER.read_text()
+    assert "az rest" in source
+    assert "az storage blob download" not in source
+    assert "az storage blob list" not in source
+    assert "immutability-policy" not in source
+    assert "EVIDENCE_HOLD_ROLE" in source
+
+
+def create_hold(tmp_path: Path, hold_id: str = "incident-42") -> None:
+    result = run_manager(
+        tmp_path, "create", "--inventory", str(inventory(tmp_path)), "--hold-id", hold_id,
+        "--owner", "platform-operator-1", "--reason", "incident investigation",
+        "--incident", "INC-42", "--expires-at", "2026-12-01T12:00:00Z",
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def fake_az(tmp_path: Path, failing_version: str = "") -> dict[str, str]:
+    binary = tmp_path / "bin"
+    binary.mkdir(exist_ok=True)
+    az = binary / "az"
+    az.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$AZ_LOG\"\n"
+        "[[ -z \"${FAIL_VERSION:-}\" || \"$*\" != *\"$FAIL_VERSION\"* ]]\n"
+    )
+    az.chmod(0o755)
+    return os.environ | {
+        "PATH": f"{binary}:{os.environ['PATH']}",
+        "AZ_LOG": str(tmp_path / "az.log"),
+        "FAIL_VERSION": failing_version,
+        "EVIDENCE_HOLD_ROLE": "reconciler",
+    }
+
+
+def reconcile(tmp_path: Path, env: dict[str, str], now: str = "2026-07-17T12:00:00Z") -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(MANAGER), "reconcile-all", "--state-dir", str(tmp_path / "state"),
+         "--audit-dir", str(tmp_path / "audit"), "--now", now],
+        cwd=ROOT, env=env, text=True, capture_output=True,
+    )
+
+
+def test_exact_version_set_extension_and_early_release_preserve_base_lock(tmp_path: Path) -> None:
+    create_hold(tmp_path)
+    env = fake_az(tmp_path)
+    activated = reconcile(tmp_path, env)
+    assert activated.returncode == 0, activated.stderr
+    state_path = tmp_path / "state/incident-42.json"
+    state = json.loads(state_path.read_text())
+    immutable = [item["immutableUntil"] for item in state["versions"]]
+    assert state["status"] == "active"
+    assert all(item["appliedHold"] is True for item in state["versions"])
+    assert (tmp_path / "az.log").read_text().count("x-ms-legal-hold=true") == 2
+
+    extended = run_manager(
+        tmp_path, "extend", "--hold-id", "incident-42",
+        "--expires-at", "2026-12-15T12:00:00Z",
+    )
+    assert extended.returncode == 0, extended.stderr
+    assert [item["immutableUntil"] for item in json.loads(state_path.read_text())["versions"]] == immutable
+
+    released = run_manager(tmp_path, "release", "--hold-id", "incident-42")
+    assert released.returncode == 0
+    cleared = reconcile(tmp_path, env)
+    assert cleared.returncode == 0
+    state = json.loads(state_path.read_text())
+    assert state["status"] == "released"
+    assert all(item["deletionEligible"] is False for item in state["versions"])
+    assert (tmp_path / "az.log").read_text().count("x-ms-legal-hold=false") == 2
+
+
+def test_partial_operation_is_reconciling_and_expiry_clears_without_false_release(tmp_path: Path) -> None:
+    create_hold(tmp_path)
+    partial = reconcile(tmp_path, fake_az(tmp_path, "2026-07-17T00:01:00Z"))
+    assert partial.returncode == 0
+    state = json.loads((tmp_path / "state/incident-42.json").read_text())
+    assert state["status"] == "reconciling"
+    assert [item["appliedHold"] for item in state["versions"]] == [True, False]
+
+    complete_env = fake_az(tmp_path)
+    expired = reconcile(tmp_path, complete_env, "2026-12-02T12:00:00Z")
+    assert expired.returncode == 0
+    state = json.loads((tmp_path / "state/incident-42.json").read_text())
+    assert state["status"] == "released"
+    assert all(item["appliedHold"] is False for item in state["versions"])
+    assert all(item["deletionEligible"] is True for item in state["versions"])
+
+
+def test_reconciler_manifests_are_hourly_identity_bound_and_content_blind() -> None:
+    kustomization = (RECONCILER / "kustomization.yaml").read_text()
+    service_account = (RECONCILER / "service-account.yaml").read_text()
+    cronjob = (RECONCILER / "cronjob.yaml").read_text()
+    network = (RECONCILER / "network-policy.yaml").read_text()
+    assert "0 * * * *" in cronjob
+    assert "evidence-hold-reconciler" in service_account
+    assert "${EVIDENCE_HOLD_RECONCILER_CLIENT_ID}" in service_account
+    assert "EVIDENCE_HOLD_ROLE" in cronjob and "reconciler" in cronjob
+    assert "manage-evidence-hold.sh" in cronjob and "reconcile-all" in cronjob
+    for forbidden in ("download-batch", "blob list", "blob download", "blob delete", "immutability-policy"):
+        assert forbidden not in cronjob
+    assert "Ingress" in network and "Egress" in network
+    assert set(re.findall(r"- ([a-z-]+\.yaml)", kustomization)) == {
+        "namespace.yaml", "service-account.yaml", "cronjob.yaml", "network-policy.yaml",
+    }
