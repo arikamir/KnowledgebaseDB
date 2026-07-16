@@ -1,0 +1,164 @@
+"""Owner-scoped persistence for pinned learning and immutable reviews."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from typing import Callable
+from uuid import uuid4
+
+from sqlalchemy import func, select
+
+from storage.database import DatabaseManager, utcnow
+from storage.learning_models import (
+    EmployeeLearningSessionRecord, LearningContentRecord, LearningMilestoneCompletionRecord,
+    LearningStepRecord, ReviewAnswerRecord, ReviewAttemptRecord, ReviewQuestionRecord, StepProgressRecord,
+)
+
+
+class LearningRepository:
+    def __init__(self, database: DatabaseManager, now: Callable[[], datetime] = utcnow) -> None:
+        self.database = database
+        self.now = now
+
+    def publish_fixture(self, *, content_id: str, content_version: str, roadmap_id: str, milestone_key: str, title: str, objective: str, estimated_minutes: int, steps, questions) -> None:
+        if not 3 <= len(questions) <= 5:
+            raise ValueError("published content requires 3-5 questions")
+        with self.database.session() as session:
+            session.add(LearningContentRecord(id=content_id, content_version=content_version, roadmap_id=roadmap_id, milestone_key=milestone_key, title=title, objective=objective, estimated_minutes=estimated_minutes, status="published", body_snapshot={"step_ids": [item[0] for item in steps]}, question_version=content_version, lab_reference_versions=[], published_at=self.now()))
+            for ordinal, (step_id, step_type, step_title) in enumerate(steps):
+                session.add(LearningStepRecord(id=step_id, content_id=content_id, content_version=content_version, ordinal=ordinal, step_type=step_type, title=step_title, payload={}))
+            for ordinal, (question_id, prompt, choices, correct, explanation) in enumerate(questions):
+                session.add(ReviewQuestionRecord(id=question_id, content_id=content_id, content_version=content_version, ordinal=ordinal, prompt=prompt, choices=choices, correct_answer_key=correct, explanation=explanation))
+
+    def content(self, content_id: str, version: str) -> LearningContentRecord | None:
+        with self.database.session() as session:
+            return session.get(LearningContentRecord, (content_id, version))
+
+    def start_session(self, employee_id: str, content_id: str, version: str) -> dict:
+        now = self.now()
+        with self.database.session() as session:
+            record = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.employee_identity_id == employee_id, EmployeeLearningSessionRecord.content_id == content_id, EmployeeLearningSessionRecord.content_version == version)).scalar_one_or_none()
+            if record is None:
+                content = session.get(LearningContentRecord, (content_id, version))
+                record = EmployeeLearningSessionRecord(id=uuid4().hex, employee_identity_id=employee_id, content_id=content_id, content_version=version, question_version=content.question_version, lab_reference_versions=content.lab_reference_versions, status="in_progress", current_step_ordinal=0, started_at=now, last_activity_at=now)
+                session.add(record)
+                for step in self._steps(session, content_id, version):
+                    session.add(StepProgressRecord(session_id=record.id, step_id=step.id, status="pending"))
+                session.flush()
+            return self._session_dict(session, record)
+
+    def get_session(self, employee_id: str, session_id: str) -> dict | None:
+        with self.database.session() as session:
+            record = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one_or_none()
+            return self._session_dict(session, record) if record else None
+
+    def complete_step(self, employee_id: str, session_id: str, step_id: str) -> dict:
+        now = self.now()
+        with self.database.session() as session:
+            record = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            progress = session.get(StepProgressRecord, (session_id, step_id))
+            if progress is None:
+                raise ValueError("LEARNING_STEP_NOT_FOUND")
+            progress.status, progress.completed_at = "completed", progress.completed_at or now
+            steps = self._steps(session, record.content_id, record.content_version)
+            progress_by_id = {item.step_id: item for item in session.execute(select(StepProgressRecord).where(StepProgressRecord.session_id == session_id)).scalars()}
+            pending = next((step.ordinal for step in steps if progress_by_id[step.id].status != "completed"), len(steps))
+            record.current_step_ordinal, record.last_activity_at = pending, now
+            return self._session_dict(session, record)
+
+    def start_attempt(self, employee_id: str, session_id: str) -> dict:
+        now = self.now()
+        with self.database.session() as session:
+            learning = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            if learning.status == "completed":
+                raise ValueError("LEARNING_SESSION_COMPLETED")
+            active = session.execute(select(ReviewAttemptRecord).where(ReviewAttemptRecord.session_id == session_id, ReviewAttemptRecord.status == "in_progress")).scalar_one_or_none()
+            if active:
+                return self._attempt_dict(session, active)
+            recent = session.scalar(select(func.count()).select_from(ReviewAttemptRecord).where(ReviewAttemptRecord.session_id == session_id, ReviewAttemptRecord.started_at >= now - timedelta(minutes=60))) or 0
+            if recent >= 5:
+                raise OverflowError("REVIEW_RETRY_RATE_LIMITED")
+            number = (session.scalar(select(func.max(ReviewAttemptRecord.attempt_number)).where(ReviewAttemptRecord.session_id == session_id)) or 0) + 1
+            attempt = ReviewAttemptRecord(id=uuid4().hex, session_id=session_id, attempt_number=number, question_snapshot_version=learning.content_version, status="in_progress", started_at=now)
+            session.add(attempt); session.flush()
+            return self._attempt_dict(session, attempt)
+
+    def answer(self, employee_id: str, attempt_id: str, question_id: str, answer_key: str) -> dict:
+        now = self.now()
+        with self.database.session() as session:
+            attempt, learning = self._owned_attempt(session, employee_id, attempt_id)
+            if attempt.status != "in_progress":
+                raise ValueError("REVIEW_ATTEMPT_FINALIZED")
+            question = session.execute(select(ReviewQuestionRecord).where(ReviewQuestionRecord.id == question_id, ReviewQuestionRecord.content_id == learning.content_id, ReviewQuestionRecord.content_version == learning.content_version)).scalar_one()
+            if answer_key not in question.choices:
+                raise ValueError("REVIEW_ANSWER_INVALID")
+            existing = session.get(ReviewAnswerRecord, (attempt_id, question_id))
+            if existing and existing.submitted_answer_key != answer_key:
+                raise ValueError("REVIEW_ANSWER_IMMUTABLE")
+            if existing is None:
+                existing = ReviewAnswerRecord(attempt_id=attempt_id, question_id=question_id, submitted_answer_key=answer_key, is_correct=answer_key == question.correct_answer_key, explanation=question.explanation, answered_at=now)
+                session.add(existing)
+            return self._answer_dict(existing)
+
+    def submit_attempt(self, employee_id: str, attempt_id: str) -> dict:
+        now = self.now()
+        with self.database.session() as session:
+            attempt, learning = self._owned_attempt(session, employee_id, attempt_id)
+            if attempt.status == "submitted":
+                return self._result_dict(attempt, learning.status)
+            questions = self._questions(session, learning.content_id, learning.content_version)
+            answers = list(session.execute(select(ReviewAnswerRecord).where(ReviewAnswerRecord.attempt_id == attempt_id)).scalars())
+            if len(answers) != len(questions):
+                raise ValueError("REVIEW_ANSWERS_INCOMPLETE")
+            correct = sum(item.is_correct for item in answers)
+            score = correct / len(questions) * 100
+            passed = score >= 80
+            attempt.status, attempt.correct_count, attempt.question_count = "submitted", correct, len(questions)
+            attempt.score_percent, attempt.passed, attempt.submitted_at = score, passed, now
+            learning.status = "completed" if passed else "retry_required"
+            learning.completed_at = learning.completed_at or (now if passed else None)
+            learning.last_activity_at = now
+            if passed:
+                content = session.get(LearningContentRecord, (learning.content_id, learning.content_version))
+                existing = session.execute(select(LearningMilestoneCompletionRecord).where(LearningMilestoneCompletionRecord.employee_identity_id == employee_id, LearningMilestoneCompletionRecord.roadmap_id == content.roadmap_id, LearningMilestoneCompletionRecord.milestone_key == content.milestone_key)).scalar_one_or_none()
+                if existing is None:
+                    session.add(LearningMilestoneCompletionRecord(id=uuid4().hex, employee_identity_id=employee_id, roadmap_id=content.roadmap_id, milestone_key=content.milestone_key, source_session_id=learning.id, completed_at=now))
+            return self._result_dict(attempt, learning.status)
+
+    def milestone_completion_count(self, employee_id: str, roadmap_id: str, milestone_key: str) -> int:
+        with self.database.session() as session:
+            return session.scalar(select(func.count()).select_from(LearningMilestoneCompletionRecord).where(LearningMilestoneCompletionRecord.employee_identity_id == employee_id, LearningMilestoneCompletionRecord.roadmap_id == roadmap_id, LearningMilestoneCompletionRecord.milestone_key == milestone_key)) or 0
+
+    @staticmethod
+    def _steps(session, content_id, version):
+        return list(session.execute(select(LearningStepRecord).where(LearningStepRecord.content_id == content_id, LearningStepRecord.content_version == version).order_by(LearningStepRecord.ordinal, LearningStepRecord.id)).scalars())
+
+    @staticmethod
+    def _questions(session, content_id, version):
+        return list(session.execute(select(ReviewQuestionRecord).where(ReviewQuestionRecord.content_id == content_id, ReviewQuestionRecord.content_version == version).order_by(ReviewQuestionRecord.ordinal, ReviewQuestionRecord.id)).scalars())
+
+    def _session_dict(self, session, record):
+        content = session.get(LearningContentRecord, (record.content_id, record.content_version))
+        progress = {item.step_id: item for item in session.execute(select(StepProgressRecord).where(StepProgressRecord.session_id == record.id)).scalars()}
+        return {"id": record.id, "roadmap_id": content.roadmap_id, "content_id": record.content_id, "content_version": record.content_version, "question_version": record.question_version, "lab_reference_versions": record.lab_reference_versions, "title": content.title, "objective": content.objective, "estimated_minutes": content.estimated_minutes, "status": record.status, "current_step_ordinal": record.current_step_ordinal, "steps": [{"id": step.id, "ordinal": step.ordinal, "step_type": step.step_type, "title": step.title, "status": progress[step.id].status} for step in self._steps(session, record.content_id, record.content_version)]}
+
+    def _attempt_dict(self, session, attempt):
+        learning = session.get(EmployeeLearningSessionRecord, attempt.session_id)
+        answers = list(session.execute(select(ReviewAnswerRecord).where(ReviewAnswerRecord.attempt_id == attempt.id)).scalars())
+        return {"id": attempt.id, "attempt_number": attempt.attempt_number, "status": attempt.status, "question_snapshot_version": attempt.question_snapshot_version, "questions": [{"id": item.id, "ordinal": item.ordinal, "prompt": item.prompt, "choices": item.choices} for item in self._questions(session, learning.content_id, learning.content_version)], "answers": [self._answer_dict(item) for item in answers], "started_at": attempt.started_at, "score_percent": attempt.score_percent, "passed": attempt.passed, "submitted_at": attempt.submitted_at}
+
+    @staticmethod
+    def _answer_dict(answer):
+        return {"question_id": answer.question_id, "submitted_answer_key": answer.submitted_answer_key, "correct": answer.is_correct, "explanation": answer.explanation, "answered_at": answer.answered_at}
+
+    @staticmethod
+    def _result_dict(attempt, session_status):
+        return {"attempt_id": attempt.id, "score_percent": attempt.score_percent, "passed": attempt.passed, "session_status": session_status}
+
+    @staticmethod
+    def _owned_attempt(session, employee_id, attempt_id):
+        attempt = session.get(ReviewAttemptRecord, attempt_id)
+        if attempt is None:
+            raise ValueError("REVIEW_ATTEMPT_NOT_FOUND")
+        learning = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == attempt.session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+        return attempt, learning
