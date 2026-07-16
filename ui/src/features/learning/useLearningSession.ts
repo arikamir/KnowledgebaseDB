@@ -27,7 +27,12 @@ export function useLearningSession(resourceId: string) {
   }, [persistence]);
 
   const load = useCallback(async () => {
-    try { setSession(await bffRequest<LearningSessionValue>(`/bff/v1/learning-sessions/${resourceId}`)); }
+    try {
+      const restored = await bffRequest<LearningSessionValue>(`/bff/v1/learning-sessions/${resourceId}`);
+      setSession(restored);
+      const history = await bffRequest<ReviewAttemptValue[]>(`/bff/v1/learning-sessions/${restored.id}/review-attempts`);
+      setAttempt(history.find((item) => item.status === "in_progress") ?? history.find((item) => item.latest) ?? null);
+    }
     catch { const value = await mutate<LearningSessionValue>("start-learning", { resourceId }, `/bff/v1/learning-sessions/${resourceId}/start`, { method: "POST" }); if (value) setSession(value); }
   }, [mutate, resourceId]);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- initial authoritative BFF synchronization
@@ -37,6 +42,7 @@ export function useLearningSession(resourceId: string) {
   async function beginReview() { const value = await mutate<ReviewAttemptValue>("start-review", { sessionId: session?.id }, `/bff/v1/learning-sessions/${session!.id}/review-attempts`, { method: "POST" }); if (value) setAttempt(value); }
   async function answer(questionId: string, answerKey: string) { const value = await mutate<{ correct: boolean; explanation: string }>("answer-review", { attemptId: attempt?.id, questionId, answerKey }, `/bff/v1/review-attempts/${attempt!.id}/answers/${questionId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answerKey }) }); if (value) { setFeedback(`${value.correct ? "Correct." : "Not quite."} ${value.explanation}`); performance.mark("learning.review.feedback-committed"); } }
   async function submitReview() { const value = await mutate<Record<string, unknown>>("submit-review", { attemptId: attempt?.id }, `/bff/v1/review-attempts/${attempt!.id}/submit`, { method: "POST" }); if (value) setCompletion(value); }
+  async function retryReview() { setCompletion(null); setAttempt(null); await beginReview(); }
   async function reportLab(labId: string, reason: string) { await mutate("report-lab", { labId, reason }, `/bff/v1/lab-references/${labId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) }); }
-  return { session, attempt, feedback, completion, problem, snapshot, load, completeStep, beginReview, answer, submitReview, reportLab };
+  return { session, attempt, feedback, completion, problem, snapshot, load, completeStep, beginReview, answer, submitReview, retryReview, reportLab };
 }
