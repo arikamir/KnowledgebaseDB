@@ -10,6 +10,7 @@ import storage.identity_models  # noqa: F401
 import storage.operation_models  # noqa: F401
 import storage.roadmap_models  # noqa: F401
 import storage.learning_models  # noqa: F401
+import storage.progress_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

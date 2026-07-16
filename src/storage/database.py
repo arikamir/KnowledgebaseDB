@@ -134,7 +134,7 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
 def bootstrap_database(engine: Engine) -> None:
     # Import model modules before metadata creation; imports are local to avoid
     # circular initialization while Base is being defined.
-    from storage import identity_models, learning_models, operation_models, roadmap_models  # noqa: F401
+    from storage import identity_models, learning_models, operation_models, progress_models, roadmap_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 
