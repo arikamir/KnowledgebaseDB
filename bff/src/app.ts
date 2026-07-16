@@ -17,7 +17,17 @@ export function buildApp(config: BffConfig) {
   const app = Fastify({ logger: true, trustProxy: true });
   Object.assign(app, { config });
   installGeneratedSchemas(app);
-  void app.register(helmet, { contentSecurityPolicy: false });
+  void app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        baseUri: ["'none'"],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+      },
+    },
+    referrerPolicy: { policy: "no-referrer" },
+  });
   void app.register(cookie);
   void app.register(healthRoutes);
   void app.register(capabilityRoutes);
