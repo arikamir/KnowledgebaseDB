@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - service-account.yaml
+  - deployer-rbac.yaml
+  - network-policy.yaml
+  - policy-parameters.yaml
+  - validating-admission-policy.yaml

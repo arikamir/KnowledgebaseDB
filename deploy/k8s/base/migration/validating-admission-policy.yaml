@@ -1,0 +1,62 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: core-migration-guardrails-v1
+spec:
+  failurePolicy: Fail
+  paramKind:
+    apiVersion: v1
+    kind: ConfigMap
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["jobs"]
+        scope: Namespaced
+  validations:
+    - expression: params != null && 'coreRepository' in params.data && 'databaseUrl' in params.data
+      message: Immutable migration policy parameters are required.
+    - expression: object.metadata.namespace == 'career-migrations' && object.metadata.name.startsWith('core-migration-')
+      message: Migration Jobs require the dedicated namespace and name prefix.
+    - expression: object.spec.template.spec.serviceAccountName == 'core-migrator'
+      message: Migration Jobs require the core-migrator service account.
+    - expression: size(object.spec.template.spec.containers) == 1 && object.spec.template.spec.containers[0].name == 'core-migration'
+      message: Migration Jobs require exactly one fixed runner container.
+    - expression: object.spec.template.spec.containers[0].image.startsWith(params.data.coreRepository + '@sha256:') && object.spec.template.spec.containers[0].image.matches('^[a-z0-9.-]+/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$')
+      message: Migration image must use the approved core repository and immutable digest.
+    - expression: object.spec.template.spec.containers[0].command == ['/app/scripts/run-migration.sh'] && object.spec.template.spec.containers[0].args == ['upgrade', '$(MIGRATION_TARGET)']
+      message: Migration runner and upgrade operation are fixed.
+    - expression: size(object.spec.template.spec.containers[0].env) == 2 && object.spec.template.spec.containers[0].env.all(env, env.name in ['MIGRATION_TARGET', 'DATABASE_URL']) && object.spec.template.spec.containers[0].env.filter(env, env.name == 'MIGRATION_TARGET').size() == 1 && object.spec.template.spec.containers[0].env.filter(env, env.name == 'MIGRATION_TARGET').all(env, env.value in ['learning@head', 'progress@head', '009_merge_learning_progress']) && object.spec.template.spec.containers[0].env.filter(env, env.name == 'DATABASE_URL').size() == 1 && object.spec.template.spec.containers[0].env.filter(env, env.name == 'DATABASE_URL').all(env, env.value == params.data.databaseUrl)
+      message: Only the approved migration target and passwordless database endpoint are allowed.
+    - expression: '!has(object.spec.template.spec.containers[0].envFrom) || size(object.spec.template.spec.containers[0].envFrom) == 0'
+      message: Environment sources are prohibited.
+    - expression: '!has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(volume, volume.name == "azure-identity-token" && has(volume.projected) && volume.projected.sources.all(source, has(source.serviceAccountToken) && source.serviceAccountToken.audience == "api://AzureADTokenExchange" && source.serviceAccountToken.path == "azure-identity-token"))'
+      message: Only the Workload Identity projected token volume is allowed.
+    - expression: object.spec.activeDeadlineSeconds == 900 && object.spec.backoffLimit == 1 && object.spec.ttlSecondsAfterFinished == 300
+      message: Deadline, retry, and cleanup bounds are fixed.
+    - expression: object.spec.template.spec.restartPolicy == 'Never' && object.spec.template.spec.hostNetwork == false && object.spec.template.spec.hostPID == false && object.spec.template.spec.hostIPC == false
+      message: hostNetwork, hostPID, hostIPC, and restart access are prohibited.
+    - expression: '!has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(volume, !has(volume.hostPath))'
+      message: hostPath volumes are prohibited.
+    - expression: object.spec.template.spec.securityContext.runAsNonRoot == true && object.spec.template.spec.securityContext.seccompProfile.type == 'RuntimeDefault'
+      message: Pod sandbox controls are required.
+    - expression: object.spec.template.spec.containers.all(container, container.securityContext.privileged == false && container.securityContext.allowPrivilegeEscalation == false && container.securityContext.readOnlyRootFilesystem == true && container.securityContext.runAsNonRoot == true && container.securityContext.capabilities.drop == ['ALL'])
+      message: Containers must remain nonprivileged with every capability dropped.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: core-migration-guardrails-v1
+spec:
+  policyName: core-migration-guardrails-v1
+  validationActions:
+    - Deny
+  paramRef:
+    name: core-migration-policy-v1
+    namespace: career-migrations
+    parameterNotFoundAction: Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        knowledgebase.io/migration-guardrails: enforced

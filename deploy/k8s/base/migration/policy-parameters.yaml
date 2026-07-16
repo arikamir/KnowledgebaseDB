@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-migration-policy-v1
+  namespace: career-migrations
+  labels:
+    app.kubernetes.io/name: core-migration
+    app.kubernetes.io/component: admission-parameters
+immutable: true
+data:
+  coreRepository: acrdevopscareernonprod.azurecr.io/devops-career-agent
+  databaseUrl: ${MIGRATION_DATABASE_URL}
