@@ -1552,12 +1552,10 @@ components:
           type: string
           minLength: 1
         choices:
-          type: array
-          minItems: 2
-          items:
-            type: object
-            additionalProperties:
-              type: string
+          type: object
+          minProperties: 2
+          additionalProperties:
+            type: string
           description: Choice keys and display text; correct keys are excluded.
     RoadmapRevision:
       type: object

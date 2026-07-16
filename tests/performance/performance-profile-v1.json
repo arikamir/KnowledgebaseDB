@@ -9,17 +9,17 @@
   "fixtureDigest": "2237d68ee242871598c67f49bb96f541cff5709bc28a865965f21158fdf475ef",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "3801b97a94307bbecd7f1ec775ba82b15e01f1a1ce3202478adee12e00f0122e",
+  "profileDigest": "3493d7db80108e5b7fdd1b940171f81c63d0e4155f29e6fb940e7a509d82e606",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
     "bffContract": {
       "path": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
-      "digest": "9a19d1205ac94d0197efa9db716ba2e11b36422a40ad59fab220d00fc6815bb9"
+      "digest": "faa3e1303bc6b4e0b3e84ecbe9ef5e08bf9608121dbdcc9c9a0e2a081a20ff02"
     },
     "coreContract": {
       "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
-      "digest": "7f606039a81813ad3d35cf1047d2e29bd84bde044aef476084f37f93455a3ca3"
+      "digest": "74eb81eed70e24183862bd187ab9f9bfa778d2992efeae54b397e2d36df19497"
     },
     "generatedMapper": {
       "source": "The generated digest-pinned BFF-to-core mapper for the two bound contracts",

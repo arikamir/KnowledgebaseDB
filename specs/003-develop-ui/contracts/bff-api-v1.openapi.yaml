@@ -1504,12 +1504,10 @@ components:
           type: string
           minLength: 1
         choices:
-          type: array
-          minItems: 2
-          items:
-            type: object
-            additionalProperties:
-              type: string
+          type: object
+          minProperties: 2
+          additionalProperties:
+            type: string
           description: Correct keys are excluded.
     PersistedReviewAnswer:
       type: object
