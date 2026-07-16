@@ -26,6 +26,7 @@ def learning(app_container):
             ("q3", "Three?", {"a": "A", "b": "B"}, "a", "A is correct"),
             ("q4", "Four?", {"a": "A", "b": "B"}, "a", "A is correct"),
         ],
+        lab_reference_versions=["lab-kubernetes@v1"],
     )
     return repository, LearningService(repository), ReviewService(repository)
 
@@ -59,6 +60,8 @@ def test_failed_attempt_requires_fresh_full_attempt_without_copied_answers(learn
     result = reviews.submit("employee-b", attempt["id"])
     assert result["score_percent"] == 50
     assert result["passed"] is False
+    assert result["next_action"] == "review_missed_concepts"
+    assert result["missed_question_ids"] == ["q3", "q4"]
     retry = reviews.start_attempt("employee-b", session["id"])
     assert retry["attempt_number"] == 2
     assert retry["answers"] == []
@@ -77,3 +80,68 @@ def test_sixth_new_attempt_in_rolling_hour_is_rate_limited(learning) -> None:
     with pytest.raises(ReviewRateLimited) as raised:
         reviews.start_attempt("employee-c", session["id"])
     assert raised.value.retry_after_seconds == 900
+
+
+def test_mutations_are_idempotent_and_survive_repository_restart(learning, app_container) -> None:
+    repository, sessions, reviews = learning
+    started = sessions.start("employee-d", "content-kubernetes", "v1")
+    restarted = LearningRepository(app_container.database, now=lambda: NOW)
+    resumed = LearningService(restarted).start("employee-d", "content-kubernetes", "v1")
+    assert resumed["id"] == started["id"]
+    attempt = reviews.start_attempt("employee-d", started["id"])
+    first = reviews.answer("employee-d", attempt["id"], "q1", "a")
+    replay = reviews.answer("employee-d", attempt["id"], "q1", "a")
+    assert replay == first
+
+
+def test_attempt_history_is_immutable_and_first_pass_is_permanent(learning) -> None:
+    repository, sessions, reviews = learning
+    learning_session = sessions.start("employee-e", "content-kubernetes", "v1")
+    attempt = reviews.start_attempt("employee-e", learning_session["id"])
+    for question in attempt["questions"]:
+        reviews.answer("employee-e", attempt["id"], question["id"], "a")
+    submitted = reviews.submit("employee-e", attempt["id"])
+    assert reviews.submit("employee-e", attempt["id"]) == submitted
+    with pytest.raises(ValueError, match="FINALIZED"):
+        reviews.answer("employee-e", attempt["id"], "q1", "a")
+    with pytest.raises(ValueError, match="COMPLETED"):
+        reviews.start_attempt("employee-e", learning_session["id"])
+    restored = repository.list_attempts("employee-e", learning_session["id"])
+    assert restored[0]["status"] == "submitted"
+    assert restored[0]["score_percent"] == 100
+    assert len(restored[0]["answers"]) == 4
+
+
+def test_lab_state_reload_preserves_pin_and_never_completes_a_step(learning) -> None:
+    repository, sessions, _ = learning
+    learning_session = sessions.start("employee-f", "content-kubernetes", "v1")
+    before = sessions.get("employee-f", learning_session["id"])
+    state = repository.reload_lab_state("employee-f", learning_session["id"], "lab-kubernetes@v1", "unavailable", "paid")
+    after = sessions.get("employee-f", learning_session["id"])
+    assert state["availability_state"] == "unavailable"
+    assert before["steps"] == after["steps"]
+    assert after["lab_reference_versions"] == ["lab-kubernetes@v1"]
+
+
+def test_attempt_limit_is_rolling_not_lifetime(learning) -> None:
+    repository, sessions, reviews = learning
+    learning_session = sessions.start("employee-g", "content-kubernetes", "v1")
+    for _ in range(5):
+        attempt = reviews.start_attempt("employee-g", learning_session["id"])
+        for question in attempt["questions"]:
+            reviews.answer("employee-g", attempt["id"], question["id"], "b")
+        reviews.submit("employee-g", attempt["id"])
+    repository.now = lambda: NOW + timedelta(minutes=61)
+    sixth = reviews.start_attempt("employee-g", learning_session["id"])
+    assert sixth["attempt_number"] == 6
+
+
+def test_security_retirement_blocks_review_immediately_and_mixed_questions_are_denied(learning) -> None:
+    repository, sessions, reviews = learning
+    learning_session = sessions.start("employee-h", "content-kubernetes", "v1")
+    attempt = reviews.start_attempt("employee-h", learning_session["id"])
+    with pytest.raises(ValueError):
+        reviews.answer("employee-h", attempt["id"], "question-from-v2", "a")
+    repository.retire_content("content-kubernetes", "v1", security_critical=True, resume_until=NOW + timedelta(days=30))
+    with pytest.raises(ValueError, match="SECURITY_RETIRED"):
+        reviews.answer("employee-h", attempt["id"], "q1", "a")
