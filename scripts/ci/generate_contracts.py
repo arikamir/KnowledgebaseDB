@@ -115,6 +115,81 @@ export interface ProblemDetails {
   detail?: string;
   correlationId?: string;
   errors?: Record<string, string[]>;
+  retryable?: boolean;
+  fieldErrors?: Array<{ field: string; messages: string[] }>;
+}
+
+export interface ProgressCheckInRequest {
+  employeeProfileId?: string | null;
+  roadmapId: string;
+  notes?: string;
+  completedSteps?: string[];
+  completedMilestoneKeys?: string[];
+  newGoals?: string[];
+}
+
+export interface ProgressMilestone {
+  id: string;
+  milestoneKey: string;
+  ordinal: number;
+  title: string;
+  skillArea: string;
+  experienceLevelFit: string;
+  timeHorizon: "immediate" | "near_term" | "long_term";
+  concreteNextAction: string;
+  reasonItMatters: string;
+  priority: number;
+  completionState: "pending" | "in_progress" | "completed";
+  supportingNotes: string[];
+}
+
+export interface ProgressRoadmap {
+  id: string;
+  employeeProfileId: string;
+  previousRoadmapId?: string | null;
+  goalSummary: string;
+  currentFocus: string;
+  milestones: ProgressMilestone[];
+  status: "draft" | "active" | "revised" | "completed";
+  assumptions: string[];
+  clarifyingQuestionsAsked: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProgressReview {
+  revision: {
+    priorRoadmap: ProgressRoadmap;
+    updatedRoadmap: ProgressRoadmap;
+    completedSteps: string[];
+    normalizedMilestoneKeys: string[];
+    newGoals: string[];
+    summary: string;
+    createdAt: string;
+  };
+  presentation: string;
+  followUpPrompt: string;
+  checkIn: {
+    id: string;
+    employeeProfileId: string;
+    roadmapId: string;
+    notes: string;
+    completedSteps: string[];
+    normalizedMilestoneKeys: string[];
+    newGoals: string[];
+    updatedRecommendations: ProgressMilestone[];
+    createdAt: string;
+  };
+  roadmapId: string;
+  currentStatus: string;
+  gaps: string[];
+  milestones: ProgressMilestone[];
+  nextAction: {
+    kind: "retry_material" | "resume_session" | "continue_milestone" | "review_roadmap";
+    title: string;
+    reason: string;
+    target: string;
+  };
 }
 
 export interface CapabilityMetadata {

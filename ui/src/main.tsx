@@ -7,6 +7,7 @@ import "./styles/app.css";
 import "./features/roadmap/routes";
 import "./features/guidance/routes";
 import "./features/learning/routes";
+import "./features/progress/routes";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
