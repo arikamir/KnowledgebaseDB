@@ -69,3 +69,19 @@ def test_status_conditional_review_shape_and_pinned_versions(app_container) -> N
     assert ReviewService(repository).start_attempt("employee", learning["id"])["id"] == attempt["id"]
     assert attempt["score_percent"] is attempt["passed"] is attempt["submitted_at"] is None
     assert [question["id"] for question in attempt["questions"]] == ["stable-q1", "stable-q2", "stable-q3"]
+
+
+def test_normal_retirement_surfaces_safe_replacement_guidance(app_container) -> None:
+    from agent.learning_service import LearningService
+    from storage.learning_repository import LearningRepository
+
+    repository = LearningRepository(app_container.database, now=lambda: NOW)
+    common = dict(roadmap_id="roadmap", milestone_key="m1", title="Learning", objective="Stable", estimated_minutes=20, steps=[("old-s1", "reading", "One"), ("old-s2", "review", "Two")])
+    repository.publish_fixture(content_id="old", content_version="v1", questions=[(f"old-q{i}", "Q", {"a": "A", "b": "B"}, "a", "Why") for i in range(3)], **common)
+    replacement = {**common, "steps": [("new-s1", "reading", "One"), ("new-s2", "review", "Two")]}
+    repository.publish_fixture(content_id="new", content_version="v2", questions=[(f"new-q{i}", "Q", {"a": "A", "b": "B"}, "a", "Why") for i in range(3)], **replacement)
+    session = LearningService(repository).start("employee", "old", "v1")
+    repository.set_replacement("old", "v1", "new", "v2")
+    repository.retire_content("old", "v1", security_critical=False, resume_until=NOW + timedelta(days=30))
+    restored = LearningService(repository).get("employee", session["id"])
+    assert restored["retirement"] == {"status": "retired", "security_critical": False, "resume_until": NOW + timedelta(days=30), "replacement_content_id": "new", "replacement_content_version": "v2"}

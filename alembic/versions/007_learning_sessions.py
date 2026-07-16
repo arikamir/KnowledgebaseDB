@@ -12,7 +12,7 @@ depends_on = None
 
 TABLES = (
     "learning_content", "learning_steps", "review_questions", "employee_learning_sessions",
-    "learning_step_progress", "learning_lab_state", "review_attempts", "review_answers",
+    "learning_step_progress", "learning_lab_state", "learning_lab_reports", "review_attempts", "review_answers",
     "learning_milestone_completions", "learning_required_clock_segments", "learning_activity_events",
 )
 

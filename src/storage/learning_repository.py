@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
 from typing import Callable
 from uuid import uuid4
 
@@ -11,8 +12,20 @@ from sqlalchemy import func, select
 from storage.database import DatabaseManager, utcnow
 from storage.learning_models import (
     EmployeeLearningSessionRecord, LearningContentRecord, LearningMilestoneCompletionRecord,
-    LearningLabStateRecord, LearningStepRecord, ReviewAnswerRecord, ReviewAttemptRecord, ReviewQuestionRecord, StepProgressRecord,
+    LearningLabReportRecord, LearningLabStateRecord, LearningStepRecord, RequiredClockSegmentRecord,
+    ReviewAnswerRecord, ReviewAttemptRecord, ReviewQuestionRecord, StepProgressRecord,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class PersistedLearningCandidate:
+    action_type: str
+    roadmap_id: str
+    milestone_key: str
+    title: str
+    ordinal: int
+    unresolved_at: str
+    stable_id: str
 
 
 class LearningRepository:
@@ -34,6 +47,10 @@ class LearningRepository:
         with self.database.session() as session:
             return session.get(LearningContentRecord, (content_id, version))
 
+    def latest_content_version(self, content_id: str) -> str | None:
+        with self.database.session() as session:
+            return session.execute(select(LearningContentRecord.content_version).where(LearningContentRecord.id == content_id).order_by(LearningContentRecord.published_at.desc(), LearningContentRecord.content_version.desc())).scalars().first()
+
     def retire_content(self, content_id: str, version: str, *, security_critical: bool, resume_until: datetime | None) -> None:
         with self.database.session() as session:
             content = session.get(LearningContentRecord, (content_id, version))
@@ -41,6 +58,14 @@ class LearningRepository:
                 raise ValueError("LEARNING_CONTENT_NOT_FOUND")
             content.status, content.retired_at = "retired", self.now()
             content.security_critical_retirement, content.resume_until = security_critical, resume_until
+
+    def set_replacement(self, content_id: str, version: str, replacement_id: str, replacement_version: str) -> None:
+        with self.database.session() as session:
+            content = session.get(LearningContentRecord, (content_id, version))
+            replacement = session.get(LearningContentRecord, (replacement_id, replacement_version))
+            if content is None or replacement is None:
+                raise ValueError("LEARNING_CONTENT_NOT_FOUND")
+            content.replacement_content_id, content.replacement_content_version = replacement_id, replacement_version
 
     def start_session(self, employee_id: str, content_id: str, version: str) -> dict:
         now = self.now()
@@ -59,6 +84,11 @@ class LearningRepository:
         with self.database.session() as session:
             record = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one_or_none()
             return self._session_dict(session, record) if record else None
+
+    def list_sessions(self, employee_id: str, roadmap_id: str) -> list[dict]:
+        with self.database.session() as session:
+            records = session.execute(select(EmployeeLearningSessionRecord).join(LearningContentRecord, (LearningContentRecord.id == EmployeeLearningSessionRecord.content_id) & (LearningContentRecord.content_version == EmployeeLearningSessionRecord.content_version)).where(EmployeeLearningSessionRecord.employee_identity_id == employee_id, LearningContentRecord.roadmap_id == roadmap_id).order_by(EmployeeLearningSessionRecord.started_at, EmployeeLearningSessionRecord.id)).scalars()
+            return [self._session_dict(session, record) for record in records]
 
     def complete_step(self, employee_id: str, session_id: str, step_id: str) -> dict:
         now = self.now()
@@ -158,11 +188,74 @@ class LearningRepository:
                 state.availability_state_snapshot, state.cost_status_snapshot, state.last_reloaded_at = availability, cost_status, now
             return {"lab_reference_version": lab_reference_version, "availability_state": availability, "cost_status": cost_status, "last_reloaded_at": now}
 
+    def get_lab_state(self, employee_id: str, session_id: str, lab_reference_version: str) -> dict | None:
+        with self.database.session() as session:
+            session.execute(select(EmployeeLearningSessionRecord.id).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            state = session.get(LearningLabStateRecord, (session_id, lab_reference_version))
+            if state is None:
+                return None
+            return {"lab_reference_version": state.lab_reference_version, "availability_state": state.availability_state_snapshot, "cost_status": state.cost_status_snapshot, "opened_at": state.opened_at, "last_reloaded_at": state.last_reloaded_at, "reported_at": state.reported_at}
+
+    def report_lab(self, employee_id: str, session_id: str, lab_reference_version: str, reason: str, comment: str | None = None) -> dict:
+        if reason not in {"unavailable", "unsuitable", "cost_mismatch", "other"}:
+            raise ValueError("LAB_REPORT_REASON_INVALID")
+        now = self.now()
+        with self.database.session() as session:
+            learning = session.execute(select(EmployeeLearningSessionRecord).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            if lab_reference_version not in learning.lab_reference_versions:
+                raise ValueError("LAB_REFERENCE_VERSION_NOT_PINNED")
+            report = LearningLabReportRecord(id=uuid4().hex, session_id=session_id, employee_identity_id=employee_id, lab_reference_version=lab_reference_version, reason=reason, comment=comment, created_at=now)
+            session.add(report)
+            state = session.get(LearningLabStateRecord, (session_id, lab_reference_version))
+            if state is not None:
+                state.reported_at = state.reported_at or now
+            return {"id": report.id, "lab_reference_version": lab_reference_version, "reason": reason, "created_at": now}
+
+    def start_required_clock(self, employee_id: str, session_id: str, started_at: datetime, reason: str = "required_content") -> str:
+        with self.database.session() as session:
+            session.execute(select(EmployeeLearningSessionRecord.id).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            active = session.execute(select(RequiredClockSegmentRecord).where(RequiredClockSegmentRecord.session_id == session_id, RequiredClockSegmentRecord.ended_at.is_(None))).scalar_one_or_none()
+            if active:
+                return active.id
+            segment_id = uuid4().hex
+            session.add(RequiredClockSegmentRecord(id=segment_id, session_id=session_id, reason=reason, started_at=started_at))
+            return segment_id
+
+    def pause_required_clock(self, employee_id: str, session_id: str, ended_at: datetime, reason: str) -> dict:
+        with self.database.session() as session:
+            session.execute(select(EmployeeLearningSessionRecord.id).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
+            active = session.execute(select(RequiredClockSegmentRecord).where(RequiredClockSegmentRecord.session_id == session_id, RequiredClockSegmentRecord.ended_at.is_(None))).scalar_one_or_none()
+            if active is None:
+                raise ValueError("REQUIRED_CLOCK_MISSING")
+            start = active.started_at.replace(tzinfo=timezone.utc) if active.started_at.tzinfo is None else active.started_at
+            end = ended_at.replace(tzinfo=timezone.utc) if ended_at.tzinfo is None else ended_at
+            if end < start:
+                raise ValueError("REQUIRED_CLOCK_NEGATIVE_SEGMENT")
+            active.ended_at, active.duration_ms, active.reason = ended_at, int((end - start).total_seconds() * 1000), reason
+            return {"id": active.id, "reason": reason, "duration_ms": active.duration_ms}
+
     def list_attempts(self, employee_id: str, session_id: str) -> list[dict]:
         with self.database.session() as session:
             session.execute(select(EmployeeLearningSessionRecord.id).where(EmployeeLearningSessionRecord.id == session_id, EmployeeLearningSessionRecord.employee_identity_id == employee_id)).scalar_one()
-            attempts = session.execute(select(ReviewAttemptRecord).where(ReviewAttemptRecord.session_id == session_id).order_by(ReviewAttemptRecord.attempt_number, ReviewAttemptRecord.id)).scalars()
-            return [self._attempt_dict(session, attempt) for attempt in attempts]
+            attempts = list(session.execute(select(ReviewAttemptRecord).where(ReviewAttemptRecord.session_id == session_id).order_by(ReviewAttemptRecord.attempt_number, ReviewAttemptRecord.id)).scalars())
+            restored = [self._attempt_dict(session, attempt) for attempt in attempts]
+            highest = max((item["score_percent"] for item in restored if item["score_percent"] is not None), default=None)
+            return [{**item, "latest": index == len(restored) - 1, "highest": highest is not None and item["score_percent"] == highest} for index, item in enumerate(restored)]
+
+    def get_attempt(self, employee_id: str, attempt_id: str) -> dict | None:
+        with self.database.session() as session:
+            attempt = session.get(ReviewAttemptRecord, attempt_id)
+            if attempt is None:
+                return None
+            learning = session.get(EmployeeLearningSessionRecord, attempt.session_id)
+            if learning is None or learning.employee_identity_id != employee_id:
+                return None
+            return self._attempt_dict(session, attempt)
+
+    def learning_candidates(self, employee_id: str, roadmap_id: str) -> list[PersistedLearningCandidate]:
+        with self.database.session() as session:
+            rows = session.execute(select(EmployeeLearningSessionRecord, LearningContentRecord).join(LearningContentRecord, (LearningContentRecord.id == EmployeeLearningSessionRecord.content_id) & (LearningContentRecord.content_version == EmployeeLearningSessionRecord.content_version)).where(EmployeeLearningSessionRecord.employee_identity_id == employee_id, LearningContentRecord.roadmap_id == roadmap_id, EmployeeLearningSessionRecord.status.in_(("retry_required", "in_progress")))).all()
+            return [PersistedLearningCandidate("retry_material" if learning.status == "retry_required" else "resume_session", roadmap_id, content.milestone_key, content.title, learning.current_step_ordinal, learning.started_at.isoformat(), learning.id) for learning, content in rows]
 
     @staticmethod
     def _steps(session, content_id, version):
@@ -175,7 +268,10 @@ class LearningRepository:
     def _session_dict(self, session, record):
         content = session.get(LearningContentRecord, (record.content_id, record.content_version))
         progress = {item.step_id: item for item in session.execute(select(StepProgressRecord).where(StepProgressRecord.session_id == record.id)).scalars()}
-        return {"id": record.id, "roadmap_id": content.roadmap_id, "content_id": record.content_id, "content_version": record.content_version, "question_version": record.question_version, "lab_reference_versions": record.lab_reference_versions, "title": content.title, "objective": content.objective, "estimated_minutes": content.estimated_minutes, "status": record.status, "current_step_ordinal": record.current_step_ordinal, "steps": [{"id": step.id, "ordinal": step.ordinal, "step_type": step.step_type, "title": step.title, "status": progress[step.id].status} for step in self._steps(session, record.content_id, record.content_version)]}
+        resume_until = content.resume_until
+        if resume_until is not None and resume_until.tzinfo is None:
+            resume_until = resume_until.replace(tzinfo=timezone.utc)
+        return {"id": record.id, "roadmap_id": content.roadmap_id, "content_id": record.content_id, "content_version": record.content_version, "question_version": record.question_version, "lab_reference_versions": record.lab_reference_versions, "title": content.title, "objective": content.objective, "estimated_minutes": content.estimated_minutes, "status": record.status, "current_step_ordinal": record.current_step_ordinal, "retirement": {"status": content.status, "security_critical": content.security_critical_retirement, "resume_until": resume_until, "replacement_content_id": content.replacement_content_id, "replacement_content_version": content.replacement_content_version}, "steps": [{"id": step.id, "ordinal": step.ordinal, "step_type": step.step_type, "title": step.title, "status": progress[step.id].status} for step in self._steps(session, record.content_id, record.content_version)]}
 
     def _attempt_dict(self, session, attempt):
         learning = session.get(EmployeeLearningSessionRecord, attempt.session_id)

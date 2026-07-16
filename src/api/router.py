@@ -10,6 +10,7 @@ from api.routes.skills import router as skills_router
 from api.routes.registry import foundation_router, register_router, registered_operation_ids
 from api.routes.capabilities import router as capabilities_router
 from api.routes.identity import router as identity_router
+from api.routes import learning as _learning  # noqa: F401
 
 
 api_router = APIRouter()

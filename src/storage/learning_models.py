@@ -30,6 +30,8 @@ class LearningContentRecord(Base):
     resume_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retirement_reason: Mapped[str | None] = mapped_column(String(512))
     security_critical_retirement: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    replacement_content_id: Mapped[str | None] = mapped_column(String(64))
+    replacement_content_version: Mapped[str | None] = mapped_column(String(64))
 
 
 class LearningStepRecord(Base):
@@ -90,6 +92,17 @@ class LearningLabStateRecord(Base):
     opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_reloaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LearningLabReportRecord(Base):
+    __tablename__ = "learning_lab_reports"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("employee_learning_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_identity_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    lab_reference_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    comment: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
 class ReviewAttemptRecord(Base):

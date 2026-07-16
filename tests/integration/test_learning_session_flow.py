@@ -145,3 +145,30 @@ def test_security_retirement_blocks_review_immediately_and_mixed_questions_are_d
     repository.retire_content("content-kubernetes", "v1", security_critical=True, resume_until=NOW + timedelta(days=30))
     with pytest.raises(ValueError, match="SECURITY_RETIRED"):
         reviews.answer("employee-h", attempt["id"], "q1", "a")
+
+
+def test_lab_reports_are_append_only_and_required_clock_segments_persist(learning) -> None:
+    repository, sessions, _ = learning
+    learning_session = sessions.start("employee-i", "content-kubernetes", "v1")
+    sessions.reload_lab("employee-i", learning_session["id"], "lab-kubernetes@v1", "active", "free")
+    first = sessions.report_lab("employee-i", learning_session["id"], "lab-kubernetes@v1", "unavailable")
+    second = sessions.report_lab("employee-i", learning_session["id"], "lab-kubernetes@v1", "cost_mismatch")
+    assert first["id"] != second["id"]
+    assert repository.get_lab_state("employee-i", learning_session["id"], "lab-kubernetes@v1")["reported_at"] is not None
+    segment = sessions.start_required_clock("employee-i", learning_session["id"], NOW)
+    assert sessions.start_required_clock("employee-i", learning_session["id"], NOW) == segment
+    ended = sessions.pause_required_clock("employee-i", learning_session["id"], NOW + timedelta(seconds=30), "before_external_lab")
+    assert ended["duration_ms"] == 30_000
+
+
+def test_repository_restores_labeled_history_and_supplies_next_action_candidates(learning) -> None:
+    repository, sessions, reviews = learning
+    learning_session = sessions.start("employee-j", "content-kubernetes", "v1")
+    attempt = reviews.start_attempt("employee-j", learning_session["id"])
+    for question in attempt["questions"]:
+        reviews.answer("employee-j", attempt["id"], question["id"], "b")
+    reviews.submit("employee-j", attempt["id"])
+    history = repository.list_attempts("employee-j", learning_session["id"])
+    assert history[0]["latest"] is history[0]["highest"] is True
+    candidates = repository.learning_candidates("employee-j", "roadmap-a")
+    assert len(candidates) == 1 and candidates[0].action_type == "retry_material"

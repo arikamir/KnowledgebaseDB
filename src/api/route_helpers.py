@@ -16,6 +16,9 @@ from storage.progress_repository import ProgressRepository
 from storage.roadmap_repository import RoadmapRepository
 from storage.identity_repository import IdentityRepository
 from storage.idempotency_repository import IdempotencyRepository
+from storage.learning_repository import LearningRepository
+from agent.learning_service import LearningService
+from agent.review_service import ReviewService
 
 
 @dataclass(slots=True)
@@ -30,6 +33,9 @@ class AppContainer:
     progress_service: ProgressService
     identity_repository: IdentityRepository
     idempotency_repository: IdempotencyRepository
+    learning_repository: LearningRepository
+    learning_service: LearningService
+    review_service: ReviewService
 
 
 def build_container(settings: AppSettings | None = None) -> AppContainer:
@@ -51,6 +57,9 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
     )
     identity_repository = IdentityRepository(database)
     idempotency_repository = IdempotencyRepository(database)
+    learning_repository = LearningRepository(database)
+    learning_service = LearningService(learning_repository)
+    review_service = ReviewService(learning_repository)
     return AppContainer(
         settings=resolved_settings,
         database=database,
@@ -62,6 +71,9 @@ def build_container(settings: AppSettings | None = None) -> AppContainer:
         progress_service=progress_service,
         identity_repository=identity_repository,
         idempotency_repository=idempotency_repository,
+        learning_repository=learning_repository,
+        learning_service=learning_service,
+        review_service=review_service,
     )
 
 
@@ -79,3 +91,11 @@ def get_skill_guidance_service(request: Request) -> SkillGuidanceService:
 
 def get_progress_service(request: Request) -> ProgressService:
     return get_container(request).progress_service
+
+
+def get_learning_service(request: Request) -> LearningService:
+    return get_container(request).learning_service
+
+
+def get_review_service(request: Request) -> ReviewService:
+    return get_container(request).review_service

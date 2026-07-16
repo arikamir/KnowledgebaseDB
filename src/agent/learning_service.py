@@ -42,3 +42,15 @@ class LearningService:
 
     def complete_step(self, employee_id: str, session_id: str, step_id: str) -> dict:
         return self.repository.complete_step(employee_id, session_id, step_id)
+
+    def reload_lab(self, employee_id: str, session_id: str, lab_reference_version: str, availability: str, cost_status: str) -> dict:
+        return self.repository.reload_lab_state(employee_id, session_id, lab_reference_version, availability, cost_status)
+
+    def report_lab(self, employee_id: str, session_id: str, lab_reference_version: str, reason: str, comment: str | None = None) -> dict:
+        return self.repository.report_lab(employee_id, session_id, lab_reference_version, reason, comment)
+
+    def start_required_clock(self, employee_id: str, session_id: str, started_at: datetime) -> str:
+        return self.repository.start_required_clock(employee_id, session_id, started_at)
+
+    def pause_required_clock(self, employee_id: str, session_id: str, ended_at: datetime, reason: str) -> dict:
+        return self.repository.pause_required_clock(employee_id, session_id, ended_at, reason)
