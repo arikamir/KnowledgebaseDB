@@ -1,7 +1,7 @@
 # Tasks: DevOps Career Agent UI
 
 **Input**: Design documents from `/specs/003-develop-ui/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, requirements-traceability.md, quickstart.md, tests/fixtures/readiness-scenario-manifest-v1.yaml, tests/performance/performance-profile-v1.json, tests/performance/interaction-performance-profile-v1.json
 **Tests**: Required by the specification and constitution for journeys, security, retention, concurrency, accessibility, and deployment.
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -11,8 +11,8 @@
 - [ ] T001 Create the React/TypeScript/Vite UI project in ui/package.json, ui/tsconfig.json, ui/vite.config.ts, and ui/src/
 - [ ] T002 [P] Create the TypeScript/Fastify BFF project in bff/package.json, bff/tsconfig.json, and bff/src/
 - [ ] T003 [P] Add core authentication, PostgreSQL, Alembic, and test dependencies in pyproject.toml
-- [ ] T004 [P] Configure UI lint, typecheck, Vitest, and Playwright in ui/package.json, ui/eslint.config.js, and ui/playwright.config.ts
-- [ ] T005 [P] Configure BFF lint, typecheck, unit, contract, and integration tests in bff/package.json and bff/eslint.config.js
+- [ ] T004 [P] After T001, configure UI lint, typecheck, Vitest, and a latest-two-stable Chrome/Edge/Firefox/Safari-WebKit plus Chrome/WebKit mobile-emulation Playwright matrix in ui/package.json, ui/eslint.config.js, and ui/playwright.config.ts
+- [ ] T005 [P] After T002, configure BFF lint, typecheck, unit, contract, and integration tests in bff/package.json and bff/eslint.config.js
 - [ ] T006 [P] Create independent container builds in ui/Dockerfile, bff/Dockerfile, and .dockerignore
 - [ ] T007 [P] Add local Redis/PostgreSQL/UI/BFF/core services in compose.yaml
 - [ ] T008 [P] Add safe runtime configuration examples in ui/public/runtime-config.example.json, bff/.env.example, and .env.example
@@ -22,104 +22,139 @@
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundation Tracks (Story Entry and Release Prerequisites)
 
-**Purpose**: Shared identity, persistence, lifecycle, contracts, and Azure platform.
+**Purpose**: Build shared identity, persistence, contracts, lifecycle, lab, and
+Azure capabilities while keeping the US1 entry gate independent from later
+story and protected-release prerequisites.
 
-**CRITICAL**: No user-story implementation starts before this phase passes.
+**CRITICAL**: Only the US1 minimum-foundation gate listed at this phase's
+checkpoint blocks US1. US2, US3, and US4 add only the prerequisites named in
+the dependency section. All other Phase 2 work blocks the complete protected
+release, not local implementation or demonstration of an otherwise-ready story.
+
+**Execution rule**: Phase 2 is a set of dependency tracks, not a phase-wide
+barrier. Task number and document position do not add a dependency. Phase 3 MAY
+start as soon as the named US1 minimum-foundation checkpoint passes while the
+remaining Phase 2 release and story-specific tracks continue independently.
 
 ### Tests
 
-- [ ] T010 [P] Add delegated-token and endpoint-to-machine-role authorization matrices in tests/contract/test_core_authorization.py
-- [ ] T011 [P] Add login, callback, CSRF, logout, 30-minute idle, and 8-hour expiry tests in bff/tests/integration/auth-session.test.ts
+- [ ] T010 [P] Load and digest-verify tests/fixtures/readiness-scenario-manifest-v1.yaml, including every derived per-case fixture digest, then run its exact 11 delegated cases for each of 18 delegated operations and exact eight operation-specific machine cases for each of four machine operations; cover valid plus wrong issuer, tenant, audience, algorithm/key, lifetime, client, scope, subject, ID-token, and spoofed-header delegated inputs and the manifest-declared delegated-token, role, audience, client, ownership, spoof, cookie, and cross-application machine inputs; assert employee/application ownership isolation, BFF-only `CareerAgent.Health.Read`, lifecycle-only `LearningBff.Session.Revoke`, validated-token-only ownership, and every endpoint-to-machine-role result in tests/contract/test_core_authorization.py and bff/tests/contract/internal-lifecycle-authorization.test.ts
+- [ ] T011 [P] Add login return-target canonicalization/open-redirect cases (absolute, network, backslash, encoded separator, control, fragment), 302/303 Location, opaque cookie issuance/clearing attributes without value leakage, callback, active-session CSRF, intrinsically idempotent logout without a domain key, lost-success-response retry and missing/unknown/revoked-session cookie-clearing 303 after exact-Origin validation, session lookup, Redis-indeterminate lookup, 30-minute idle, 8-hour expiry, versioned encryption-key overlap/lazy rewrite, and compromised-key session-revocation tests in bff/tests/integration/auth-session.test.ts and bff/tests/integration/session-key-rotation.test.ts
 - [ ] T012 [P] Add owner isolation and departed-identity denial tests in tests/integration/test_identity_lifecycle.py
-- [ ] T013 [P] Add concurrent replay, changed-payload, and first-valid idempotency tests in tests/integration/test_idempotency.py
-- [ ] T014 [P] Add active/disabled/deleted/throttled Entra reconciliation tests in tests/integration/test_directory_reconciliation.py
-- [ ] T015 [P] Add 90-day deletion/anonymization and restore catch-up tests in tests/integration/test_retention.py
-- [ ] T016 [P] Add three-service routing, health, image, and NetworkPolicy tests in tests/contract/test_three_service_deployment.py
-- [ ] T017 [P] Add AKS version, capacity, OIDC, networking, Gateway API, ACR, provider-registration, and quota preflight contracts in tests/contract/test_azure_ui_preflight.py
-- [ ] T018 [P] Add BFF confidential-client, core protected-API, delegated-scope, redirect-URI, and application-role registration contracts in tests/contract/test_entra_application_registrations.py
-- [ ] T019 [P] Add Application Gateway for Containers association, frontend, subnet, DNS, certificate, and private-core routing contracts in tests/contract/test_application_gateway.py
+- [ ] T013 [P] Add the exact nine-case SC-032 matrix per retryable operation—same-key simultaneous tabs, same-key delayed retry, changed payload, different actor/same key, process restart while `processing`, timeout after commit, `retryable_failed`, `final_failed`, and expired-result replay—and verify 60-second leases, 15-second heartbeats, single-worker expired-lease recovery/restart-once, `IDEMPOTENCY_IN_PROGRESS`/2-second retry, changed-hash rejection, atomic result commit, exact replay, retryable-versus-final transitions, 30-day response retention, non-reusable tombstones/`IDEMPOTENCY_RESULT_EXPIRED`, and employee/machine tombstone purge rules in tests/integration/test_idempotency.py
+- [ ] T014 [P] Add four-hour active/disabled/deleted/throttled Entra reconciliation, atomic durable-outbox/checkpoint ordering, crash recovery, 1/5/15/30/60-minute retry, 2/6-hour escalation, 12-hour post-recognition and 24-hour end-to-end bounds, and authenticated/idempotent/wrong-role BFF acknowledgement tests in tests/integration/test_directory_reconciliation.py and bff/tests/integration/lifecycle-revocation.test.ts
+- [ ] T015 [P] Add 90-day EmployeeIdentity/profile/domain/idempotency/owner-linked-outbox deletion, completed RetentionAction `ON DELETE SET NULL` unlinking, non-linkable evidence with no tenant/object/owner identifier or reversible hash, transaction rollback, restore catch-up, lifecycle-only atomic insert/narrow update of unclaimed scheduling fields with queue select/delete/claim/complete denial, retention-identity audited claim/process-due procedure-only access, eligibility/timestamp tamper denial, and direct queue/learning-row read denial tests in tests/integration/test_retention.py
+- [ ] T016 [P] Add three-service routing/image/NetworkPolicy tests plus independent process-local liveness and per-replica dependency readiness failure injection for PostgreSQL, Redis, tenant JWKS, and missing/mismatched/expired Key Vault/CSI key, trust, or certificate material; assert affected replicas leave service without plaintext/env fallback or cookie clearing, and cover approved-private-network, internal-LoadBalancer-only, core-served TLS/private-DNS/certificate-rotation/probe, source-range/NSG, and machine app-role defense in depth in tests/contract/test_three_service_deployment.py
+- [ ] T017 [P] Add external Platform Operations bootstrap, blob-locked state, exact AzureRM/AzureAD provider/lockfile, PIM activation/expiry and precise state-container/app-RG/RBAC/shared-network-DNS/custom-provider-quota/Application-Administrator/database scopes, separate Privileged-Role-Administrator Graph-consent approver, negative Owner/Global-Admin/standing/excess/unrelated-app-data/Jenkins access, bootstrap/data-script manifest-emission denial, sole-finalizer ordering after all Terraform/data-principal/ALB/migration-guardrail attestations, seven-day attestation, versioned canonical digest path/mode/length/content ordering plus matching add/remove/rename/mode/content drift and emitted-manifest/state/plan/cache/local-tfvars/runtime/secret/VCS exclusions, schema/config/live manifest drift, Jenkins Terraform/state denial, deployer target-RG Reader, AKS version/capacity/OIDC/networking, Gateway API, and ACR preflight contracts in tests/contract/test_azure_ui_preflight.py
+- [ ] T018 [P] Add BFF confidential-client/internal API, core protected-API, delegated-scope, BFF-only `CareerAgent.Health.Read`, lifecycle-only `LearningBff.Session.Revoke`, lifecycle `User.Read.All` administrator-consent, redirect-URI, and machine application-role registration contracts in tests/contract/test_entra_application_registrations.py
+- [ ] T019 [P] Add pinned ALB Controller CRD/chart/Workload-Identity/RBAC/install-order and Application Gateway for Containers association/frontend/subnet/public-TLS/DNS/browser-URL/private-core contracts; include the exact ALB identity negative matrix proving only Configuration Manager on the recorded AGC resource group and Network Contributor on its one delegated subnet, with denials for subscription/Owner/Contributor/role assignment, other VNet/subnet/gateway, identity/federation mutation, Key Vault/ACR/Storage/Redis/PostgreSQL data, unrelated Kubernetes secrets, and alternate-service-account binding, plus negative legacy Web App Routing/NGINX Ingress controller/Ingress manifest/public-core cases in tests/contract/test_application_gateway.py
 - [ ] T020 [P] Add BFF certificate creation, public-key registration, CSI mount, overlap, rotation, and retired-key rejection contracts in tests/contract/test_bff_certificate_lifecycle.py
 - [ ] T021 [P] Add 24-hour overlap, replica convergence, 48-hour retirement, failed-token-acquisition quarantine/operator-release, and emergency-revocation contracts in tests/contract/test_bff_certificate_rotation_policy.py
-- [ ] T022 [P] Add saved, saving, unsaved, failed-save, navigation, and refresh coverage in ui/tests/e2e/persistence-status.spec.ts
-- [ ] T023 [P] Add lab HTTPS, redirect, approved-domain, 10-second timeout, two-retry, 24-hour cadence, three-consecutive-failure, recovery, metadata, and publication-state tests in tests/integration/test_lab_reference_validation.py
-- [ ] T024 [P] Add provider approval, versioning, redirect-domain, omission-reason, and audit contracts in tests/contract/test_lab_provider_policy.py
+- [ ] T022 [P] Add shared persistence/session contracts using Foundation-owned fixture route adapters rather than any production story route: cover the exact `not_yet_saved`, `saving`, `save_unknown`, `failed_to_save`, and `saved` transitions; navigation retention, saving-time navigation block plus Cancel-and-check, refresh/closure discard and durable fixture reload, sign-out/expiry/emergency-reauth memory clearing, no localStorage/sessionStorage/IndexedDB/service-worker/cache persistence, in-memory authentication-epoch rejection of delayed pre-logout responses/session recreation, and valid/missing/invalid/Redis-indeterminate session restoration in ui/tests/unit/persistence-state.test.ts, ui/tests/e2e/persistence-status.spec.ts, and ui/tests/e2e/navigation-session.spec.ts. T152 owns four-journey route conformance after the story implementations exist.
+- [ ] T023 [P] Add the exact lab validation/lifecycle matrix: HTTPS only, initial plus at most two attempts, 10-second timeout each, at most five redirects, direct approved and approved-redirect success, retryable 408/429/5xx/DNS/connection/TLS-timeout with Retry-After capped at 60 seconds, final other-4xx/invalid-TLS/loop/repeated-URL/HTTP-downgrade/unapproved/private/link-local/metadata/cluster/>5-redirect failures, exact-policy activation, 20-hour CronJob/24-hour maximum, three-failure unavailability/recovery, first-report 15-minute validation, concurrent append-only report/row-version safety, immediate policy-removal unavailability/reapproval, audited retirement/no new open/no completion/new-version reversal, and distinct identity/network/database boundaries in tests/integration/test_lab_reference_validation.py and tests/contract/test_lab_revalidation_job.py
+- [ ] T024 [P] Add Learning Content Operations applicability-owner contracts: command/configuration/deployment/troubleshooting/running-system and borderline objectives require labs; only `orientation`, `conceptual_comparison`, or `review_only` may omit one; persist classifier identity/time/policy version and exactly one omission reason with a 20-500-character explanation; keep Security Reviewers limited to provider trust, and test provider approval/versioning/redirect domains plus unavailable/reported/retired reference and pinned-version retirement/audit outcomes in tests/contract/test_lab_provider_policy.py
 - [ ] T025 [P] Add empty-default, configured-group membership, distinct-human dual approval, missing approval, self-approval, domain-expansion, membership-evidence, and policy-version tests in tests/contract/test_lab_provider_approval.py
 - [ ] T026 [P] Add forbidden UI-to-core, UI-to-storage, BFF-to-storage, and cross-service source dependency tests in tests/contract/test_service_architecture_boundaries.py
-- [ ] T027 [P] Add UI/BFF/core resource request, limit, HPA, PDB, replica, and topology-spread contracts in tests/contract/test_aks_workload_resilience.py
-- [ ] T028 [P] Add browser-facing gateway certificate expiry, overlap, reload, rollback, and retired-certificate rejection contracts in tests/contract/test_gateway_certificate_rotation.py
+- [ ] T027 [P] Add exact UI `50m/250m` CPU and `64Mi/128Mi` memory request/limit, BFF `100m/500m` CPU and `256Mi/512Mi` memory request/limit, and core `250m/1000m` CPU and `512Mi/1Gi` memory request/limit contracts; verify each independent 2-4 replica HPA uses 70% average CPU relative to its own request, each PDB uses `maxUnavailable: 1`, each hostname spread uses `maxSkew: 1`/`ScheduleAnyway`, injected sidecars have separate resources, per-replica readiness removes only the affected endpoint, and scaling one service leaves the others unchanged in tests/contract/test_aks_workload_resilience.py
+- [ ] T028 [P] Add the full public-gateway rotation matrix: a bounded 12-hour CronJob with exact service account/Workload Identity/NetworkPolicy/pinned image; normal replacement available 24 hours before retirement with SAN/issuer/expiry, old+new trust, reload and every gateway/core-replica probe, then old trust removed within 48 hours; partial convergence removes affected endpoints from readiness, retains old trust, retries for 24 hours, quarantines/pages, and rolls back a failed candidate; emergency compromise immediately removes/revokes the version, blocks unverified listeners, permits availability loss but no untrusted fallback, and preserves saved core records; include evidence/expiry-signal and retired-certificate rejection contracts in tests/contract/test_gateway_certificate_rotation.py, with alert routing owned by T164
+- [ ] T029 [P] Add exact UI/BFF and BFF/core capability-cache contracts: single-flight refresh at 45 seconds, mutations only through metadata no older than 60 seconds, read-only/health display for at most five minutes with `Checking service compatibility`, no durable browser cache, logout-only exemption, conditional UI/BFF headers and machine exemption, and stable pre-downstream/pre-key/pre-mutation `CONTRACT_VERSION_UNSUPPORTED`, `CAPABILITY_METADATA_INVALID`, and `CAPABILITY_METADATA_UNAVAILABLE` outcomes while fresh execution outages remain `CORE_UNAVAILABLE` and unsaved input remains intact in tests/contract/test_version_compatibility.py
+- [ ] T030 [P] Add BFF/core OpenAPI completeness/backward-compatibility and generated-artifact drift tests, plus CI contracts that validate specs/003-develop-ui/contracts/implementation-readiness-contract.md, the readiness manifest's declared digest, derived per-case fixture digests, operation sets, and denominator arithmetic, both performance profiles' full-profile digests, fixture-set digests, evidence schemas, pinned BFF/core contract-byte digests, operation sets, assignments, timing boundaries, and timeout integrity, plus the SC-043 regenerated mapper digest/drift result, in tests/fixtures/readiness-scenario-manifest-v1.yaml, tests/performance/performance-profile-v1.json, and tests/performance/interaction-performance-profile-v1.json, and all exactly 125 nonempty requirements-traceability rows against real FR/SC IDs and T001-T198 task IDs; require every normative-source path to exist now, while allowing a future evidence/output path only when the same row references the exact producer task, and validate that producer link in specs/003-develop-ui/requirements-traceability.md. Contract-test config/us1-foundation-test-manifest-v1.txt as a sorted, duplicate-free, exact-path manifest containing only tests owned by T010-T013, T022, T026, T029-T032, T047, T049, and T068; require its T022 entries to include the persistence-state unit test and both named Playwright fixture specs and require the PostgreSQL-Entra, Foundation next-action, and Redis/key-material tests from T047/T049/T068, reject globs/directories/full-suite selectors or any path owned by another story/release track, and require scripts/ci/validate-us1-foundation.sh to execute exactly that manifest plus the T034 contract gate and scoped typechecks. Retain logout cleanup, enriched/legacy response, route/client/type/runtime conformance, and cross-boundary mapping coverage in tests/contract/test_bff_openapi_contract.py, tests/contract/test_core_openapi_contract.py, tests/contract/test_core_generated_route_validation.py, tests/contract/test_specification_traceability.py, bff/tests/contract/api-generation-drift.test.ts, bff/tests/contract/core-client-drift.test.ts, and ui/tests/unit/bff-contract-drift.test.ts
+- [ ] T031 [P] Add shared pending-state, duplicate-submit suppression, same-intent retry, and all-mutation registration tests in ui/tests/unit/submitted-operation.test.ts
+- [ ] T032 [P] Add BFF callback active/departed/unknown/core-unavailable lifecycle-gate tests proving no Redis session activates before core approval plus semantically idempotent repeated core bootstrap by validated tenant/subject without a domain key or duplicate record in bff/tests/integration/auth-lifecycle-gate.test.ts
+- [ ] T033 [P] Add version/schema/duplicate/deterministic-order and generated core/BFF/UI drift contracts plus explicit `active`, known `unavailable`, and known `retired` topic states, Learning Content Operations ownership, and catalog-version mismatch-as-compatibility behavior sourced from specs/003-develop-ui/contracts/supported-guidance-topics-v1.yaml in tests/contract/test_guidance_topic_catalog.py, bff/tests/contract/guidance-topic-catalog.test.ts, and ui/tests/unit/guidance-topic-catalog.test.ts
 
 ### Core foundation
 
-- [ ] T029 Create Alembic configuration and baseline migration in alembic.ini, alembic/env.py, and alembic/versions/003_baseline.py
-- [ ] T030 Add identity, machine, idempotency, reconciliation, and retention ORM models in src/storage/identity_models.py and src/storage/operation_models.py
-- [ ] T031 Add lifecycle/idempotency constraints and indexes in alembic/versions/004_identity_lifecycle_idempotency.py
-- [ ] T032 Add lab-reference, link-report, provider-approval with approver/group identity evidence, and validation-history models in src/storage/lab_models.py
-- [ ] T033 Add lab-reference constraints, distinct provider-approver enforcement, and validation-state indexes in alembic/versions/005_lab_references.py
-- [ ] T034 Implement active-reference lookup, consecutive-failure updates, recovery, and reporting persistence in src/storage/lab_repository.py
-- [ ] T035 Implement strict tenant JWKS and delegated/app-only validation in src/auth/bearer.py
-- [ ] T036 Implement separate employee-scope and machine-role dependencies in src/api/routes/authz.py
-- [ ] T037 Implement machine-role definitions and approved-client policy in src/auth/machine_roles.py
-- [ ] T038 Apply `/api/v1` routing and authorization dependencies in src/api/router.py and src/api/app.py
-- [ ] T039 Implement active owner lookup and machine allowlisting in src/storage/identity_repository.py
-- [ ] T040 Implement transactional actor/operation idempotency in src/storage/idempotency_repository.py and src/api/idempotency.py
-- [ ] T041 Implement PostgreSQL Entra token and pool refresh in src/storage/database.py
-- [ ] T042 Implement problem-details, correlation, and safe logging middleware in src/api/errors.py and src/api/middleware.py
-- [ ] T043 Add foundational owned profile, roadmap, and milestone ORM models plus deterministic owned-roadmap and published-learning-content fixtures in src/storage/roadmap_models.py, tests/fixtures/owned_roadmaps.py, and tests/fixtures/published_learning_content.py
-- [ ] T044 Add owned profile, roadmap, milestone, ownership, and fixture-compatible constraints in alembic/versions/006_owned_roadmaps.py
+- [ ] T034 Implement scripts/ci/validate-api-contracts.sh to validate/lint/digest/gate both OpenAPI documents, the guidance catalog, the normative implementation-readiness contract, the readiness manifest's exact declared digest, derived per-case fixture digests, operation sets, and denominator arithmetic, both performance profiles' exact declared full-profile digests, fixture-set digests, complete evidence schemas, pinned BFF/core contract-byte digests, operation sets, assignments, timing boundaries, and timeout policies, plus the SC-043 regenerated mapper digest/drift result, in tests/fixtures/readiness-scenario-manifest-v1.yaml, tests/performance/performance-profile-v1.json, and tests/performance/interaction-performance-profile-v1.json, and all exactly 125 requirements-traceability rows (valid FR/SC IDs, existing T001-T198 IDs, nonempty acceptance/normative-source/implementation/positive-negative-verification/evidence fields, currently existing normative-source paths, and future evidence/output paths only when linked to the exact referenced producer task), then fail generated BFF route/core-client/catalog, UI client/validator/type/catalog, core validator/runtime, or boundary-mapping drift and publish specs/003-develop-ui/contracts/bff-api-v1.digest and specs/003-develop-ui/contracts/core-api-v1.digest. Also create the exact-path config/us1-foundation-test-manifest-v1.txt and scripts/ci/validate-us1-foundation.sh required by T030; the runner MUST reject unlisted test discovery and execute only manifest-listed Python/BFF/UI unit/integration/Playwright tests, the contract gate, and scoped BFF/UI typechecks.
+- [ ] T035 Create Alembic configuration and baseline migration in alembic.ini, alembic/env.py, and alembic/versions/003_baseline.py
+- [ ] T036 Add identity/machine/reconciliation/outbox/retention models plus idempotency actor/operation/key/hash, `processing`/succeeded/`retryable_failed`/`final_failed` state, lease/heartbeat/retry-after, response/resource/tombstone, expiry, and principal-revocation fields in src/storage/identity_models.py and src/storage/operation_models.py
+- [ ] T037 Add lifecycle/outbox/owner-action constraints plus actor-operation-key uniqueness, legal idempotency transitions, 60-second lease/15-second heartbeat, terminal response/tombstone retention, no expiry of processing/retryable rows, 30-day full-response conversion, machine 90-day post-revocation retention, and employee owner-graph purge; retain nullable completed RetentionAction unlinking, lifecycle narrow scheduling grants, and audited eligibility-checked retention procedures/registry in alembic/versions/004_identity_lifecycle_idempotency.py
+- [ ] T038 Add lab applicability decision/classifier/policy/omission fields; content/lab/policy version pins; reference active/reported/unavailable/retired state, row version, consecutive failure, retirement, cost status, append-only report, dual-approval evidence, and complete validation-history models in src/storage/lab_models.py
+- [ ] T039 Add required-lab/default-borderline and exact omission constraints, distinct provider approval, immutable retired-version and append-only report rules, row-version/consecutive-failure indexes, exact-policy activation, and owner-linked lab-report registration in the T037 retention procedure registry in alembic/versions/005_lab_references.py
+- [ ] T040 Implement policy-version-scoped active lookup, append-only concurrent reporting, out-of-cycle validation queueing, row-version-safe validation transitions, consecutive-failure unavailability/recovery, immediate approval-removal invalidation, audited retirement/new-version reversal, cost-status persistence, and immutable validation/report history in src/storage/lab_repository.py
+- [ ] T041 Implement strict single-tenant delegated/app-only validation and signing-key metadata behavior: six-hour fresh cache, known-`kid` use for at most 24 hours, one immediate trusted-issuer refresh per request for unknown `kid`, token-type-specific `401 DELEGATED_TOKEN_INVALID` or `401 MACHINE_TOKEN_INVALID` after a successful refresh still lacks the key, unavailable/stale metadata without a bounded-fresh validating key as `503 AUTH_KEY_METADATA_UNAVAILABLE`, readiness failure at 24 hours, and no alternate issuer/key source in src/auth/bearer.py
+- [ ] T042 Implement separate employee-scope and machine-role dependencies that reject every T010 delegated/machine negative class before owner lookup, idempotency claim, or mutation in src/api/routes/authz.py
+- [ ] T043 Implement exact per-operation machine-role definitions, approved-client/audience policy, validated-principal application ownership, delegated-token denial on machine routes, and employee/application cross-owner denial in src/auth/machine_roles.py and src/api/routes/authz.py
+- [ ] T044 Create the Foundation-owned core route registry with generated-contract validation extension points and apply `/api/v1` authorization dependencies without story-to-story imports in src/api/routes/registry.py, src/api/router.py, and src/api/app.py
+- [ ] T045 Implement active owner lookup and machine allowlisting in src/storage/identity_repository.py
+- [ ] T046 Implement the complete transactional idempotency state machine in src/storage/idempotency_repository.py and src/api/idempotency.py: canonical hash claim after auth/compatibility/validation; lease heartbeat/live conflict; single-worker expired-lease resource/outbox recovery and restart-once; atomic domain/result commit; exact success/final replay; retryable retry-after promotion; timeout same-key replay after two seconds; changed-hash rejection; 30-day body-to-nonreusable-tombstone conversion and `IDEMPOTENCY_RESULT_EXPIRED`; pod-restart safety; and actor-specific employee/machine retention
+- [ ] T047 Add exact PostgreSQL failure tests and implement Entra token acquisition/proactive pool refresh/reconnect/reauthentication, two connection retries at 250 milliseconds and one second, `503 PERSISTENCE_UNAVAILABLE`, full transaction/idempotency rollback, timeout-after-commit same-key recovery, and dependency readiness only after a core-role read/write canary; retain mutually denied core/lifecycle/retention/lab/migration principals in tests/integration/test_postgres_entra.py and src/storage/database.py
+- [ ] T048 Implement stable `application/problem+json` codes, correlation/safe logging, process-local core `/health/live`, and dependency-aware per-replica `/health/ready` for PostgreSQL, tenant signing-key metadata, and Key Vault/CSI cryptographic/version/SAN/issuer plus functional token/TLS probes, returning `PERSISTENCE_UNAVAILABLE`, `AUTH_KEY_METADATA_UNAVAILABLE`, or `KEY_MATERIAL_UNAVAILABLE` without secret fallback in src/api/errors.py, src/api/middleware.py, and src/api/routes/health.py
+- [ ] T049 First add a failing Foundation roadmap-only/no-learning-head precedence and stable-tie-break contract in tests/unit/test_next_action_foundation.py; then add actor-owned roadmap and milestone ORM models, a roadmap-aware next-action selector interface/fallback that treats unavailable learning sources as no retry/resume candidate and deterministically selects the next incomplete milestone or completed-roadmap review in src/agent/next_action.py, plus deterministic employee-owned/application-owned roadmap and published-learning-content fixtures in src/storage/roadmap_models.py, tests/fixtures/owned_roadmaps.py, and tests/fixtures/published_learning_content.py
+- [ ] T050 Add exactly-one employee/application roadmap owner, stable milestone constraints/indexes, deterministic enriched backfill, explicit `legacy_only` classification, and roadmap/milestone registration in the T037 retention procedure registry in alembic/versions/006_owned_roadmaps.py
+- [ ] T051 Generate the runtime supported-guidance catalog with canonical IDs/names/aliases and `active`/`unavailable`/`retired` states from specs/003-develop-ui/contracts/supported-guidance-topics-v1.yaml, validate and fail drift against config/supported-guidance-topics-v1.yaml and config/supported-guidance-topics.schema.json, preserve Learning Content Operations state ownership, and load the exact version in src/skills/catalog.py
 
 ### Identity and platform prerequisites
 
-- [ ] T045 Implement read-only Azure and AKS readiness reporting, including reusable target-ACR existence, reachability, AKS kubelet `AcrPull`, publisher `AcrPush`, and deployer/controller registry-denial checks, in scripts/azure/preflight-ui-platform.sh
-- [ ] T046 Provision Key Vault, Managed Redis, PostgreSQL, private networking, and monitoring in infra/azure/key-vault.tf, infra/azure/redis.tf, infra/azure/postgresql.tf, infra/azure/private-networking.tf, and infra/azure/monitoring.tf
-- [ ] T047 Provision the delivery-evidence container, custom evidence-writer role, Azure ABAC environment/stage prefix conditions, immutable-storage policy, and Entra-group reader RBAC in infra/azure/delivery-evidence-storage.tf
-- [ ] T048 Assign the configured Evidence Hold Managers Entra group a custom role limited to hold metadata and permitted immutable-policy extension in infra/azure/delivery-evidence-hold-managers.tf and infra/azure/outputs.tf
-- [ ] T049 Enable AKS OIDC and distinct BFF/core/gateway identities in infra/azure/identity.tf
-- [ ] T050 Provision the Application Gateway for Containers frontend, association, subnet delegation, and managed identity in infra/azure/application-gateway-for-containers.tf
-- [ ] T051 Provision gateway certificate access and DNS records in infra/azure/gateway-certificates.tf and infra/azure/gateway-dns.tf
-- [ ] T052 Implement browser-facing gateway certificate expiry alerts, overlap, activation, reload verification, rollback, and retired-version removal in infra/azure/gateway-certificates.tf and scripts/azure/rotate-gateway-certificate.sh
-- [ ] T053 Provision or import the BFF confidential-client registration, exact redirect/logout URIs, and non-secret outputs in infra/azure/entra-bff-registration.tf
-- [ ] T054 Provision or import the core protected-API registration, delegated scope, audience, and service principal in infra/azure/entra-core-api-registration.tf
-- [ ] T055 Configure BFF delegated permission, administrative-consent bootstrap outputs, machine registrations, and application roles in infra/azure/entra-machine-registrations.tf and infra/azure/entra-app-roles.tf
-- [ ] T056 Provision the Key Vault BFF client certificate and rotation policy in infra/azure/bff-client-certificate.tf and infra/azure/bff-certificate-rotation.tf
-- [ ] T057 Register only the BFF certificate public key with Entra in infra/azure/entra-bff-registration.tf
-- [ ] T058 Configure the BFF Key Vault CSI mount in deploy/k8s/base/bff/secret-provider-class.yaml and deploy/k8s/base/bff/deployment.yaml
+Terraform and Entra resources in this subsection are authored/reviewed here but
+applied or imported only by Platform Operations with an interactive identity
+outside Jenkins. Jenkins receives validation/deployment permissions only; it
+never receives Terraform apply/import, remote-state read, or consent authority.
+
+- [ ] T052 Author the external interactive Platform Operations bootstrap/finalization tooling, exact JIT permission and denial preflight, Azure Storage backend/provider/lock validation, seven-day provider/quota attestation, reviewed-manifest schema/example including ALB/migration-policy attestations, versioned canonical path/mode/length/content digest policy and calculator with explicit emitted-manifest/state/plan/cache/local-tfvars/runtime/secret/VCS exclusions, identityless schema/digest gate, and protected target-RG-only live/legacy-ingress preflight in scripts/azure/bootstrap-ui-platform.sh, scripts/azure/bootstrap-data-principals.sh, scripts/azure/finalize-ui-platform.sh, scripts/azure/compute-platform-configuration-digest.sh, scripts/azure/preflight-ui-platform.sh, config/platform-configuration-digest-v1.yaml, config/platform-bootstrap.schema.json, and config/platform-bootstrap.example.json; bootstrap/data scripts never emit the environment manifest and finalization is not executed until T194
+- [ ] T053 Add locked Azure Storage remote state, explicit AzureRM/AzureAD provider configuration and infra/azure/.terraform.lock.hcl; provision Key Vault, versioned BFF session encryption, Managed Redis, PostgreSQL, private networking/monitoring, and mutually denied BFF-Redis; core-DML; lifecycle-status/checkpoint/outbox plus unclaimed-retention-scheduling; retention audited claim/process-due procedure-only; lab-validation destination/status/counter-only; and migrator-DDL/backfill data-plane principals in infra/azure/backend.tf, infra/azure/providers.tf, infra/azure/versions.tf, infra/azure/key-vault.tf, infra/azure/bff-session-encryption.tf, infra/azure/redis.tf, infra/azure/postgresql.tf, infra/azure/data-plane-rbac.tf, infra/azure/private-networking.tf, and infra/azure/monitoring.tf
+- [ ] T054 Provision the delivery-evidence container, custom evidence-writer role, Azure ABAC environment/stage prefix conditions, immutable-storage policy, and Entra-group reader RBAC in infra/azure/delivery-evidence-storage.tf
+- [ ] T055 Assign the configured Evidence Hold Managers Entra group request/audit rights and the separate hold-reconciler Workload Identity rights limited to reading the hold-control inventory and setting/clearing exact version-level legal holds, with no blob-content read/list/delete/writer or fixed time-policy mutation, in infra/azure/delivery-evidence-hold-managers.tf and infra/azure/outputs.tf
+- [ ] T056 Update the existing AKS resource in infra/azure/main.tf to enable OIDC/Workload Identity and disable `web_app_routing`; provision one-to-one federated service-account bindings for distinct BFF, core, lifecycle, retention, lab-revalidation, migration, evidence-hold-reconciler, ALB-controller, and gateway-certificate/DNS identities, keep UI identityless, and keep exact-ACR `AcrPull` solely on the non-federatable AKS kubelet identity in infra/azure/identity.tf
+- [ ] T057 Provision the Application Gateway for Containers frontend, association, subnet delegation, managed identity, and pinned controller-version/bootstrap outputs in infra/azure/application-gateway-for-containers.tf; T093 alone owns ALB Controller Kubernetes/Helm assets
+- [ ] T058 Provision public-gateway and private-core server certificates, candidate/active/retired version metadata, private CA/trust bundle, exact core SANs, Key Vault CSI access, and the least-privilege gateway-certificate/DNS identity limited to named certificate-version operations and named browser/private-core DNS records while denying private-key export, unrelated Key Vault assets, zone-wide destructive access, AGC/AKS/identity mutation, and every application data plane; retain approved network/NSG controls, authoritative AGC/private URLs, and replacement helper in infra/azure/gateway-certificates.tf, infra/azure/gateway-dns.tf, infra/azure/core-machine-certificate.tf, infra/azure/private-dns.tf, infra/azure/outputs.tf, and scripts/azure/get-application-url.sh
+- [ ] T059 Implement the T028 normal/partial/emergency public-gateway and private-core rotation state machine, versioned evidence, 24-hour candidate availability/overlap, every-replica SAN/issuer/expiry/trust/reload/TLS/route probe, 48-hour old-trust retirement, nonconverged endpoint readiness removal, 24-hour retry then quarantine/page, verified rollback, and immediate compromise revocation with no unsafe fallback in infra/azure/gateway-certificates.tf and scripts/azure/rotate-gateway-certificate.sh; add the 12-hour `concurrencyPolicy: Forbid` bounded CronJob, exact gateway-certificate/DNS service account/Workload Identity, default-deny NetworkPolicy, and digest-pinned read-only runner in deploy/k8s/base/gateway-certificate-rotation/; T189 alone owns alerts
+- [ ] T060 Provision or import the BFF confidential-client/internal-API registration, exact redirect/logout URIs, `LearningBff.Session.Revoke` app role, and non-secret outputs in infra/azure/entra-bff-registration.tf
+- [ ] T061 Provision or import the core protected-API registration, delegated scope, audience, and service principal in infra/azure/entra-core-api-registration.tf
+- [ ] T062 Configure BFF delegated permission plus only its `CareerAgent.Health.Read` app role, lifecycle `User.Read.All` administrator consent and `LearningBff.Session.Revoke` assignment, machine registrations, and least-privilege application roles in infra/azure/entra-machine-registrations.tf, infra/azure/entra-app-roles.tf, and infra/azure/entra-lifecycle-permissions.tf
+- [ ] T063 Provision the Key Vault BFF client certificate and rotation policy in infra/azure/bff-client-certificate.tf and infra/azure/bff-certificate-rotation.tf
+- [ ] T064 Register only the BFF certificate public key with Entra in infra/azure/entra-bff-registration.tf
+- [ ] T065 Create independent UI/BFF/core workload skeletons with process-local liveness, per-replica dependency readiness, readiness-based service removal, static UI config health/reserved-prefix rejection, and dedicated-identity reconciliation/revocation and retention CronJobs in deploy/k8s/base/ui/, deploy/k8s/base/bff/, deploy/k8s/base/core/, deploy/k8s/base/lifecycle/, and deploy/k8s/base/retention/; a PostgreSQL, Redis, JWKS, or key/certificate failure may make only the affected replica unready and migration resources remain T175-owned
+- [ ] T066 Configure BFF and core Key Vault CSI mounts/readiness after T065, requiring mounted version match, cryptographic parse, SAN/issuer/expiry where applicable, token/TLS functional probes, and `KEY_MATERIAL_UNAVAILABLE` with no plaintext/file/environment fallback or false logout in deploy/k8s/base/bff/secret-provider-class.yaml, deploy/k8s/base/bff/deployment.yaml, deploy/k8s/base/core/secret-provider-class.yaml, and deploy/k8s/base/core/deployment.yaml
 
 ### BFF and UI foundation
 
-- [ ] T059 Generate and wrap the core OpenAPI client in bff/src/clients/core-client.ts and bff/src/contracts/core-api.ts
-- [ ] T060 Implement encrypted Redis sessions and owner session indexes in bff/src/sessions/session-store.ts
-- [ ] T061 Implement atomic idle touch, absolute expiry, logout, and owner revocation in bff/src/sessions/session-policy.ts
-- [ ] T062 Implement Entra authorization code, state, nonce, PKCE, and certificate auth in bff/src/auth/entra.ts
-- [ ] T063 Implement host-only cookie, Origin, CSRF, and session middleware in bff/src/auth/browser-session.ts
-- [ ] T064 Implement auth, session, BFF capability advertisement, and health routes in bff/src/routes/auth.ts, bff/src/routes/capabilities.ts, and bff/src/routes/health.ts
-- [ ] T065 Implement core capability/version metadata, UI/BFF and BFF/core version headers and pre-idempotency `409 CONTRACT_VERSION_UNSUPPORTED` gates, plus UI incompatible-write blocking with unsaved-input preservation in src/api/routes/capabilities.py, bff/src/compatibility/core-version.ts, bff/src/plugins/contract-version.ts, and ui/src/app/compatibility.ts
-- [ ] T066 Add multi-replica certificate rollover, active-session and new-sign-in continuity, delegated token acquisition, retired-key rejection, and emergency-reauthentication verification in bff/tests/integration/certificate-rotation.test.ts
-- [ ] T067 Implement certificate-version convergence and rotation readiness in bff/src/auth/certificate-rotation.ts
-- [ ] T068 Implement normal and emergency certificate retirement in scripts/azure/rotate-bff-client-certificate.sh
-- [ ] T069 Implement failed BFF certificate-candidate quarantine, auditable quarantine reasons, and explicit operator release before retry in bff/src/auth/certificate-rotation.ts and scripts/azure/rotate-bff-client-certificate.sh
-- [ ] T070 Implement error mapping, trace, timeout, and idempotency propagation in bff/src/clients/core-request.ts
-- [ ] T071 Implement validated runtime configuration and BFF-only HTTP access in ui/src/app/runtime-config.ts and ui/src/bff/client.ts
-- [ ] T072 Create responsive accessible shell, direct entry points for all four journeys, status region, and expiry handling in ui/src/app/App.tsx and ui/src/styles/app.css
-- [ ] T073 Implement reusable saved, saving, unsaved, and failed-save semantics in ui/src/components/PersistenceStatus.tsx and ui/src/app/persistence-state.ts
+- [ ] T067 Generate BFF route validators/types only from specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml, the BFF core client and Python core request/response validators only from specs/003-develop-ui/contracts/core-api-v1.openapi.yaml, and the BFF topic catalog only from specs/003-develop-ui/contracts/supported-guidance-topics-v1.yaml; wire generated BFF/core validation plugins into their Foundation registries for every subsequent route and fail checked-in/runtime drift in bff/src/contracts/bff-api.ts, bff/src/clients/core-client.ts, bff/src/contracts/core-api.ts, bff/src/contracts/supported-guidance-topics.ts, bff/src/plugins/generated-validation.ts, src/api/generated/core_api_models.py, and src/api/generated/validation.py
+- [ ] T068 Add exact Redis/key-material failure tests and implement encrypted sessions, owner/key-version indexes, active/decrypt-only Key Vault key-ring loading, lazy rewrite, Managed Redis Entra acquisition/refresh/reconnect, and exactly two connection attempts at 100 and 500 milliseconds; indeterminate access returns `503 SESSION_DEPENDENCY_UNAVAILABLE`, never `401`, never clears/revokes the cookie, never calls core, disables BFF readiness, and has no local/access-key fallback in bff/tests/integration/redis-entra.test.ts, bff/src/sessions/session-store.ts, and bff/src/sessions/encryption-key-ring.ts
+- [ ] T069 Implement atomic idle touch/absolute expiry and deterministic missing/unknown/expired/revoked versus Redis-indeterminate outcomes, ensuring only authoritative invalid/expired/revoked state drives cookie cleanup while `SESSION_DEPENDENCY_UNAVAILABLE` preserves it; retain active-session logout, owner revocation, and compromised-key-version session/token-cache revocation in bff/src/sessions/session-policy.ts
+- [ ] T070 Implement Entra authorization code, state, nonce, PKCE, certificate auth, and parsed/canonicalized exact-origin return-target validation in bff/src/auth/entra.ts
+- [ ] T071 Implement host-only cookie, exact-Origin, session, and conditional logout CSRF middleware that requires a matching token for active-session revocation but lets the OpenAPI-declared invalid-session cleanup branch clear the cookie without treating a stale/invalid cookie as authenticated in bff/src/auth/browser-session.ts
+- [ ] T072 Create the Foundation-owned BFF route registry, attach generated request/response schemas to every browser-contract route, and implement auth, session, capability advertisement, health, and private role-protected idempotent lifecycle-revocation routes without story-to-story imports in bff/src/routes/registry.ts, bff/src/routes/auth.ts, bff/src/routes/capabilities.ts, bff/src/routes/health.ts, and bff/src/routes/internal-lifecycle.ts
+- [ ] T073 Implement and self-register `POST /api/v1/identity/session-bootstrap`, the BFF callback-to-core lifecycle gate, transient pre-approval token handling, and Redis session activation only after an active core response through the Foundation registries in src/api/routes/identity.py, bff/src/auth/lifecycle-gate.ts, and bff/src/routes/auth.ts
+- [ ] T074 Implement authenticated core and public BFF capability metadata with single-flight refresh at 45 seconds, a hard 60-second mutation freshness gate, at-most-five-minute safe-read/health cache, parse-failure preservation of the last valid entry, active schema/catalog/mutation intersection, BFF `CareerAgent.Health.Read`, version headers, logout/machine exemptions, and pre-key `CONTRACT_VERSION_UNSUPPORTED`, `CAPABILITY_METADATA_INVALID`, or `CAPABILITY_METADATA_UNAVAILABLE` decisions while mapping fresh-compatible execution failure to `CORE_UNAVAILABLE` in src/api/routes/capabilities.py, bff/src/routes/capabilities.ts, bff/src/compatibility/core-version.ts, and bff/src/plugins/contract-version.ts
+- [ ] T075 Add every normal, partial-convergence/rollback, and emergency BFF-certificate matrix case across all current replicas: fresh callback, existing-session refresh, delegated/health tokens, at-least-24-hour overlap, retirement by 48 hours only after convergence, nonconverged replica removal, 24-hour retry/quarantine/page, rollback to old active credential, immediate compromise revocation/session-token-cache clearing/safe reauthentication, retired-key denial, and saved-core-data survival in bff/tests/integration/certificate-rotation.test.ts
+- [ ] T076 Implement per-replica certificate-version convergence/readiness, candidate quarantine, prior-version retention, rollback verification, and rotation evidence in bff/src/auth/certificate-rotation.ts
+- [ ] T077 Implement normal, partial-convergence, rollback, and emergency BFF certificate activation/retirement with the exact 24-hour overlap/retry, 48-hour retirement, and compromise-no-fallback rules in scripts/azure/rotate-bff-client-certificate.sh
+- [ ] T078 Implement auditable failed-candidate quarantine, removal of nonconverged replicas from service, Application/Platform Operations paging, and explicit operator release before retry without retiring the old uncompromised version in bff/src/auth/certificate-rotation.ts and scripts/azure/rotate-bff-client-certificate.sh
+- [ ] T079 Implement stable dependency/problem mapping, trace/timeout/idempotency propagation, safe capability/read GET retries twice at 250 milliseconds and one second, and a dispatched-mutation retry at most once with the same key; return `CORE_UNAVAILABLE` without fabrication and preserve indeterminate same-key recovery in bff/src/clients/core-request.ts
+- [ ] T080 Generate checked-in UI contracts/catalogs, implement the 45-second single-flight/60-second mutation/five-minute read-only capability policy with stable codes and `Checking service compatibility`, prohibit durable metadata/form/key storage, preserve unsaved input, tag requests with an in-memory authentication epoch, reject older-epoch/delayed post-logout UI updates or session recreation, and retain safe marks/telemetry/runtime-config/BFF-only access in ui/src/contracts/bff-api.ts, ui/src/contracts/supported-guidance-topics.ts, ui/src/app/compatibility.ts, ui/src/app/auth-epoch.ts, ui/src/telemetry/performance.ts, ui/src/telemetry/safe-telemetry.ts, ui/src/app/runtime-config.ts, and ui/src/bff/client.ts
+- [ ] T081 Create a responsive accessible shell with direct entry points, one-h1/ordered-heading/focus routing, named keyboard-operable controls, 2-pixel/3:1 focus indicators, polite status and assertive blocking-error regions, clear sign-out, and a two-minute idle/absolute timeout dialog that distinguishes extendable idle from nonextendable absolute expiry in ui/src/app/App.tsx, ui/src/components/SignOutAction.tsx, and ui/src/styles/app.css
+- [ ] T082 Implement reusable `not_yet_saved`, `saving`, `save_unknown`, `failed_to_save`, and `saved` state/display/transition semantics; saving-time navigation block/Cancel-and-check, refresh discard notice and authoritative reload, auth-epoch-safe sign-out/expiry/emergency clearing, and browser-durable-storage prohibition in ui/src/components/PersistenceStatus.tsx, ui/src/app/persistence-state.ts, and ui/src/app/restore-persisted-state.ts
+- [ ] T083 Implement the shared all-mutation submitted-operation guard with one in-memory key per intended action, duplicate suppression, saving-time navigation block, same-key transient/timeout replay, new-key-only corrected intent, authoritative resolution of `save_unknown`, and auth-epoch response rejection in ui/src/app/useSubmittedOperation.ts and ui/src/app/submitted-operation-registry.ts
+- [ ] T084 Create the Foundation-owned UI route registry plus isolated roadmap, guidance, learning, and progress route descriptors/stubs in ui/src/app/route-registry.tsx, ui/src/features/roadmap/routes.tsx, ui/src/features/guidance/routes.tsx, ui/src/features/learning/routes.tsx, and ui/src/features/progress/routes.tsx. All stubs start inactive and unregistered: they MUST be absent from landing/navigation, MUST reject direct entry with the standard not-found outcome, and MUST become registered only by the corresponding T106, T118, T138, or T149 story task after that route's implementation and tests pass.
 
 ### Lifecycle and Azure foundation
 
-- [ ] T074 Implement checkpointed daily Entra reconciliation in src/lifecycle/reconcile_directory.py
-- [ ] T075 Implement departed-user blocking, session revocation, and retention scheduling in src/lifecycle/employee_lifecycle.py
-- [ ] T076 Implement the record-level deletion/anonymization matrix and restore catch-up in src/lifecycle/retention.py
-- [ ] T077 Create the empty initial allowlist and approval schema with configured Entra group IDs, distinct approver IDs, membership evidence, policy version, and audit reference in config/approved-lab-providers.yaml and config/lab-provider-policy.schema.json
-- [ ] T078 Implement lab applicability, Entra-group approval validation, distinct-approver enforcement, and provider policy in src/agent/lab_provider_policy.py
-- [ ] T079 Implement publication validation, 24-hour scheduled revalidation, consecutive-failure tracking, unavailable transitions, and recovery in src/agent/lab_reference_validator.py and src/lifecycle/revalidate_labs.py
-- [ ] T080 Integrate provider-policy version and omission reasons into src/agent/lab_reference_validator.py and src/storage/lab_repository.py
-- [ ] T081 Create independent UI/BFF/core workloads and lifecycle CronJobs in deploy/k8s/base/ui/, deploy/k8s/base/bff/, deploy/k8s/base/core/, and deploy/k8s/base/lifecycle/
-- [ ] T082 Configure UI/BFF/core requests, limits, minimum replicas, HPAs, PDBs, and topology-spread constraints in deploy/k8s/base/ui/deployment.yaml, deploy/k8s/base/ui/hpa.yaml, deploy/k8s/base/ui/pdb.yaml, deploy/k8s/base/bff/deployment.yaml, deploy/k8s/base/bff/hpa.yaml, deploy/k8s/base/bff/pdb.yaml, deploy/k8s/base/core/deployment.yaml, deploy/k8s/base/core/hpa.yaml, and deploy/k8s/base/core/pdb.yaml
-- [ ] T083 Create Gateway, service accounts, ConfigMaps, and digest overlays in deploy/k8s/overlays/aks-nonprod/
-- [ ] T084 Bind Gateway API resources to the Azure association in deploy/k8s/overlays/aks-nonprod/gateway.yaml and deploy/k8s/overlays/aks-nonprod/httproute.yaml
-- [ ] T085 Enforce default-deny and private machine routing in deploy/k8s/base/network-policies.yaml and deploy/k8s/overlays/aks-nonprod/private-machine-route.yaml
+- [ ] T085 Implement checkpointed four-hour known-user Entra reconciliation using only the lifecycle identity's administrator-consented `User.Read.All`, atomically committing departure blocking, idempotent insert/narrow update of an unclaimed retention schedule, and revocation outbox before checkpoint advancement while never reading/claiming/completing retention work, with deletion/not-found and indeterminate-error handling, in src/lifecycle/reconcile_directory.py and src/lifecycle/employee_lifecycle.py
+- [ ] T086 Implement the durable outbox dispatcher with at most five minutes from an eligible committed row to its first dispatch attempt, crash recovery, bounded 1/5/15/30/60-minute retry, 2/6-hour alert/page state, 12-hour post-recognition deadline, and authenticated idempotent private-BFF acknowledgement in src/lifecycle/dispatch_session_revocations.py and src/lifecycle/bff_revocation_client.py
+- [ ] T087 Implement the record-level deletion/anonymization matrix and atomic retention-identity invocation of the T037 eligibility-checked audited claim/process-due procedures that delete owner-linked outbox/profile/domain/idempotency rows and EmployeeIdentity, leave only an unlinked non-reversible aggregate action/evidence record, roll back partial purge/unlinking, never directly read queue/learning rows, and run restore catch-up in src/lifecycle/retention.py
+- [ ] T088 Create the empty initial allowlist and approval schema with configured Entra group IDs, distinct approver IDs, membership evidence, policy version, and audit reference in config/approved-lab-providers.yaml and config/lab-provider-policy.schema.json
+- [ ] T089 Implement Learning Content Operations applicability classification with mandatory command/configure/deploy/troubleshoot/observe-running-system and borderline-default-required rules, only three allowed omission classes, classifier/time/policy plus one 20-500-character explanation, publication failure for missing evidence, distinct Entra-group approvals, and Security-Reviewer trust-only boundaries in src/agent/lab_provider_policy.py
+- [ ] T090 Implement the exact T023 redirect/retry/final-failure budget, exact-policy activation, 20-hour/24-hour scheduling, three-failure transitions, report-triggered 15-minute validation, row-version-safe report/validation concurrency, immediate approval-removal invalidation, recovery reapproval, and audited retirement/new-version reversal in src/agent/lab_reference_validator.py and src/lifecycle/revalidate_labs.py; add the bounded `concurrencyPolicy: Forbid` CronJob, exact lab-revalidation SA/Workload Identity/database role, and public-HTTPS-only egress with private/link-local/metadata/cluster exclusions in deploy/k8s/base/lab-revalidation/
+- [ ] T091 Integrate applicability decision/classifier, exact provider-policy/content/lab-reference pins, cost status, omission reason/explanation, validation age/state, report concurrency, and immutable retirement/replacement version into src/agent/lab_reference_validator.py and src/storage/lab_repository.py
+- [ ] T092 Configure the exact T027 UI/BFF/core CPU/memory requests and limits, independently named application containers, two-minimum/four-maximum HPAs at 70% average CPU relative to each service's request, `maxUnavailable: 1` PDBs, and hostname `maxSkew: 1`/`ScheduleAnyway` topology-spread constraints in deploy/k8s/base/ui/deployment.yaml, deploy/k8s/base/ui/hpa.yaml, deploy/k8s/base/ui/pdb.yaml, deploy/k8s/base/bff/deployment.yaml, deploy/k8s/base/bff/hpa.yaml, deploy/k8s/base/bff/pdb.yaml, deploy/k8s/base/core/deployment.yaml, deploy/k8s/base/core/hpa.yaml, and deploy/k8s/base/core/pdb.yaml
+- [ ] T093 Author the version-pinned ALB Controller CRDs/chart with a dedicated one-to-one service account/Workload Identity and only exact-AGC-resource-group Configuration Manager plus exact-association-subnet Network Contributor scope, encode all T019 cross-scope/data/identity/secret/service-account denials, and add application service accounts, ConfigMaps, and digest overlays in deploy/k8s/platform/alb-controller/ and deploy/k8s/overlays/aks-nonprod/; T178 dry-runs and T194 externally installs/attests it before Gateway creation
+- [ ] T094 Author, but do not apply live, removal of deploy/k8s/base/ingress.yaml and its entry from deploy/k8s/base/kustomization.yaml; consume/verify the T056-owned `web_app_routing` disablement without redefining it, remove any remaining legacy NGINX Ingress deployment, bind public-TLS Gateway API resources only to UI/BFF Azure association paths, and add route-level verification of the T065-owned UI-server 404 rejection for reserved `/api/` and `/internal/` prefixes without editing ui/nginx.conf in deploy/k8s/base/kustomization.yaml, deploy/k8s/overlays/aks-nonprod/gateway.yaml, and deploy/k8s/overlays/aks-nonprod/httproute.yaml
+- [ ] T095 Configure one core HTTPS listener on port 8443 for ClusterIP and Azure-internal LoadBalancer, mount/rotate the versioned Key Vault certificate/private-CA chain, fail the affected replica's readiness on missing/mismatch/expiry, use HTTPS cryptographic/SAN/issuer/functional probes, set BFF `CORE_BASE_URL=https://core.<namespace>.svc:8443/api/v1` with mounted CA trust, and enforce default-deny, lifecycle-only BFF revocation, retention procedure-only access, reserved public-prefix denial, approved source/NSG/private DNS, and no public IP in deploy/k8s/base/core/{deployment.yaml,service.yaml,secret-provider-class.yaml}, deploy/k8s/base/bff/{deployment.yaml,secret-provider-class.yaml}, deploy/k8s/base/retention/, deploy/k8s/base/network-policies.yaml, deploy/k8s/overlays/aks-nonprod/{private-machine-service.yaml,machine-tls-secret-provider-class.yaml,httproute.yaml}
 
-**Checkpoint**: Foundation passes and unblocks all stories.
+**US1 minimum-foundation checkpoint**: T010-T013, T022, T026,
+T029-T032, T034-T037, T041-T050, T067-T074, and T079-T084 are complete;
+`scripts/ci/validate-us1-foundation.sh` passes. That runner executes the T034
+contract gate, scoped BFF/UI typechecks, and exactly the sorted test paths in
+`config/us1-foundation-test-manifest-v1.txt`, including T022's persistence-state
+unit test and both fixture-based Playwright specs. It MUST reject unlisted test
+discovery, globs, directories, full-suite selectors, duplicate paths, or tests
+owned by another story/release track. Production story-route tests outside this
+set are not part of this checkpoint and MUST NOT be added to its manifest.
+Remaining Phase 2 tasks continue on their explicit story or protected-release
+dependency tracks.
 
 ---
 
@@ -130,25 +165,27 @@
 
 ### Tests
 
-- [ ] T086 [P] [US1] Add core roadmap ownership/idempotency contracts in tests/contract/test_roadmap_v1_contract.py
-- [ ] T087 [P] [US1] Add BFF roadmap validation and mapping contracts in bff/tests/contract/roadmaps.test.ts
-- [ ] T088 [P] [US1] Add roadmap browser, keyboard, 320/375/768/1024/1440/1920px, and outage tests in ui/tests/e2e/roadmap.spec.ts
-- [ ] T089 [P] [US1] Add owned persistence and cross-employee denial tests in tests/integration/test_owned_roadmap_flow.py
+- [ ] T096 [P] [US1] Add discriminated ready-with-roadmap/needs-more-info-with-clarification results, enriched employee roadmap create/list/get restoration, `legacy_only` delegated-BFF 409 without invented fields, app-role legacy-compatible roadmap-create ownership, cross-actor read/write denial, no-impersonation, and idempotency contracts in tests/contract/test_roadmap_v1_contract.py
+- [ ] T097 [P] [US1] Add BFF roadmap create/list/get validation and mapping contracts in bff/tests/contract/roadmaps.test.ts
+- [ ] T098 [P] [US1] Add roadmap browser, generated-schema validation, local-error timing, fetch-resolved/accessibility-tree marks, keyboard, submitted-operation duplicate suppression, 320/375/768/1024/1440/1920px, and outage tests in ui/tests/e2e/roadmap.spec.ts
+- [ ] T099 [P] [US1] Add owned persistence and cross-employee denial tests in tests/integration/test_owned_roadmap_flow.py
 
 ### Implementation
 
-- [ ] T090 [US1] Implement owned roadmap and milestone persistence against the foundational roadmap schema in src/storage/roadmap_repository.py
-- [ ] T091 [US1] Implement authenticated idempotent roadmap creation in src/agent/roadmap_service.py and src/api/routes/roadmap.py
-- [ ] T092 [US1] Implement BFF roadmap validation and composition in bff/src/routes/roadmaps.ts and bff/src/contracts/roadmap.ts
-- [ ] T093 [P] [US1] Implement accessible profile/roadmap form in ui/src/features/roadmap/RoadmapForm.tsx
-- [ ] T094 [P] [US1] Implement roadmap, milestones, loading, and error result in ui/src/features/roadmap/RoadmapResult.tsx
-- [ ] T095 [US1] Implement preserved state and same-key retry in ui/src/features/roadmap/useRoadmap.ts
-- [ ] T096 [US1] Connect the roadmap route in ui/src/app/routes.tsx
-- [ ] T097 [US1] Integrate persistence status into ui/src/features/roadmap/RoadmapForm.tsx and ui/src/features/roadmap/useRoadmap.ts
-- [ ] T098 [US1] Add roadmap trace, latency, outcome, and safe-error telemetry in bff/src/routes/roadmaps.ts and src/api/routes/roadmap.py
-- [ ] T099 [US1] Record independent MVP verification steps in specs/003-develop-ui/quickstart.md
+- [ ] T100 [US1] Implement exactly-one employee/application-owned roadmap, stable-milestone, enriched/legacy-only classification, and delegated-BFF rejection persistence against the foundational schema in src/storage/roadmap_repository.py
+- [ ] T101 [US1] Implement authenticated idempotent employee/application roadmap creation with schema-valid ready/nonempty-roadmap versus needs-more-info/nonempty-clarification discrimination plus employee-only owner-scoped list/get restoration in src/agent/roadmap_service.py and a self-registering feature module that consumes the Foundation registry API without editing it in src/api/routes/roadmap.py
+- [ ] T102 [US1] Implement generated-schema BFF roadmap create/list/get validation and composition in a self-registering feature module that consumes the Foundation registry API without editing it in bff/src/routes/roadmaps.ts and bff/src/contracts/roadmap.ts
+- [ ] T103 [P] [US1] Implement the accessible profile/roadmap form using generated OpenAPI validators and local-validation attempt/guidance performance marks in ui/src/features/roadmap/RoadmapForm.tsx
+- [ ] T104 [P] [US1] Implement roadmap, milestones, loading, and error results with `career.result.fetch-resolved` after complete payload validation and `career.result.accessible-render-committed` after accessible render commitment in ui/src/features/roadmap/RoadmapResult.tsx
+- [ ] T105 [US1] Implement preserved state, same-key retry, shared submitted-operation guarding, and authoritative roadmap reload after refresh in ui/src/features/roadmap/useRoadmap.ts
+- [ ] T106 [US1] Implement the roadmap feature route and activate/register only the roadmap descriptor through the Foundation registry API without editing the shared registry in ui/src/features/roadmap/routes.tsx
+- [ ] T107 [US1] Integrate persistence status into ui/src/features/roadmap/RoadmapForm.tsx and ui/src/features/roadmap/useRoadmap.ts
+- [ ] T108 [US1] Add roadmap trace, latency, outcome, and safe-error telemetry in bff/src/routes/roadmaps.ts and src/api/routes/roadmap.py
+- [ ] T109 [US1] Record the independent local and three-service-container MVP verification steps plus the required non-release label and roadmap-only navigation scope in specs/003-develop-ui/quickstart.md
 
-**Checkpoint**: User Story 1 is deployable as the MVP.
+**Checkpoint**: User Story 1 is independently demonstrable as a roadmap-only,
+non-release MVP in local and three-service container environments. Protected
+Azure deployment is not claimed until T194 and the complete release gates pass.
 
 ---
 
@@ -159,20 +196,20 @@
 
 ### Tests
 
-- [ ] T100 [P] [US2] Add core guidance contracts in tests/contract/test_guidance_v1_contract.py
-- [ ] T101 [P] [US2] Add BFF guidance/error contracts in bff/tests/contract/guidance.test.ts
-- [ ] T102 [P] [US2] Add guidance, reuse, lab, keyboard, outage, and 320/375/768/1024/1440/1920px coverage in ui/tests/e2e/guidance.spec.ts
+- [ ] T110 [P] [US2] Add exact topic outcome contracts: case-insensitive canonical ID/name/alias active match reports requested/resolved topic and claims the key; known unavailable returns `422 GUIDANCE_TOPIC_UNAVAILABLE` with `retryable=true`; known retired returns the same code with `retryable=false`; no/ambiguous match returns field-associated `422 GUIDANCE_TOPIC_UNINTERPRETABLE`; blank/over-128-codepoint/schema-invalid returns `422 VALIDATION_FAILED`; and catalog/core outage returns `CAPABILITY_METADATA_UNAVAILABLE`/`CORE_UNAVAILABLE`, with every rejection pre-key and profile/topic preserved in tests/contract/test_guidance_v1_contract.py
+- [ ] T111 [P] [US2] Add BFF mapping contracts for every T110 stable code/retryability/field association, requested/resolved canonical topic, active catalog version versus mismatch-as-compatibility, cost status, no silent substitution, no key on rejection, and no outage-to-topic-error conversion in bff/tests/contract/guidance.test.ts
+- [ ] T112 [P] [US2] Add generated catalog/schema validation and exact active/unavailable/retired/uninterpretable/outage UI states with preserved editable topic/profile, local-error and accessible-result timing, lab cost status, duplicate/same-key suppression, keyboard, and all required widths in ui/tests/e2e/guidance.spec.ts
 
 ### Implementation
 
-- [ ] T103 [US2] Implement authenticated idempotent guidance in src/agent/skill_guidance_service.py and src/api/routes/skills.py
-- [ ] T104 [US2] Implement BFF guidance composition in bff/src/routes/guidance.ts and bff/src/contracts/guidance.ts
-- [ ] T105 [P] [US2] Implement accessible guidance form in ui/src/features/guidance/GuidanceForm.tsx
-- [ ] T106 [P] [US2] Implement guidance and lab preview in ui/src/features/guidance/GuidanceResult.tsx and ui/src/features/labs/LabReferenceCard.tsx
-- [ ] T107 [US2] Implement editable shared profile state in ui/src/app/profile-context.tsx and ui/src/features/guidance/useGuidance.ts
-- [ ] T108 [US2] Connect guidance and safe external links in ui/src/app/routes.tsx
-- [ ] T109 [US2] Integrate persistence status into ui/src/features/guidance/GuidanceForm.tsx and ui/src/features/guidance/useGuidance.ts
-- [ ] T110 [US2] Add guidance and lab telemetry in bff/src/routes/guidance.ts and src/api/routes/skills.py
+- [ ] T113 [US2] Implement T110 normalization/classification against the exact versioned catalog, active-only execution and requested/resolved topic response, pre-key stable unavailable/retired/uninterpretable/validation outcomes, compatibility mismatch, and dependency-outage separation in src/agent/skill_guidance_service.py and a self-registering feature module in src/api/routes/skills.py
+- [ ] T114 [US2] Implement generated-schema BFF guidance composition with the exact stable code/retryability/field mapping, requested/resolved canonical topic, active catalog-version compatibility, no silent replacement or outage reclassification, and lab cost/status filtering in bff/src/routes/guidance.ts and bff/src/contracts/guidance.ts
+- [ ] T115 [P] [US2] Implement the accessible guidance form with generated validators/catalog, 128-codepoint bound, field-associated summary/focus, preserved editable values for every topic classification, correct retry affordance, and local validation marks in ui/src/features/guidance/GuidanceForm.tsx
+- [ ] T116 [P] [US2] Implement guidance and lab preview with requested/resolved topic, unavailable-versus-retired messaging, explicit lab active/unavailable/retired and cost state, safe new-tab metadata, no implied completion, plus exact fetch-resolved and accessible-render-committed marks in ui/src/features/guidance/GuidanceResult.tsx and ui/src/features/labs/LabReferenceCard.tsx
+- [ ] T117 [US2] Implement editable shared profile state and submitted-operation guarding in ui/src/app/profile-context.tsx and ui/src/features/guidance/useGuidance.ts
+- [ ] T118 [US2] Implement the guidance feature route and safe external links, then activate/register only the guidance descriptor through the Foundation registry API without editing the shared registry in ui/src/features/guidance/routes.tsx
+- [ ] T119 [US2] Integrate persistence status into ui/src/features/guidance/GuidanceForm.tsx and ui/src/features/guidance/useGuidance.ts
+- [ ] T120 [US2] Add guidance, topic-catalog, lab cost-status, and safe-error telemetry in bff/src/routes/guidance.ts and src/api/routes/skills.py
 
 **Checkpoint**: User Story 2 works without a saved roadmap.
 
@@ -185,29 +222,29 @@
 
 ### Tests
 
-- [ ] T111 [P] [US3] Add learning/review/lab/next-action contracts in tests/contract/test_learning_v1_contract.py
-- [ ] T112 [P] [US3] Add atomic scoring, retry, resume, and idempotency tests in tests/integration/test_learning_session_flow.py
-- [ ] T113 [P] [US3] Add BFF composition and answer non-disclosure tests in bff/tests/contract/learning.test.ts
-- [ ] T114 [P] [US3] Add session, resume, lab, review, keyboard, outage, and 320/375/768/1024/1440/1920px coverage in ui/tests/e2e/learning-session.spec.ts
-- [ ] T115 [P] [US3] Add 20-30-minute required-content timing boundaries plus optional-material, external-lab, interruption, and retry exclusion accounting in tests/integration/test_learning_session_timing.py
+- [ ] T121 [P] [US3] Add contracts for pinned content version/ordered step IDs/exact 3-5 question IDs/lab-reference versions, one in-progress attempt, immutable answer/time/score history, chronological latest/highest labels, permanent first pass, normal 30-day and immediate security-critical retirement, safe replacement/no-copy rules, lab-state reload, status-conditional score/pass, and exactly-one next-action precedence in tests/contract/test_learning_v1_contract.py
+- [ ] T122 [P] [US3] Add atomic scoring/completion plus exact retry tests: feedback for only the answered item, missed-concept study then a new full attempt with the same stable pinned IDs/order and no copied answers, unlimited lifetime attempts but five new attempts per rolling 60 minutes and sixth `429 REVIEW_RETRY_RATE_LIMITED`/`Retry-After: 15 minutes`, restart/resume/idempotency, and immutable history in tests/integration/test_learning_session_flow.py
+- [ ] T123 [P] [US3] Add generated BFF composition for pinned versions/questions/labs, safe restored answers/times/history, status-conditional review results, retry/rate-limit and normal/security-retirement stable codes, field validation, unanswered-key non-disclosure, and no mixed question-version submission in bff/tests/contract/learning.test.ts
+- [ ] T124 [P] [US3] Add generated-schema field association, exact persistence states, auth-epoch delayed-response rejection, session/resume at lowest incomplete step, restored answers/times, external-lab return-state reload/no auto-completion, normal/security retirement/replacement, review feedback announced politely within one second, missed-concept/new-full-attempt retry UI, rate limit, duplicate-submit suppression, keyboard/outage, and required widths in ui/tests/e2e/learning-session.spec.ts
+- [ ] T125 [P] [US3] Add the exact accumulated required-content clock: start after first required step accessibility commit, count required interaction and first scored review through result/explanation accessibility commit, pause for optional material/explicit leave/document hidden over five seconds/before external lab, resume on visible focus, exclude lab/interruption/retry time, record monotonic reasoned segments, and make missing/negative/overlap a retained SC-011 failure in tests/integration/test_learning_session_timing.py
 
 ### Implementation
 
-- [ ] T116 [P] [US3] Add learning-session, step, review, answer, and milestone models in src/storage/learning_models.py
-- [ ] T117 [US3] Add learning constraints and indexes in alembic/versions/007_learning_sessions.py
-- [ ] T118 [US3] Implement owner-scoped learning persistence in src/storage/learning_repository.py
-- [ ] T119 [US3] Implement start/resume, steps, and lab reports in src/agent/learning_service.py
-- [ ] T120 [US3] Implement atomic scoring, 80% completion, and retry in src/agent/review_service.py
-- [ ] T121 [US3] Implement exactly-one next-action policy in src/agent/next_action.py
-- [ ] T122 [US3] Implement core learning endpoints in src/api/routes/learning.py
-- [ ] T123 [US3] Implement BFF learning/review/lab routes in bff/src/routes/learning.ts
-- [ ] T124 [P] [US3] Implement objective, duration, steps, and resume UI in ui/src/features/learning/LearningSession.tsx
-- [ ] T125 [P] [US3] Implement lab preview/report UI in ui/src/features/labs/LabExperience.tsx
-- [ ] T126 [P] [US3] Implement review, feedback, and retry UI in ui/src/features/review/SessionReview.tsx
-- [ ] T127 [US3] Implement celebration and next action in ui/src/features/learning/CompletionPanel.tsx
-- [ ] T128 [US3] Connect learning routes and interruption recovery in ui/src/app/routes.tsx and ui/src/features/learning/useLearningSession.ts
-- [ ] T129 [US3] Integrate persisted-step and unsaved-review status into ui/src/features/learning/LearningSession.tsx and ui/src/features/learning/useLearningSession.ts
-- [ ] T130 [US3] Add learning, review, lab, duration, retry, outcome, trace, and safe-error telemetry in bff/src/routes/learning.ts and src/api/routes/learning.py
+- [ ] T126 [P] [US3] Add learning-session models with pinned content/objective/ordered-step/question/lab-reference versions, retirement/grace/security-block fields, required-clock segments, step/lab state, exactly-one in-progress review, immutable attempt/answer/timestamps/score, rolling-retry metadata, and milestone completion in src/storage/learning_models.py
+- [ ] T127 [US3] Add a failing learning-head contract, then implement sibling revision `007_learning_sessions` with pin/snapshot immutability, exact 3-5 questions, one in-progress attempt, immutable submitted history, completion non-reversal, rolling retry indexing, content-retirement and required-clock constraints/indexes, plus owner-graph registration in tests/integration/test_alembic_learning_head.py and alembic/versions/007_learning_sessions.py
+- [ ] T128 [US3] Implement owner-scoped pinned learning persistence, immutable attempt/answer/time/score history, chronological latest/highest restoration, single in-progress attempt, normal/security retirement state, stable replacement mappings, lab-current-state lookup, and safe submitted-answer restoration in src/storage/learning_repository.py
+- [ ] T129 [US3] Implement pinned start/resume at the lowest incomplete required step, required-clock segment events, lab active/unavailable/retired cost/status reporting and append-only reports, 30-day normal-retirement resume then `CONTENT_VERSION_RETIRED`, immediate security block, stable-step/objective-identical copy eligibility, replacement guidance, and no lab-return auto-completion in src/agent/learning_service.py
+- [ ] T130 [US3] Implement answer-only feedback, immutable full-attempt scoring, atomic 80% completion/non-reversal, missed-concept study then same-pinned-ID/order fresh attempt without copied answers, at most five new attempts per rolling 60 minutes with sixth `REVIEW_RETRY_RATE_LIMITED`/15-minute Retry-After, finalized/security-retired rejection, and no mixed-version scoring in src/agent/review_service.py
+- [ ] T131 [US3] Extend the T049 selector through its Foundation interface with learning-session/review retry and resume candidates plus lowest-ordinal/oldest-unresolved/stable-ID tie-breaking, preserving the roadmap-only fallback when the learning head is absent, in src/agent/next_action.py and src/storage/learning_repository.py
+- [ ] T132 [US3] Implement core pinned learning/review/lab mutations, required-clock events, stable finalized/rate-limit/content-retirement/resource codes, owner-scoped immutable history restoration, and exactly-one next action in a self-registering module in src/api/routes/learning.py
+- [ ] T133 [US3] Implement generated BFF pinned learning/review/lab mutations, exact stable-code/problem mapping, current lab-state reload, session/immutable attempt-history restoration, and next action in bff/src/routes/learning.ts
+- [ ] T134 [P] [US3] Implement objective, 20-30-minute estimate, pinned version/ordered steps, lowest-incomplete resume, required-clock marks/pause reasons, retirement/replacement state, and accessible progress labels in ui/src/features/learning/LearningSession.tsx
+- [ ] T135 [P] [US3] Implement lab active/unavailable/retired preview/report UI with provider/cost/duration/new-tab text, generated validation, append-only report status, return-time current-state reload, no implied completion, and associated local guidance/timing marks in ui/src/features/labs/LabExperience.tsx
+- [ ] T136 [P] [US3] Implement stable-order 3-5-question review with answer correctness/explanation committed to `aria-live="polite"` within one second, inaccessible unanswered keys, immutable history/latest/highest, missed-concept study then no-copy full retry, rolling-limit messaging, retirement/finalization handling, and associated validation marks in ui/src/features/review/SessionReview.tsx
+- [ ] T137 [US3] Implement celebration and next action in ui/src/features/learning/CompletionPanel.tsx
+- [ ] T138 [US3] Implement the learning route with pinned contract integration, all six interruption cases and authoritative lowest-incomplete/history restoration, auth-epoch delayed-response denial, normal/security content-change handling, lab return-state reload, and same-key guards for every session/step/review/answer/submit/report mutation, then activate/register only the learning descriptor through the Foundation registry API in ui/src/features/learning/routes.tsx and ui/src/features/learning/useLearningSession.ts
+- [ ] T139 [US3] Integrate exact persisted-step/review `not_yet_saved`/`saving`/`save_unknown`/`failed_to_save`/`saved` states, saving navigation block, discard notice, and authoritative resolution into ui/src/features/learning/LearningSession.tsx and ui/src/features/learning/useLearningSession.ts
+- [ ] T140 [US3] Add learning, review, lab, duration, retry, outcome, trace, and safe-error telemetry in bff/src/routes/learning.ts and src/api/routes/learning.py
 
 **Checkpoint**: User Story 3 proves the complete learning loop.
 
@@ -220,20 +257,20 @@
 
 ### Tests
 
-- [ ] T131 [P] [US4] Add owned progress contracts in tests/contract/test_progress_v1_contract.py
-- [ ] T132 [P] [US4] Add BFF progress/idempotency contracts in bff/tests/contract/progress.test.ts
-- [ ] T133 [P] [US4] Add check-in, preservation, milestone, keyboard, outage, and 320/375/768/1024/1440/1920px coverage in ui/tests/e2e/progress.spec.ts
+- [ ] T141 [P] [US4] Add employee/application-owned progress mutation and employee-only latest-review restoration, strict/legacy milestone and cross-owner contracts, plus transactional roadmap-revision conflict tests proving one internal retry then `409 ROADMAP_VERSION_CONFLICT`, zero check-in on second conflict, preserved notes, authoritative reload and a new intended-action key; retain exactly-one next-action fallback without learning tables in tests/contract/test_progress_v1_contract.py
+- [ ] T142 [P] [US4] Add generated-schema BFF progress validation/idempotency contracts in bff/tests/contract/progress.test.ts
+- [ ] T143 [P] [US4] Add generated-schema field association, local-error timing, check-in, preservation, milestone, duplicate-submit suppression, keyboard, outage, and 320/375/768/1024/1440/1920px coverage in ui/tests/e2e/progress.spec.ts
 
 ### Implementation
 
-- [ ] T134 [US4] Add owned progress persistence in src/storage/progress_repository.py and alembic/versions/008_owned_progress.py
-- [ ] T135 [US4] Implement authenticated progress review in src/agent/progress_service.py and src/api/routes/progress.py
-- [ ] T136 [US4] Implement BFF progress mapping in bff/src/routes/progress.ts and bff/src/contracts/progress.ts
-- [ ] T137 [P] [US4] Implement accessible preserved-note form in ui/src/features/progress/ProgressForm.tsx
-- [ ] T138 [P] [US4] Implement status/gap/milestone result in ui/src/features/progress/ProgressReview.tsx
-- [ ] T139 [US4] Integrate progress state and route in ui/src/features/progress/useProgress.ts and ui/src/app/routes.tsx
-- [ ] T140 [US4] Integrate persistence status into ui/src/features/progress/ProgressForm.tsx and ui/src/features/progress/useProgress.ts
-- [ ] T141 [US4] Add progress trace and denial telemetry in bff/src/routes/progress.ts and src/api/routes/progress.py
+- [ ] T144 [US4] Add a failing progress-head contract, then implement exactly-one employee/application owner, both employee/roadmap and machine/roadmap composite FKs/indexes, submitted legacy-reference plus normalized-key ProgressCheckIn/ProgressReview ORM models, persistence, and sibling revision `008_owned_progress` with `down_revision="006_owned_roadmaps"`, `branch_labels=("progress",)`, and progress owner-graph registration in the T037 retention procedure registry in tests/integration/test_alembic_progress_head.py, src/storage/progress_models.py, src/storage/progress_repository.py, and alembic/versions/008_owned_progress.py
+- [ ] T145 [US4] Implement authenticated employee/application progress review with strict explicit-key validation/legacy normalization, owner isolation, and one-transaction roadmap revision/check-in/review/next-action evaluation; retry a revision conflict once, then return `ROADMAP_VERSION_CONFLICT` without a check-in while preserving notes and requiring authoritative reload/new intended-action key, retaining roadmap-only fallback in src/agent/progress_service.py and src/api/routes/progress.py
+- [ ] T146 [US4] Implement generated-schema BFF progress mutation/latest-review mapping in a self-registering feature module that consumes the Foundation registry API without editing it in bff/src/routes/progress.ts and bff/src/contracts/progress.ts
+- [ ] T147 [P] [US4] Implement the accessible preserved-note form with generated request validation, associated local guidance, and validation timing marks in ui/src/features/progress/ProgressForm.tsx
+- [ ] T148 [P] [US4] Implement status/gap/milestone result in ui/src/features/progress/ProgressReview.tsx
+- [ ] T149 [US4] Integrate generated progress contracts, exact persistence/auth-epoch state, authoritative roadmap/latest-review reload after refresh or `ROADMAP_VERSION_CONFLICT`, preserved notes, a new key only after that authoritative conflict reload, shared submitted-operation guarding, and the isolated route, then activate/register only the progress descriptor through the Foundation registry API in ui/src/features/progress/useProgress.ts and ui/src/features/progress/routes.tsx
+- [ ] T150 [US4] Integrate persistence status into ui/src/features/progress/ProgressForm.tsx and ui/src/features/progress/useProgress.ts
+- [ ] T151 [US4] Add progress trace and denial telemetry in bff/src/routes/progress.ts and src/api/routes/progress.py
 
 **Checkpoint**: All four stories are independently functional.
 
@@ -241,91 +278,155 @@
 
 ## Phase 7: Polish and Cross-Cutting Verification
 
-- [ ] T142 [P] Add cross-journey navigation, landing-page, timeout-dialog, error-state, and 320/375/768/1024/1440/1920px accessibility coverage in ui/tests/e2e/accessibility.spec.ts
-- [ ] T143 [P] Add token leakage, CSP, cookie, Origin, and CSRF tests in ui/tests/e2e/security.spec.ts and bff/tests/integration/browser-security.test.ts
-- [ ] T144 [P] Add Redis/PostgreSQL Entra refresh tests in bff/tests/integration/redis-entra.test.ts and tests/integration/test_postgres_entra.py
-- [ ] T145 [P] Add machine outage independence/private route tests in tests/integration/test_machine_consumer_flow.py
-- [ ] T146 [P] Add supported and unsupported UI/BFF and BFF/core capability-range, version-header, pre-downstream-call, pre-idempotency, pre-mutation, and unsaved-input compatibility tests in tests/contract/test_version_compatibility.py
-- [ ] T147 [P] Add outage diagnosis and trace continuity tests in tests/integration/test_service_outages.py
-- [ ] T148 [P] Define the versioned SC-043 workload, approved profile/topic fixtures, fixture digest, two-request-per-worker warm-up, two independent 10-worker scenarios, 100 measured attempts per scenario, monotonic core ASGI timing boundary, nearest-rank p95 calculation, failure/timeout denominator treatment, browser fetch-resolution-to-accessibility-tree marks, and separate core/BFF/browser evidence in tests/performance/performance-profile-v1.json and tests/integration/test_ui_feature_performance.py
-- [ ] T149 [P] Add UI-only, BFF-only, core-only, multi-service, shared-contract, shared-build, documentation-only, first-build, missing-baseline, and audited rebuild-all change-plan tests in tests/ci/test_change_plan.py
-- [ ] T150 [P] Add protected-ref, validation-only PR, cancellation, agent-loss, Azure-denial, stale-build, concurrent-build, digest-only, controller-audit lifecycle/recovery, evidence-gate failure, evidence-completeness, forward/reverse mutation-journal, ordered-rollout, and scoped-rollback contracts in tests/ci/test_jenkins_delivery.py
-- [ ] T151 [P] Add Jenkins cloud `azure`, provisioning-service-principal scope/expiry, publisher/deployer ACI template, provisioning/connection failure, wrong-template, wrong-UAMI, wrong-subscription, forbidden ACR/AKS access, and Azure-RBAC-denial tests in tests/ci/test_jenkins_azure_agent.py
-- [ ] T152 [P] Add exact-template, missing-identity, additional-identity, swapped-identity, and system-assigned-identity rejection tests in tests/ci/test_jenkins_aci_identity_binding.py
-- [ ] T153 [P] Add 30/14/7-day warning, under-30-day rejection, credential-management identity least privilege, protected-input and log-redaction checks, Jenkins-update failure safety, both-template validation before normal revocation, retired-credential denial, emergency lockout, and temporary-material cleanup tests in tests/ci/test_jenkins_cloud_credential_lifecycle.py
-- [ ] T154 [P] Add evidence authorization, hold-manager least privilege, writer read/list denial, cross-prefix denial, immutable-path overwrite/delete denial, immutable-policy enforcement, 90-day deletion, malformed and unauthorized holds, 180-day ceiling, hold expiry/release, and prohibited-content tests in tests/ci/test_delivery_evidence_retention.py
-- [ ] T155 [P] Add per-service availability, latency, error-rate, dependency, certificate-expiry, reconciliation, and lab-validation alert contracts in tests/contract/test_azure_monitor_alerts.py
-- [ ] T156 Implement merge-base classification and immutable change-plan output in scripts/ci/detect-changes.sh and selected-service validation dispatch in scripts/ci/validate-service.sh
-- [ ] T157 Implement changed-image build, scan, SBOM, ACR push, digest resolution, and release-manifest generation in scripts/ci/build-publish.sh
-- [ ] T158 Implement authoritative Azure Storage evidence upload, immutable path construction, atomic `If-None-Match: *` creation, overwrite rejection, and prohibited-content validation in scripts/ci/publish-evidence.sh and scripts/ci/validate-evidence.sh
-- [ ] T159 Implement digest-only promotion, current-digest snapshot, ordered core-to-BFF-to-UI rollout, smoke verification, append-only forward/reverse mutation journaling, and scoped rollback in scripts/ci/promote.sh, scripts/ci/deploy.sh, scripts/ci/verify.sh, scripts/ci/mutation-journal.sh, and scripts/ci/rollback.sh
-- [ ] T160 Implement mandatory pre-promotion, pre-mutation, post-mutation, verification, and rollback evidence gates in scripts/ci/evidence-gate.sh and scripts/ci/publish-evidence.sh
-- [ ] T161 Implement controller audit creation, monotonic stage updates, terminal finalization, restart recovery, and retention cleanup in scripts/ci/manage-controller-audit.sh
-- [ ] T162 Implement protected-ref, validation-only PR, fail-fast, controller-audit lifecycle, authenticated-agent evidence milestones and gates, reverse-mutation journal enforcement, environment-lock, `azure-aci-publisher`, and `azure-aci-deployer` stage boundaries in Jenkinsfile
-- [ ] T163 Provision distinct publisher/deployer user-assigned identities and least-privilege ACR/AKS plus path-scoped evidence-create assignments in infra/azure/jenkins-agent-identities.tf
-- [ ] T164 Validate Jenkins cloud `azure`, provisioning-service-principal scope/expiry/denials, configured resource group, ACI templates, managed identities, and target environment in scripts/jenkins/verify-agent.sh and scripts/jenkins/verify-managed-identity.sh
-- [ ] T165 Bind publisher and deployer Terraform identity outputs to the `azure-aci-publisher` and `azure-aci-deployer` templates under Jenkins cloud `azure` and record the controlled procedure in docs/jenkins-azure-cloud.md
-- [ ] T166 Validate live Jenkins template and running ACI identity resource IDs in scripts/jenkins/verify-aci-identity-binding.sh
-- [ ] T167 Implement provisioning-service-principal expiry and scope inspection in scripts/jenkins/verify-cloud-credential.sh
-- [ ] T168 Configure a dedicated Jenkins credential-management identity with permission limited to the stable Azure cloud credential entry in scripts/jenkins/configure-credential-manager.groovy and docs/jenkins-credential-manager.md
-- [ ] T169 Configure tag-based 90-day deletion and bounded 180-day incident-hold lifecycle behavior and metadata in infra/azure/delivery-evidence-storage.tf
-- [ ] T170 Implement authorized evidence hold creation, validation, release, audit, and expiry in scripts/ci/manage-evidence-hold.sh
-- [ ] T171 Implement normal and emergency Jenkins Azure cloud-credential rotation in scripts/jenkins/rotate-cloud-credential.sh using a least-privilege credential-management identity, localhost Jenkins API authentication, CSRF protection, stable credential ID, protected-standard-input or file-descriptor secret handoff, log redaction, cleanup traps, an audited rotation-only smoke-agent path that cannot run jobs/publish/deploy, publisher/deployer ACI verification, retired-credential revocation, and ordinary-provisioning quarantine
-- [ ] T172 Configure per-service availability, latency, error-rate, dependency, certificate-expiry, reconciliation, and lab-validation alerts with actionable routing in infra/azure/monitoring.tf
-- [ ] T173 [P] Validate Gateway, private core, identities, health, PDB, topology, policies, and digest-only workload references in tests/contract/test_aks_ui_manifests.py
-- [ ] T174 [P] Verify application identity isolation plus Jenkins publisher/deployer least privilege and denial boundaries in tests/integration/test_azure_identity_boundaries.py
-- [ ] T175 Run all application and Jenkins delivery checks and record non-secret evidence in specs/003-develop-ui/verification.md
-- [ ] T176 Document the local Jenkins controller, cloud `azure`, ACI templates, managed identities, deployment, reconciliation, retention, key rotation, incident handling, and rollback in docs/operations-ui.md
-- [ ] T177 Update developer, Jenkins job setup, local pipeline verification, and architecture guidance in README.md and specs/003-develop-ui/quickstart.md
-- [ ] T178 Define eligibility, recruitment, exactly-20-participant sampling, replacement rules, exclusions, task scripts, assistance rules, timing boundaries, questionnaire wording, and calculations in specs/003-develop-ui/usability-study.md
-- [ ] T179 Record anonymized pilot observations and calculate SC-001, SC-007, SC-011, and SC-015 through SC-017 outcomes in specs/003-develop-ui/usability-results.md
+- [ ] T152 [P] Freeze and evidence the exact latest two stable browser majors, then test all four implemented journeys on Windows 11 Chrome/Edge/Firefox at 320/375/768/1024/1440/1920 with keyboard and NVDA on latest Chrome/Firefox; macOS current/previous Chrome/Firefox/Safari at all widths with keyboard and VoiceOver/latest Safari; Chrome/WebKit mobile at 375x812 portrait, 812x375 landscape, and 320x568 portrait with touch/on-screen-keyboard/orientation/focus restoration; and latest Chrome/Edge/Firefox/Safari at 200% zoom plus Chrome/Safari 200% text scaling. Assert one h1/heading order, route/error/result/dialog/lab-return focus, names/roles/states, 2-pixel/3:1 focus, polite status and assertive blocking-error announcements without repeats, field associations, two-minute idle/absolute timeout-warning behavior, visible/accessible external-link provider/cost/duration/new-tab text, textual progress/review cues, labelled internal-only overflow, complete-release at-most-two-interaction entry, sign-out, and no content/action loss. For each production journey, repeat the T022 `not_yet_saved`/`saving`/`save_unknown`/`failed_to_save`/`saved`, navigation, refresh/closure, delayed-response, session-restoration, and authoritative-reload conformance matrix in ui/tests/e2e/accessibility.spec.ts, ui/tests/e2e/persistence-status.spec.ts, and ui/tests/e2e/navigation-session.spec.ts.
+- [ ] T153 [P] Add token leakage, UI telemetry allowlist/personal-data exclusion, CSP, cookie, Origin, and CSRF tests in ui/tests/e2e/security.spec.ts, ui/tests/unit/safe-telemetry.test.ts, and bff/tests/integration/browser-security.test.ts
+- [ ] T154 [P] Add deployed long-duration rollover verification across every BFF/core replica and connection pool through successive Redis/PostgreSQL Entra token expiries, tenant-JWKS refresh/unknown-kid/stale-24-hour cases, Key Vault/CSI active-version refresh and partial-replica mount failure, transient reconnect, per-replica readiness removal, and recovery without workload restart, cookie clearing, password/access-key/plaintext fallback, or saved-data loss in tests/integration/test_deployed_entra_rollover.py
+- [ ] T155 [P] Add machine outage independence plus approved-VNet/peered/private-connected source, private-DNS/internal-LB-only, core-served TLS trust/rotation/HTTPS-probe, source-range/NSG/NetworkPolicy, app-role, application-owned roadmap/progress, stateless guidance, preserved business outcome, cross-application/employee denial, public-route denial, and no-impersonation tests in tests/integration/test_machine_consumer_flow.py
+- [ ] T156 [P] Load and reject any schema, manifest-digest, derived per-case fixture-digest, operation-set, or count drift from the approved tests/fixtures/readiness-scenario-manifest-v1.yaml, then implement its exhaustive dependency/readiness/atomicity/recovery injection suite for public Gateway, invalid UI config, BFF, core, Redis, PostgreSQL, Entra, signing-key metadata, Key Vault/CSI, ACR, AKS/control plane, Monitor, external labs, Jenkins controller, ACI agent, and evidence storage. Cover SC-009 14, SC-010 16, SC-012 six, SC-013/037/038 18, SC-014 five, SC-019/023/024 15, SC-020 16, SC-021/022 12, SC-026/033/034/035 12, SC-027/028 11 delegated per each of 18 operations and eight operation-specific machine cases per each of four operations, SC-029 `7 x replica_count`, SC-030/031 13, SC-032 nine per operation, SC-036/048 ten, SC-039 17, SC-040/041 12, and SC-042 20; assert stable code/retry/no-partial-mutation/readiness/recovery evidence, run deployed cases where external, count setup/dependency/crash/timeout/missing evidence as failure, and allow only preregistered journey N/A without denominator reduction in tests/integration/test_service_outages.py
+- [ ] T157 [P] Load and reject schema, full-profile-digest, fixture-set-digest, required-evidence-field, pinned BFF/core contract-byte-digest, operation, assignment, timing-boundary, or timeout drift from both approved tests/performance/performance-profile-v1.json and tests/performance/interaction-performance-profile-v1.json, including regenerated mapper-digest/drift for SC-043. Run the exact SC-043 beginner/intermediate/advanced roadmap and supported-topic guidance requests with their approved barrier, warm-up, hard-cancellation, denominator, failure-censoring, monotonic core-ASGI boundary, and nearest-rank p95 policy. Separately run all eight SC-050 scenarios with the interaction profile's exact deterministic fixtures, 10-worker barrier assignment, two successful warm-ups per worker, 100-attempt denominator per scenario, scenario-specific monotonic start/stop boundary, 5-second hard cancellation, timeout censoring, and nearest-rank p95; require at least 95 of 100 attempts per scenario within threshold and exclude employee interaction/preceding Entra time only from the callback boundary. Aggregate SC-003/SC-004 under their exact fixed environment/run/denominator protocols. Preserve every profile-required evidence field, raw outcome, environment/image/contract/fixture/profile digest, individual duration, threshold result, and aggregate p95 in tests/integration/test_ui_feature_performance.py without rewriting either approved profile.
+- [ ] T158 [P] Add change-plan tests for UI/BFF/core/multi-service, mixed-path union, both OpenAPI files, guidance catalog, implementation-readiness-contract.md, all 125-row requirements-traceability.md, tests/fixtures/readiness-scenario-manifest-v1.yaml, both tests/performance/performance-profile-v1.json and tests/performance/interaction-performance-profile-v1.json, shared build, provision/teardown skill assets, docs-only, first/missing baseline, invalid supplied baseline, and audited rebuild-all in tests/ci/test_change_plan.py; assert every archived plan has exact service booleans and mandatory `contractIntegrity`, `readinessScenarios`, `performanceProfile`, and `infrastructure` booleans; the mixed-path fixture must boolean-OR every service/lane selection, never clear an earlier `true`, and emit sorted unique reasons; a first/missing baseline uses only JSON `null`, records `missing-baseline`, and selects all services/lanes, while malformed or unresolvable supplied revisions fail closed; the readiness contract selects all services and all validation lanes, traceability selects all services plus contract/infrastructure validation, the readiness manifest selects all services plus T034/T156/infrastructure, and either performance profile selects all services plus T034/T157; neither normative input may use the documentation-only lane; executable/template skills select infrastructure plus all services, and manual rebuild/recovery requires a Delivery Recovery Operator plus distinct Platform Operations approver with no ordinary-gate bypass
+- [ ] T159 [P] Add the exact ten SC-036/SC-048 accepted/unaccepted/controller cases and full Jenkins delivery matrix: trusted pre-node audit, missing-call/shadow denial, cancellation, controller restart and replicated-volume disk-loss restore with queue/run/webhook/Azure-evidence orphan reconciliation, agent/Azure denial, stale/concurrent build, two-person requester/approver separation and recovery-only bounded diagnosis/rollback, published-unpromoted digest ineligibility/fresh-gate reuse/30-day GC/90-day disposition, evidence retry/indeterminate verification, every exact notification route/deadline/deduplicated 24-hour retry, append-only mutation journal, 0/15/45-second maximum-three compensation attempts within 20 minutes, stop at first unverified reverse entry, immutable `rollback_failed` quarantine, and attempt-wide recovery in tests/ci/test_jenkins_delivery.py
+- [ ] T160 [P] Add Jenkins cloud `azure`, identityless validator, provisioning-service-principal scope/expiry, publisher/deployer templates, deployer target-RG-only Reader and Terraform-state/secret/ACR-content/data-plane denial, provisioning/connection failure, wrong-template/UAMI/subscription, forbidden ACR/AKS access, and Azure-RBAC cross-denial tests in tests/ci/test_jenkins_azure_agent.py
+- [ ] T161 [P] Add the exact 17-case SC-039 manifest: validator, publisher, and deployer templates with required, missing, swapped, additional, and system-assigned identities plus PR/protected references; assert every unauthorized token/stage attempt fails, validator stays identityless, and publisher/deployer cannot assume one another or any application/ALB/gateway/kubelet identity in tests/ci/test_jenkins_aci_identity_binding.py
+- [ ] T162 [P] Add 30/14/7-day warning, scheduled local health-check, under-30-day rejection, credential-management identity least privilege, protected-input and log-redaction checks, Jenkins-update failure safety, identityless-validator plus publisher/deployer validation before normal revocation, retired-credential denial, emergency lockout, and temporary-material cleanup tests in tests/ci/test_jenkins_cloud_credential_lifecycle.py
+- [ ] T163 [P] Add evidence authorization, hold-manager/reconciler least privilege, writer read/list/legal-hold denial, cross-prefix denial, immutable-path overwrite/delete denial, fixed locked 90-day version-policy enforcement, deletion only after `immutable_until` with no legal hold, complete version inventory, authorized/audited version-level legal-hold set-expiry-extension-clear, proof that expiry extension never changes the fixed lock, partial-operation reconciliation without false state, early-release base-lock preservation, malformed/unauthorized holds, 180-day expiry ceiling, scheduled automatic hold clearing, and prohibited-content tests in tests/ci/test_delivery_evidence_retention.py
+- [ ] T164 [P] Add `operational-alert-profile-v1` contracts for zero readiness/5 minutes; 5xx >=5% and p95 >2s UI static, >30s roadmap, >10s guidance, or >5s other personalized API with >=20 requests in each of two 5-minute windows; >=3 restarts/10 minutes; HPA at 4 replicas with avg CPU >=70% for 15-minute warn/30-minute page; oldest unacknowledged revocation row at 2-hour warn/6-hour page/12-hour critical; gateway/private-core certificate expiry at 30/14/7 days and critical below 48 hours; no successful reconciliation at 6/8 hours; lab age at 30/36 hours plus immediate three-failure/unavailable alert; and exact Application/Platform/Learning-Content Operations routing. Also contract-test the pilot availability profile: one eligible-minute observation, announced-maintenance exclusion and four-hour monthly cap, missed-observation-as-failure, deterministic calendar-month rollup, immutable evidence publication, Application Operations close, Platform Operations recovery-evidence co-approval, and next-pilot-opening block after a missed close in tests/contract/test_azure_monitor_alerts.py and tests/contract/test_pilot_availability_evidence.py.
+- [ ] T165 [P] Add final integration validation for the already-tested sibling `007_learning_sessions`/`008_owned_progress` heads from `006_owned_roadmaps`, deterministic `009_merge_learning_progress`, upgrade-from-each-head, combined-head, and single-head release behavior in tests/integration/test_alembic_story_heads.py
+- [ ] T166 [P] Add identityless `azure-aci-validator` label, no-managed-identity/Azure-environment, identical all-ref non-Azure suite, PR/unprotected confinement, no controller/local fallback, and forbidden publish/deploy contracts in tests/ci/test_jenkins_validator_agent.py
+- [ ] T167 [P] Add explicit-target expand-only classification, bounded dedicated-namespace migration Job, immutable exact-repository digest, migrator SA/Workload Identity and DDL/backfill role, correct Job/Pod/`pods/log` RBAC and negative exec/attach/secret/SA permissions, non-overridable admission constraints on image/runner/target/SA/security/env/volumes, publisher-push versus deployer-create separation, PostgreSQL/network denial, timeout/retry/cleanup, idempotent upgrade, irreversible journal, failure-before-core-rollout, and evidence contracts in tests/ci/test_core_migrations.py
+- [ ] T168 [P] Add local Jenkins scheduled 30/14/7-day credential-health execution, deduplication, acknowledgement, escalation, quarantine, and non-secret-output tests in tests/ci/test_jenkins_credential_health_schedule.py
+- [ ] T169 Implement merge-base classification for both OpenAPI documents, guidance catalog, implementation-readiness-contract.md, all 125-row requirements-traceability.md, tests/fixtures/readiness-scenario-manifest-v1.yaml, both tests/performance/performance-profile-v1.json and tests/performance/interaction-performance-profile-v1.json, and provision/teardown skill executable/template producer-consumer paths; emit mandatory immutable `services` booleans plus `contractIntegrity`, `readinessScenarios`, `performanceProfile`, and `infrastructure` validation-lane booleans; initialize all selections false, boolean-OR every matching changed-path rule without permitting a later clear, force `contractIntegrity` true, and emit sorted unique reasons; encode a genuine first/missing baseline only as JSON `null` with all services/lanes true and `missing-baseline` reason, and reject malformed or unresolvable supplied revisions; the readiness contract selects all services/all lanes, traceability selects all services plus contract/infrastructure validation, a readiness-manifest change selects all services plus T034/T156/infrastructure, and either performance-profile change selects all services plus T034/T157; neither normative input may be classified as documentation-only; archive and dispatch that exact plan without path-scope recalculation in scripts/ci/detect-changes.sh and scripts/ci/validate-service.sh
+- [ ] T170 Implement one-time changed-image build/scan/SBOM/ACR-push/digest resolution and release manifest; record every never-promoted digest as `published_unpromoted` with build/revision/scan/SBOM/manifest provenance, prohibit it as another build's selector, allow later reuse only through a new release manifest after every current validation/scan/identity/evidence/environment gate, quarantine it from release aliases, make unreferenced/unheld items GC-eligible at 30 days, and retain 90-day disposition evidence without deleting promoted/held digests in scripts/ci/build-publish.sh
+- [ ] T171 Implement authoritative evidence upload with exact immutable path, `If-None-Match: *`, overwrite/prohibited-content denial, three attempts at 1/4/16 seconds, and exact-path/version verification before retrying an indeterminate write, never treating controller-local archives as authoritative, in scripts/ci/publish-evidence.sh and scripts/ci/validate-evidence.sh
+- [ ] T172 Implement digest-only promotion, immutable pre-attempt UI/BFF/core snapshot, ordered core-to-BFF-to-UI rollout/smoke, append-only forward/reverse journal, and attempt-wide reverse recovery; each entry gets at most three compensation attempts at 0/15/45 seconds within a 20-minute total deadline, timeout/failed verification consumes an attempt, rollback stops at the first unverified entry, and terminal `rollback_failed` quarantines promotion until a Delivery Recovery Operator plus distinct Platform Operations approver continues from that entry and reverifies later entries in scripts/ci/promote.sh, scripts/ci/deploy.sh, scripts/ci/verify.sh, scripts/ci/mutation-journal.sh, and scripts/ci/rollback.sh
+- [ ] T173 Implement mandatory pre-promotion, pre-migration, post-migration, pre-mutation, post-mutation, verification, and rollback evidence gates in scripts/ci/evidence-gate.sh and scripts/ci/publish-evidence.sh
+- [ ] T174 Implement an administrator-installed Jenkins plugin with `ControllerAuditRunListener`/`ControllerAuditAction` for unconditional pre-node `pending` creation, monotonic stage updates, exactly-once terminal finalization, fsynced normal-run plus host-managed append-only replicated audit writes before ACI allocation, unhealthy-store protected-scheduling denial, restart/disk-loss restore and accepted-orphan reconciliation, and retention in jenkins-controller-audit-plugin/pom.xml and jenkins-controller-audit-plugin/src/main/java/io/knowledgebasedb/jenkins/audit/; build/install only a protected-revision artifact whose digest is pinned and verified by scripts/jenkins/install-controller-audit-plugin.groovy, prove SCM omission/shadowing cannot bypass the listener, and limit scripts/ci/manage-controller-audit.sh to authenticated evidence serialization/allowed update requests
+- [ ] T175 After the failing T167 contracts, implement the dedicated `career-migrations` namespace, migrator service account, NetworkPolicy, cluster-admin-owned deployer RBAC (`create/get/watch/delete` Jobs; `get/list/watch` Pods; `get` `pods/log`; deny exec/attach/port-forward/secrets/configmaps/SA mutation), Job template with activeDeadline/backoff/TTL, and non-overridable ValidatingAdmissionPolicy/Binding enforcing exact migrator SA, fixed runner/allowed target, single nonprivileged container, exact ACR core repository by digest, allowlisted environment/volumes, and no host access in deploy/k8s/base/migration/; implement scripts/ci/migrate-core.sh to create/get/watch/delete only the constrained Job, discover/read Pod and `pods/log`, enforce timeout/cleanup, validate combined heads, run idempotently, write the irreversible journal, and publish identity/digest/target/head/status/log/policy/cleanup evidence
+- [ ] T176 Author Platform-Operations-applied publisher/deployer identities and update the mandatory provision/teardown skill topology to create/validate/teardown every distinct BFF, core, lifecycle, retention, lab-revalidation, migration, evidence-hold-reconciler, ALB-controller, and gateway-certificate/DNS Workload Identity plus the separate non-federatable exact-ACR kubelet `AcrPull` assignment; encode each exact least-privilege/negative matrix, UI identityless state, publisher/deployer ACR/AKS/evidence separation, target-RG Reader and Terraform-state/secret/data denials in infra/azure/jenkins-agent-identities.tf, .agents/skills/provision-azure-app-resources/{SKILL.md,agents/openai.yaml,references/project-profile.md}, its Terraform/scripts assets, .agents/skills/teardown-azure-app-resources/{SKILL.md,agents/openai.yaml,references/teardown-policy.md,scripts/teardown.sh}, and tests/contract/test_azure_resource_skills.py, preserving the three-service AGC/internal-core/Redis/PostgreSQL/Key-Vault topology with no legacy Ingress recreation
+- [ ] T177 Configure the identityless `azure-aci-validator` template for the identical all-ref non-Azure validation suite, confine PR/unprotected refs to it, and prohibit controller/local fallback in scripts/jenkins/configure-validator-agent.groovy and docs/jenkins-azure-cloud.md
+- [ ] T178 After T053-T064, T093, T175, and T176, wire and dry-run-test the external Platform Operations sequence that applies/imports all reviewed Terraform, bootstraps data principals, installs the pinned ALB Controller plus cluster-admin-owned migration namespace/RBAC/admission guardrails, and lets finalize-ui-platform.sh alone verify exact JIT scope/denials, final state plus the T052 canonical non-self-referential configuration digest, identities, controller/policy attestations, and provider/quota/capacity before manifest emission; do not execute the live apply/install/finalization or emit config/platform-bootstrap-nonprod.json until T194, and implement Jenkins cloud/agent consumption of the schema/example preflight report in scripts/jenkins/verify-agent.sh and scripts/jenkins/verify-managed-identity.sh without duplicating scripts/azure/preflight-ui-platform.sh
+- [ ] T179 Author publisher/deployer Jenkins cloud-template configuration that requires exact reviewed bootstrap-manifest identity outputs at execution, rejects additional/system-assigned identities, grants no Terraform capability, and leaves `azure-aci-validator` identityless in scripts/jenkins/configure-publisher-deployer-agents.groovy and docs/jenkins-azure-cloud.md; T194 performs the live configuration after finalization
+- [ ] T180 Implement scripts/jenkins/verify-aci-identity-binding.sh to validate live publisher/deployer template and running ACI identity resource IDs against the reviewed bootstrap manifest, including deployer target-RG Reader and state/secret/content/data denial; T194 executes it only after finalization and live template configuration
+- [ ] T181 Implement post-configuration validator preflight proving no managed identity, Azure environment, publish permission, or deploy permission in scripts/jenkins/verify-validator-agent.sh
+- [ ] T182 Implement post-bootstrap positive and exact negative identity matrices: kubelet only exact-ACR `AcrPull` with push/delete/import/admin/role-assignment/data/federation/pod-credential denials; ALB only exact AGC-RG/subnet grants with every T019 denial; gateway-certificate/DNS only named version/record operations with private-key/unrelated asset/zone-destroy/AGC/AKS/identity/data denials; plus publisher/deployer/controller, migration, BFF, core, lifecycle, retention, lab, hold-reconciler, and manifest scope/cross-role denials in scripts/azure/validate-delivery-identities.sh
+- [ ] T183 Implement provisioning-service-principal expiry and scope inspection in scripts/jenkins/verify-cloud-credential.sh
+- [ ] T184 Configure a dedicated Jenkins credential-management identity with permission limited to the stable Azure cloud credential entry in scripts/jenkins/configure-credential-manager.groovy and docs/jenkins-credential-manager.md
+- [ ] T185 Implement and schedule local Jenkins credential-health checks with 30/14/7-day alerts, acknowledgement/escalation state, quarantine, and redacted evidence in scripts/jenkins/check-cloud-credential-health.sh and scripts/jenkins/install-cloud-credential-health-job.groovy
+- [ ] T186 Configure fixed locked 90-day version-level immutability, lifecycle deletion only after `immutable_until` when no version legal hold remains, and a separate least-privilege hold-control inventory/audit store with bounded 180-day expiry metadata that never modifies the fixed lock in infra/azure/delivery-evidence-storage.tf
+- [ ] T187 Implement authorized evidence-set version inventory and version-level legal-hold set, bounded expiry-metadata extension without time-lock mutation, validation, all-or-reconciling partial-failure handling, audited clear on release/expiry, early-release base-lock preservation, and post-lock deletion eligibility in scripts/ci/manage-evidence-hold.sh; add an hourly dedicated-identity reconciler CronJob/SA/NetworkPolicy that reads only hold-control inventory and can set/clear exact version holds without blob-content read/list/delete or fixed-policy mutation in deploy/k8s/base/evidence-hold-reconciler/
+- [ ] T188 Implement every normal/partial/rollback/emergency Jenkins cloud-`azure` credential matrix row: rotate within 90 days and before <30 days remain; install through the least-privilege manager while old remains valid; verify validator/publisher/deployer within two hours before revocation; on partial failure keep old active, quarantine promotion, retry two hours then page and restore the stable entry; on compromise revoke immediately, disable ordinary provisioning, permit only audited quarantined three-template smoke, and allow no fallback; retain localhost auth/CSRF, protected input, redaction/cleanup, version-only evidence, and retired denial in scripts/jenkins/rotate-cloud-credential.sh
+- [ ] T189 Configure config/operational-alert-profile-v1.yaml and Azure Monitor rules for zero readiness/5 minutes; 5xx >=5% and p95 >2s UI static, >30s roadmap, >10s guidance, or >5s other personalized API with >=20 requests in each of two 5-minute windows; >=3 restarts/10 minutes; HPA at 4 replicas with avg CPU >=70% for 15-minute warn/30-minute page; oldest unacknowledged revocation row at 2-hour warn/6-hour page/12-hour critical; gateway/private-core certificate expiry at 30/14/7 days and critical below 48 hours; no successful reconciliation at 6/8 hours; lab age at 30/36 hours plus immediate three-failure/unavailable alert; and exact Application/Platform/Learning-Content Operations routing in infra/azure/monitoring.tf. Configure config/pilot-availability-profile-v1.yaml plus the per-eligible-minute synthetic observation, maintenance-notice/cap accounting, missed-run failure, calendar-month rollup, immutable evidence publication, owner/co-approval workflow, and missed-close pilot-opening gate in infra/azure/monitoring.tf and scripts/operations/close-pilot-availability-month.sh.
+- [ ] T190 Add deterministic Alembic merge revision `009_merge_learning_progress.py` joining sibling `007_learning_sessions` and `008_owned_progress` heads and enforce a single combined release head in alembic/versions/009_merge_learning_progress.py
+- [ ] T191 Integrate synchronization with the independently installed T174 audit, identical all-ref validation including readiness/125-row traceability gating, unprotected confinement, protected manifest/live/preflight/identity gates, requester/approver-separated manual rebuild and recovery-only actions, exact notification routes/deadlines/deduplicated retry, fail-fast migration/evidence, T171 evidence retry, T172 bounded compensation/`rollback_failed` continuation, controller-disk-loss orphan quarantine, `published_unpromoted` ineligibility/fresh-gate reuse/cleanup, attempt-wide reverse rollback, environment lock, and strict validator/publisher/deployer boundaries in Jenkinsfile
+- [ ] T192 [P] Validate pinned ALB-before-Gateway ordering, public UI/BFF TLS/private core/no legacy ingress, per-replica PostgreSQL/Redis/JWKS/CSI readiness, exact 12-hour gateway and 20-hour lab identities/network controls, migration and hourly hold reconciler, and provision/teardown parity for every T176 identity; encode the complete ALB scope/denial matrix, gateway certificate/DNS named-version/record and cross-resource/data denial matrix, and kubelet exact-ACR pull versus push/delete/import/admin/role/federation/application-pod denial matrix, plus UI identityless, health/PDB/topology/digests/combined Alembic head in tests/contract/test_aks_ui_manifests.py and tests/contract/test_azure_resource_skills.py
+- [ ] T193 [P] Author the live post-finalization harness for all T182/T192 positive and negative boundaries—including ALB exact AGC/subnet, gateway exact certificate-version/DNS records, kubelet exact-ACR pull/no assumption, UI identityless, BFF/core/lifecycle/retention/lab/migration/hold, validator/publisher/deployer/controller and target-RG Reader cross-denials—in tests/integration/test_azure_identity_boundaries.py; parameterize every actor/resource separately and do not execute before T194
+- [ ] T194 After all authoring/guardrail/static/live-harness tasks pass, have authorized Platform Operations perform the sole external apply/import/data bootstrap, install/attest ALB and migration controls, finalize/review the manifest with every T176 identity and fresh prerequisites, configure Jenkins, and execute T180/T182/T193 plus every externally dependent T156 case and protected delivery/Gateway check; also exercise pilot-window UI/BFF/core recovery, PostgreSQL PITR (<=5-minute RPO/<=4-hour RTO), Redis session-loss reauthentication/60-minute RTO, immutable evidence zero-RPO, and the first pilot-availability observation/monthly-close dry run, recording non-secret results in specs/003-develop-ui/verification.md. Successful T194 completion establishes the live environment and explicitly unblocks the deployed rollover verification in T154; it does not itself satisfy T154.
+- [ ] T195 Document replicated controller-audit installation/hourly integrity/encrypted backup/four-hour disk-loss restore, orphan reconciliation and post-mutation recovery block; exact two-person rebuild/recovery permissions; notification routes/deadlines/24-hour deduplicated retry; bounded compensation/`rollback_failed` continuation; unpromoted-digest ineligibility/reuse/GC/hold disposition; external bootstrap/prerequisites; ALB/gateway/kubelet identities and normal/partial/emergency rotations; per-replica readiness; pilot RTO/RPO; Application Operations ownership of eligible-minute observations and monthly close; Platform Operations recovery-evidence co-approval; missed-observation/missed-close handling; immutable monthly evidence; migration, lifecycle, retention, and incidents in docs/operations-ui.md
+- [ ] T196 Update developer/Jenkins setup, local pipeline verification, generated contracts, route/topic catalogs, migration targets, authoritative AGC URL helpers/outputs, and architecture guidance in README.md and specs/003-develop-ui/quickstart.md after the already-tested mandatory deployment/teardown skill assets from T176
+- [ ] T197 Materialize, without reinterpretation, the implementation-readiness pilot protocol in specs/003-develop-ui/usability-study.md: frozen randomized roster of 24 (8 beginner/8 intermediate/8 advanced), measured first eligible 7/7/6 sample, exact eligibility and only-before-first-task same-stratum replacement reasons, no post-start replacement, frozen viewport allocation (at least five at 375, five at 1440, ten balanced 768/1024), exact five-task neutral script, assistance definition/mandatory fields, exact three questionnaire statements/1-5 labels, required-content timing, failure treatment, calculations, and Product/UX Research ownership
+- [ ] T198 Record all 20 anonymized pilot outcomes with frozen denominators/stratum/order/viewport/browser, task/timing marks, assistance and measurement-validity flags, questionnaire answers, and retained abandonment, setup/dependency failure, crash, timeout, or missing-evidence rows as failures with no substitution; calculate exact SC-001 >=18/20, SC-007 >=17/20, SC-011 >=18/20 within 20-30 minutes, SC-015 >=17/20, SC-016 >=18/20, and SC-017 >=16/20 and obtain Product/UX Research sign-off in specs/003-develop-ui/usability-results.md
 
 ---
 
 ## Dependencies and Execution Order
 
-- Setup starts immediately; Foundation depends on Setup and blocks all stories.
-- US1, US2, US3, and US4 depend only on Foundation and can then run in parallel.
-- Foundational roadmap models, schema, and fixtures T043-T044 must complete before
-  US1 persistence T090, independently seeded US3 work T111-T130, and independently
-  seeded US4 work T131-T141.
-- Polish depends on every story selected for release.
-- Azure provisioning T046-T058 depends on readiness contracts and reporting in
-  T017 and T045. Browser-certificate rotation T052 additionally depends on its
-  contract T028 and gateway resources T050-T051.
-- BFF authentication T062 and certificate work T066-T069 depend on Entra and
-  certificate contracts T018 and T020-T021 plus infrastructure T053 and
-  T056-T058. Compatibility implementation T065 depends on core routing T038,
-  the generated client T059, and BFF capabilities T064.
-- Workload resilience T082 depends on its contract T027 and base workloads T081.
-  Application Gateway binding T084 depends on T019 and T050-T052.
-- Machine-consumer verification T145 depends on machine authorization T037 and
-  Entra roles T055. Lab policy and revalidation T077-T080 depend on tests
-  T023-T025 and persistence T032-T034.
-- Each story checkpoint requires its full phase: T086-T099 for US1, T100-T110
-  for US2, T111-T130 for US3, and T131-T141 for US4.
-- Jenkins and monitoring tests T149-T155 precede implementation T156-T172.
-  Change classification T156 precedes publishing T157; evidence publication
-  T158 and the mutation journal T159 precede gates T160; T156-T161 precede the
-  Jenkinsfile integration T162. Promotion T159 also depends on overlays
-  T083-T084.
-- Jenkins identities T163 and template binding T165 precede live binding
-  validation T166 and identity verification T174. Credential inspection T167
-  and credential-manager configuration T168 precede rotation T171.
-- Evidence lifecycle T169 and hold operations T170 depend on the evidence store
-  and hold-manager group assignment T047-T048. Alert implementation T172 depends on
-  monitoring infrastructure T046 and alert contracts T155.
-- Manifest and identity verification T173-T174 must pass before release
-  verification T175. Operations and developer documentation T176-T177 follow
-  verified behavior.
-- Pilot evidence T179 depends on the approved study protocol in T178.
+- Setup starts immediately. T004 depends on T001 and T005 depends on T002; after
+  those prerequisites, T004 and T005 may run in parallel. The US1
+  minimum-foundation gate depends on Setup and consists only of T010-T013,
+  T022, T026, T029-T032, T034-T037, T041-T050, T067-T074, and T079-T084.
+  Remaining Phase 2 tasks do not block US1 local/container implementation or
+  demonstration unless an explicit dependency below says otherwise.
+- Contract tests T029-T033 precede their implementations. The BFF/core OpenAPI
+  gate T034 and drift contracts T030/T033 precede generated BFF consumers T067,
+  runtime catalog T051, and generated UI contracts/telemetry foundation T080;
+  compatibility contracts T029 precede BFF/core implementation T074 and UI
+  implementation T080; generated BFF consumers T067 precede T074.
+- Foundational roadmap schema and fixtures T049-T050 precede US1, US3, and US4.
+  T049 owns the roadmap-only next-action interface/fallback consumed independently
+  by US4; US3 extension T131 adds optional learning candidates and is not a US4
+  dependency.
+  The T037 baseline retention registry precedes T039, T050, T127, and T144;
+  each later migration registers only the owner-linked tables it introduces.
+  Foundation registries T044, T072, and T084 plus submitted-operation guard T083
+  precede each story's isolated route/hook tasks. Story route modules consume
+  registration APIs and never edit the shared registry files.
+- US1 depends only on the minimum-foundation gate. US2 additionally depends on
+  T033/T051. US3 additionally depends on the lab/content prerequisites
+  T023-T025, T038-T040, and T088-T091. US4 uses the minimum-owned-roadmap
+  foundation without depending on US1 or US3 implementation. Once those named
+  prerequisites pass, the four stories can run in parallel.
+  Learning migration T127 and progress migration T144 are sibling heads from
+  T050; neither story depends on the other. Combined release requires contracts
+  T165 and merge revision T190.
+- Bootstrap/preflight contracts T017 precede bootstrap/schema/preflight tooling
+  T052. Terraform/data-principal modules T053-T064, Jenkins identities and
+  mandatory skill parity T176, ALB assets T093, and post-contract migration
+  guardrails T175 precede the dry-run integration T178. Foundation authoring has
+  the acyclic edge T093 -> T094; T094 authors Gateway/route resources but never
+  applies them live. All remaining Terraform authoring, including evidence
+  lifecycle T186 and alerts T189, plus T192 static contracts and T193 live-test
+  harness authoring must finish
+  before authorized Platform Operations performs the sole live external apply/
+  install/finalization and manifest issuance in T194. Only T194 may execute the
+  T179-T182 live bindings/validations or run T191 protected delivery and apply
+  Gateway resources. Base workloads T065 precede BFF CSI T066 and resilience
+  T092. ALB identity/infrastructure T056-T057 precedes assets T093. Public TLS
+  requires T058-T059 before T094; private TLS/routing requires T058 before T095.
+- BFF callback lifecycle gate T073 depends on T032 and T045 plus auth/session
+  foundation T070-T072. Certificate work T075-T078 depends on T018, T020-T021,
+  and infrastructure T060 and T063-T066. Session-encryption tests T011 precede
+  key provisioning T053 and key-ring/session implementations T068-T069.
+- Lifecycle authorization and delivery tests T010, T014, and T018 precede the
+  lifecycle/retention identity and consent T056/T060/T062, workloads T065,
+  internal BFF route T072, reconciliation/revocation/retention T085-T087, and
+  NetworkPolicy T095. Outbox ORM
+  and migration T036-T037 precede reconciliation T085; T085's atomic enqueue and
+  checkpoint contract precedes dispatcher T086.
+- Guidance catalog implementation T051 depends on T033 and precedes all US2 work
+  T110-T120 plus performance profile T157. Lab policy and revalidation T088-T091
+  depend on T023-T025 and persistence T038-T040.
+- Each story checkpoint requires its full phase: T096-T109 for US1, T110-T120
+  for US2, T121-T140 for US3, and T141-T151 for US4.
+- Cross-cutting contract tasks T152-T153 and T155-T168 gate their corresponding
+  release implementations. T154 is authorable before live bootstrap but MUST
+  execute only after T194 has established the live environment and after
+  Redis/PostgreSQL identity implementations T047/T068 are deployed; T154 must
+  pass before pilot opening and complete-release sign-off.
+  Change classification T169 precedes publishing T170; evidence publishing T171 and
+  attempt mutation journal T172 precede evidence gates T173. Migration contracts
+  T167, migration identity T053/T056, and evidence gates T173 precede migration
+  guardrail/Job/orchestrator implementation T175.
+- Publisher/deployer identity and binding contracts T160-T161 plus identities
+  T176 and schema/example integration T178 precede executable template automation
+  T179, live-validation tooling T180, and post-bootstrap identity-validation
+  tooling T182. Their live execution waits for the T194 final manifest. Validator
+  contract T166 precedes template configuration T177 and preflight T181.
+- Credential contracts T162 and scheduled-health contracts T168 precede
+  inspection T183, credential-manager setup T184, scheduled alerts T185, and
+  rotation T188. Rotation additionally depends on T176-T182.
+- Evidence lifecycle T186 and hold operations T187 depend on evidence store and
+  hold-manager assignments T054-T055 plus evidence contracts T163. Alert
+  implementation T189 depends on monitoring T053 and alert contracts T164; both
+  Terraform changes must be applied before T194 computes the final state/configuration digest.
+- Jenkinsfile T191 depends on trusted controller-audit T174, delivery scripts
+  T169-T175, external bootstrap tooling/modules/dry-run integration T052-T064/
+  T178, agent and credential controls T176-T188, and merged Alembic head T190.
+  Static manifest/AKS contracts T192 and T193 live-harness authoring must pass
+  before T194 performs external finalization, executes live identity verification,
+  runs protected delivery, and records release evidence.
+- Operations and developer documentation T195-T196 follow verified behavior.
+  T164 precedes the recurring availability implementation in T189; T194 proves
+  its first observation and monthly-close dry run, while T195 defines ongoing
+  ownership and missed-close recovery. Pilot evidence T198 depends on the
+  approved study protocol T197 and on successful post-T194 execution of T154.
 
 ```text
-Setup -> Foundation -> US1 (MVP)
-                    |-> US2
-                    |-> US3
-                    `-> US4
-Selected stories -> Polish and release verification
+Setup -> minimum foundation -> US1 (non-release MVP demonstration)
+                          |-> US2 + catalog prerequisite
+                          |-> US3 + lab/content prerequisites --\
+                          `-> US4 ------------------------------+-> T190 merged migration head
+remaining release foundation + all selected stories + merged head
+  -> T194 live bootstrap/protected delivery -> T154 rollover -> pilot/release sign-off
 ```
 
 ### Within each story
@@ -338,32 +439,37 @@ Selected stories -> Polish and release verification
 ## Parallel Execution Examples
 
 ```text
-US1: T086 | T087 | T088 | T089, then T093 | T094, then T097
-US2: T100 | T101 | T102, then T105 | T106, then T109
-US3: T111 | T112 | T113 | T114 | T115, then T124 | T125 | T126, then T129
-US4: T131 | T132 | T133, then T137 | T138, then T140
-Cross-cutting tests: T142-T155, then T173 | T174 after T156-T172
+US1: T096 | T097 | T098 | T099, then T103 | T104, then T107
+US2: T110 | T111 | T112, then T115 | T116, then T119
+US3: T121 | T122 | T123 | T124 | T125, then T134 | T135 | T136, then T139
+US4: T141 | T142 | T143, then T147 | T148, then T150
+Cross-cutting contracts: T152-T168, then T192 | T193 after T169-T191
 ```
 
 ## Implementation Strategy
 
 ### MVP first
 
-1. Complete Setup and Foundation.
+1. Complete Setup and the named US1 minimum-foundation gate.
 2. Complete US1.
-3. Stop and validate roadmap creation independently.
-4. Deploy all three services with only the roadmap journey enabled.
+3. Stop and validate roadmap creation independently in local and three-service
+   container environments.
+4. Label the checkpoint as a roadmap-only non-release increment. Do not claim
+   protected Azure deployment or the complete-release FR-001/SC-002 outcomes.
 
 ### Incremental delivery
 
-1. Foundation establishes identity, persistence, lifecycle, Azure, and contracts.
-2. Add US1 roadmap MVP, then US2 guidance, US3 learning, and US4 progress.
-3. Complete the Jenkins delivery pipeline and run cross-cutting verification
-   before the complete release.
+1. The minimum foundation establishes shared identity, contracts, persistence,
+   registries, session mediation, and the UI shell.
+2. Add US1 roadmap MVP, then add each other story after only its named
+   prerequisites; continue release-foundation work independently.
+3. Complete the remaining lifecycle, lab, Azure, Jenkins, evidence, and
+   operational work; run T194, then T154, before the complete release.
 
 ## Notes
 
 - `[P]` tasks target different files and may run concurrently.
 - Every user-story task carries its `[USn]` label.
 - Commit after each task or cohesive task group.
-- Do not start story work before the Foundation checkpoint passes.
+- Do not start a story before its named entry gate passes. Do not add a
+  production story-route test to the US1 minimum-foundation pass condition.

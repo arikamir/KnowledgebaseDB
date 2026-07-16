@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "profileId": "performance-profile-v1",
+  "status": "approved",
+  "approvedOn": "2026-07-13",
+  "approvalAuthority": "Feature specification owner",
+  "fixtureDigestAlgorithm": "sha256",
+  "fixtureDigestScope": "UTF-8 bytes of the fixtures array serialized as recursively key-sorted compact JSON with no trailing newline",
+  "fixtureDigest": "2237d68ee242871598c67f49bb96f541cff5709bc28a865965f21158fdf475ef",
+  "profileDigestAlgorithm": "sha256",
+  "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
+  "profileDigest": "6a2cc166efc2b23861fc07bd3e1f197b5e6e526ca95c4587e2b3bfb84dddf818",
+  "contractBindings": {
+    "digestAlgorithm": "sha256",
+    "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
+    "bffContract": {
+      "path": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "digest": "68d4c6d0d344bc46a1bef5e1cd397cd04f9bde436cf50b3cb144bddf4891ee1a"
+    },
+    "coreContract": {
+      "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
+      "digest": "8364b04aa1be5a7a486e39d436eba7fbecdcc96ef86482d784436a3ea317946b"
+    },
+    "generatedMapper": {
+      "source": "The generated digest-pinned BFF-to-core mapper for the two bound contracts",
+      "digestAlgorithm": "sha256",
+      "digestScope": "Exact emitted mapper artifact bytes as used by the performance runner",
+      "verification": "CI regenerates the mapper from the two digest-matched contracts, rejects committed or runtime drift before warm-up, and records the used mapper artifact digest in every measured observation."
+    }
+  },
+  "execution": {
+    "scenarios": [
+      "roadmap",
+      "guidance"
+    ],
+    "workersPerScenario": 10,
+    "warmupRequestsPerWorker": 2,
+    "measuredRequestsPerWorker": 10,
+    "measuredAttemptsPerScenario": 100,
+    "concurrencyRule": "All ten workers wait at a barrier before each measured ordinal, then each issues exactly one request and waits for it to finish before the next barrier.",
+    "fixtureRequestContract": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+    "coreRequestContract": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
+    "scenarioOperations": {
+      "roadmap": {
+        "fixtureOperationId": "createBrowserRoadmap",
+        "fixtureRoute": "POST /bff/v1/roadmaps",
+        "coreOperationId": "createRoadmap",
+        "coreRoute": "POST /api/v1/roadmaps"
+      },
+      "guidance": {
+        "fixtureOperationId": "createBrowserGuidance",
+        "fixtureRoute": "POST /bff/v1/guidance",
+        "coreOperationId": "createGuidance",
+        "coreRoute": "POST /api/v1/guidance"
+      }
+    },
+    "coreMappingRule": "Validate each camelCase fixture against its fixtureOperationId, map it only through the generated digest-pinned BFF-to-core mapper, validate the snake_case result against coreOperationId, then invoke core ASGI directly. Mapping and BFF transport occur before timingStart and are excluded from core duration; any validation or mapping failure fails the profile before warm-up.",
+    "fixtureAssignment": "Filter fixtures by the active scenario, sort that three-fixture list by caseId, then select scenarioFixtures[(workerIndex + requestOrdinal) mod 3] with zero-based worker and request ordinals. Warm-up ordinals are 0-1; measured ordinals reset to 0-9.",
+    "warmupFailurePolicy": "Both declared warm-up requests per worker must succeed within the scenario timeout. Any failure aborts the profile as failed; it cannot be replaced or excluded.",
+    "roadmapRequestTimeoutMs": 45000,
+    "guidanceRequestTimeoutMs": 20000,
+    "timeoutPolicy": "Cancel at the exact scenario timeout. A timeout or any non-success response remains one of the 100 measured attempts, is a threshold failure, retains its raw outcome, and contributes the scenario timeout value to nearest-rank p95 rather than disappearing from the sample.",
+    "timingStart": "Core ASGI request entry read from a monotonic clock.",
+    "timingStop": "Completion of response serialization read from the same monotonic clock.",
+    "roadmapThresholdMs": 30000,
+    "guidanceThresholdMs": 10000,
+    "requiredThresholdPassesPerScenario": 95,
+    "percentile": "nearest-rank p95 over all 100 measured values; rank=ceil(0.95*100)=95 after ascending sort"
+  },
+  "fixtures": [
+    {
+      "caseId": "roadmap-beginner-platform-001",
+      "scenario": "roadmap",
+      "request": {
+        "employeeProfile": {
+          "role": "Junior Systems Administrator",
+          "experienceLevel": "beginner",
+          "targetRole": "DevOps Engineer",
+          "targetSpecializations": [
+            "CI/CD",
+            "Containers"
+          ],
+          "availableTimePerWeek": 6,
+          "learningPreferences": [
+            "hands-on"
+          ],
+          "constraints": [
+            "non-production labs only"
+          ]
+        },
+        "requestText": "Create a practical path from systems administration to a DevOps engineer role.",
+        "clarifyingQuestionsAsked": 0
+      }
+    },
+    {
+      "caseId": "roadmap-intermediate-delivery-001",
+      "scenario": "roadmap",
+      "request": {
+        "employeeProfile": {
+          "role": "Build and Release Engineer",
+          "experienceLevel": "intermediate",
+          "targetRole": "Senior DevOps Engineer",
+          "targetSpecializations": [
+            "GitOps",
+            "Azure"
+          ],
+          "availableTimePerWeek": 8,
+          "learningPreferences": [
+            "project-based"
+          ],
+          "constraints": [
+            "use approved lab providers"
+          ]
+        },
+        "requestText": "Create a roadmap emphasizing GitOps and Azure delivery operations.",
+        "clarifyingQuestionsAsked": 0
+      }
+    },
+    {
+      "caseId": "roadmap-advanced-platform-001",
+      "scenario": "roadmap",
+      "request": {
+        "employeeProfile": {
+          "role": "Senior DevOps Engineer",
+          "experienceLevel": "advanced",
+          "targetRole": "Platform Engineer",
+          "targetSpecializations": [
+            "Kubernetes",
+            "Security"
+          ],
+          "availableTimePerWeek": 10,
+          "learningPreferences": [
+            "architecture review",
+            "hands-on"
+          ],
+          "constraints": [
+            "private-network labs"
+          ]
+        },
+        "requestText": "Create an advanced platform-engineering roadmap with Kubernetes security depth.",
+        "clarifyingQuestionsAsked": 0
+      }
+    },
+    {
+      "caseId": "guidance-beginner-terraform-001",
+      "scenario": "guidance",
+      "request": {
+        "topic": "terraform",
+        "employeeProfile": {
+          "role": "Junior Systems Administrator",
+          "experienceLevel": "beginner",
+          "targetRole": "DevOps Engineer",
+          "targetSpecializations": [
+            "Infrastructure as code"
+          ],
+          "availableTimePerWeek": 6,
+          "learningPreferences": [
+            "hands-on"
+          ],
+          "constraints": [
+            "non-production labs only"
+          ]
+        },
+        "requestText": "Explain the next practical Terraform skills to develop."
+      }
+    },
+    {
+      "caseId": "guidance-intermediate-kubernetes-001",
+      "scenario": "guidance",
+      "request": {
+        "topic": "kubernetes",
+        "employeeProfile": {
+          "role": "Build and Release Engineer",
+          "experienceLevel": "intermediate",
+          "targetRole": "Senior DevOps Engineer",
+          "targetSpecializations": [
+            "Containers",
+            "GitOps"
+          ],
+          "availableTimePerWeek": 8,
+          "learningPreferences": [
+            "project-based"
+          ],
+          "constraints": [
+            "use approved lab providers"
+          ]
+        },
+        "requestText": "Recommend Kubernetes deployment and troubleshooting practice."
+      }
+    },
+    {
+      "caseId": "guidance-advanced-jenkins-001",
+      "scenario": "guidance",
+      "request": {
+        "topic": "jenkins",
+        "employeeProfile": {
+          "role": "Senior DevOps Engineer",
+          "experienceLevel": "advanced",
+          "targetRole": "Platform Engineer",
+          "targetSpecializations": [
+            "CI/CD governance",
+            "Security"
+          ],
+          "availableTimePerWeek": 10,
+          "learningPreferences": [
+            "architecture review",
+            "hands-on"
+          ],
+          "constraints": [
+            "private-network labs"
+          ]
+        },
+        "requestText": "Recommend advanced Jenkins reliability and security improvements."
+      }
+    }
+  ],
+  "requiredEvidenceFields": [
+    "profileId",
+    "profileDigest",
+    "fixtureDigest",
+    "bffContractDigest",
+    "coreContractDigest",
+    "mapperDigest",
+    "caseId",
+    "scenario",
+    "workerIndex",
+    "requestOrdinal",
+    "environment",
+    "coreImageDigest",
+    "monotonicDurationMs",
+    "rawOutcome",
+    "percentileValueMs",
+    "thresholdPassed",
+    "calculatedNearestRankP95Ms"
+  ]
+}

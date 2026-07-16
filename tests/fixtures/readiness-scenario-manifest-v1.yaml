@@ -1,0 +1,395 @@
+schema_version: 1
+manifest_id: readiness-scenario-manifest-v1
+status: approved
+approved_on: 2026-07-13
+approval_authority: Feature specification owner
+manifest_digest_algorithm: sha256
+manifest_digest_scope: >-
+  UTF-8 bytes of a mapping containing execution_rules and groups, serialized as
+  recursively key-sorted compact JSON with no trailing newline.
+manifest_digest: ca2bd36fcc96fd5cefc6bdcd7ae9366d02085940888925df954e47f16501f66d
+
+execution_rules:
+  setup_failure: failed_case
+  dependency_unavailable: failed_case_unless_the_case_injects_that_dependency
+  crash_timeout_or_missing_evidence: failed_case
+  not_applicable: allowed_only_when_preregistered_by_the_primary_journey_matrix
+  denominator_reduction: prohibited
+  external_case_execution: contract_test_and_deployed_pilot
+  evidence_identity: manifest_id_manifest_digest_case_id_fixture_digest
+  case_fixture_digest_algorithm: sha256
+  case_fixture_digest_scope: >-
+    UTF-8 recursively key-sorted compact JSON with no trailing newline containing
+    case_id, this manifest_digest, and parameter_values. Explicit cases use an
+    empty parameter_values mapping; templated cases record every substituted
+    operation, boundary, journey, replica, credential type, and case suffix.
+
+groups:
+  sc009_input_preservation:
+    criteria: [SC-009]
+    denominator: 14
+    expectations: Preserve every other valid field and associate the failure with the affected field or dependency.
+    cases:
+      - SC009.us1.validation
+      - SC009.us2.validation
+      - SC009.us3.validation
+      - SC009.us4.validation
+      - SC009.us3.not_found
+      - SC009.us4.not_found
+      - SC009.us1.bff_outage
+      - SC009.us1.core_outage
+      - SC009.us2.bff_outage
+      - SC009.us2.core_outage
+      - SC009.us3.bff_outage
+      - SC009.us3.core_outage
+      - SC009.us4.bff_outage
+      - SC009.us4.core_outage
+
+  sc010_owner_isolation:
+    criteria: [SC-010]
+    denominator: 16
+    expectations: Own access succeeds in 8 of 8 cases and foreign access succeeds in 0 of 8 cases.
+    cases:
+      - SC010.employee_a.own_roadmap
+      - SC010.employee_a.own_learning_session
+      - SC010.employee_a.own_review_attempt
+      - SC010.employee_a.own_progress_review
+      - SC010.employee_b.own_roadmap
+      - SC010.employee_b.own_learning_session
+      - SC010.employee_b.own_review_attempt
+      - SC010.employee_b.own_progress_review
+      - SC010.employee_a.foreign_b_roadmap
+      - SC010.employee_a.foreign_b_learning_session
+      - SC010.employee_a.foreign_b_review_attempt
+      - SC010.employee_a.foreign_b_progress_review
+      - SC010.employee_b.foreign_a_roadmap
+      - SC010.employee_b.foreign_a_learning_session
+      - SC010.employee_b.foreign_a_review_attempt
+      - SC010.employee_b.foreign_a_progress_review
+
+  sc012_interruption_resume:
+    criteria: [SC-012]
+    denominator: 6
+    expectations: Resume at the lowest incomplete required step without repeating a completed step.
+    cases:
+      - SC012.explicit_leave
+      - SC012.route_navigation
+      - SC012.refresh
+      - SC012.browser_close_reopen
+      - SC012.session_expiry_reauthentication
+      - SC012.bff_restart
+
+  sc013_sc037_sc038_lab_policy:
+    criteria: [SC-013, SC-037, SC-038]
+    denominator: 18
+    expectations: Every applicability, omission, metadata, destination, redirect, policy, and retirement assertion passes.
+    cases:
+      - SC013.applicability.required_practical
+      - SC013.omission.orientation
+      - SC013.omission.conceptual_comparison
+      - SC013.omission.review_only
+      - SC013.metadata.missing_provider
+      - SC013.metadata.missing_objective
+      - SC013.metadata.missing_prerequisites
+      - SC013.metadata.missing_duration
+      - SC013.metadata.missing_cost_status
+      - SC013.metadata.missing_destination
+      - SC013.metadata.missing_policy_version
+      - SC013.destination.direct_approved
+      - SC013.destination.approved_redirect
+      - SC013.destination.redirect_loop
+      - SC013.destination.http_downgrade
+      - SC013.destination.unapproved_redirect
+      - SC013.destination.private_address
+      - SC013.destination.retired_provider
+
+  sc014_review_threshold:
+    criteria: [SC-014]
+    denominator: 5
+    expectations: Exact incomplete/complete transitions pass in 5 of 5 cases and completion never reverses.
+    cases:
+      - SC014.score_000
+      - SC014.score_079
+      - SC014.score_080
+      - SC014.score_100
+      - SC014.fail_then_pass
+
+  sc019_sc023_sc024_service_independence:
+    criteria: [SC-019, SC-023, SC-024]
+    denominator: 15
+    expectations: >-
+      For each injected outage, both unaffected service probes report their own
+      state and all three approved machine operations report the correct
+      independent success or dependency failure without origin ambiguity.
+    cases:
+      - SC019.ui_outage.health_bff
+      - SC019.ui_outage.health_core
+      - SC019.ui_outage.machine_roadmap
+      - SC019.ui_outage.machine_guidance
+      - SC019.ui_outage.machine_progress
+      - SC019.bff_outage.health_ui
+      - SC019.bff_outage.health_core
+      - SC019.bff_outage.machine_roadmap
+      - SC019.bff_outage.machine_guidance
+      - SC019.bff_outage.machine_progress
+      - SC019.core_outage.health_ui
+      - SC019.core_outage.health_bff
+      - SC019.core_outage.machine_roadmap
+      - SC019.core_outage.machine_guidance
+      - SC019.core_outage.machine_progress
+
+  sc020_compatibility:
+    criteria: [SC-020]
+    denominator: 16
+    expectations: Every incompatible or unavailable case stops before downstream work, key claim, or mutation.
+    boundaries: [ui_bff, bff_core]
+    case_suffixes:
+      - current_supported
+      - previous_supported
+      - disjoint
+      - missing
+      - malformed
+      - unavailable
+      - fresh_cache
+      - stale_cache
+    case_id_template: SC020.{boundary}.{case_suffix}
+
+  sc021_sc022_architecture_boundaries:
+    criteria: [SC-021, SC-022]
+    denominator: 12
+    expectations: Normal BFF paths pass, direct-core browser attempts fail, and frozen-core presentation/composition builds pass.
+    journeys: [us1, us2, us3, us4]
+    case_suffixes: [normal_bff, direct_core, frozen_core_build]
+    case_id_template: SC021.{journey}.{case_suffix}
+
+  sc026_sc033_sc034_sc035_delivery:
+    criteria: [SC-026, SC-033, SC-034, SC-035]
+    denominator: 12
+    expectations: Each case produces its exact immutable digest, journal, evidence, and rollback outcome.
+    cases:
+      - SC026.change.ui_only
+      - SC026.change.bff_only
+      - SC026.change.core_only
+      - SC026.change.all_services
+      - SC026.change.documentation_only
+      - SC026.change.first_build
+      - SC026.delivery.stale_build
+      - SC026.delivery.concurrent_build
+      - SC026.failure.before_mutation
+      - SC026.failure.after_core_mutation
+      - SC026.failure.after_bff_mutation
+      - SC026.failure.after_ui_mutation
+
+  sc027_sc028_authorization:
+    criteria: [SC-027, SC-028]
+    expectations: Every token and owner result matches the exact authorization matrices before idempotency or domain work.
+    delegated:
+      operations:
+        - bootstrapEmployeeSession
+        - listRoadmaps
+        - createRoadmap
+        - getRoadmap
+        - createGuidance
+        - createProgressCheckIn
+        - getProgressReview
+        - listLearningSessions
+        - startLearningSession
+        - getLearningSession
+        - completeLearningStep
+        - listReviewAttempts
+        - createReviewAttempt
+        - getReviewAttempt
+        - answerReviewQuestion
+        - submitReviewAttempt
+        - reportLabReference
+        - getNextLearningAction
+      denominator_per_operation: 11
+      expanded_denominator: 198
+      case_suffixes:
+        - valid
+        - wrong_issuer
+        - wrong_tenant
+        - wrong_audience
+        - wrong_algorithm_or_key
+        - wrong_lifetime
+        - wrong_client
+        - missing_scope
+        - missing_or_foreign_subject
+        - id_token
+        - spoofed_forwarded_identity
+      case_id_template: SC027.delegated.{operation}.{case_suffix}
+    machine:
+      denominator_per_operation: 8
+      expanded_denominator: 32
+      cases_by_operation:
+        createRoadmap:
+          - valid
+          - delegated_token
+          - missing_role
+          - wrong_role
+          - wrong_audience
+          - wrong_client
+          - employee_owned_reference
+          - cross_application_reference
+        createProgressCheckIn:
+          - valid
+          - delegated_token
+          - missing_role
+          - wrong_role
+          - wrong_audience
+          - wrong_client
+          - employee_owned_reference
+          - cross_application_reference
+        createGuidance:
+          - valid
+          - delegated_token
+          - missing_role
+          - wrong_role
+          - wrong_audience
+          - wrong_client
+          - request_supplied_employee_id_ignored
+          - cross_application_same_key_isolated
+        getCoreCapabilities:
+          - valid
+          - delegated_token
+          - missing_role
+          - wrong_role
+          - wrong_audience
+          - wrong_client
+          - employee_subject_spoof
+          - browser_cookie
+      case_id_template: SC028.machine.{operation}.{case_suffix}
+
+  sc029_session_expiry:
+    criteria: [SC-029]
+    denominator_formula: 7 * replica_count
+    minimum_replica_count: 2
+    expectations: Every boundary revokes correctly, Redis indeterminacy preserves the cookie, and saved core records remain unchanged.
+    case_suffixes:
+      - idle_before_30m
+      - idle_at_30m
+      - idle_after_30m
+      - absolute_before_8h
+      - absolute_at_8h
+      - absolute_after_8h
+      - redis_indeterminate
+    case_id_template: SC029.{replica_id}.{case_suffix}
+
+  sc030_sc031_lifecycle_retention:
+    criteria: [SC-030, SC-031]
+    denominator: 13
+    expectations: Every access, checkpoint/outbox, deadline, purge, rollback, restore, and unlinking assertion passes.
+    cases:
+      - SC030.identity.active
+      - SC030.identity.disabled
+      - SC030.identity.deleted
+      - SC030.identity.unknown
+      - SC030.identity.throttled
+      - SC030.revocation.bff_outage
+      - SC030.revocation.dispatcher_restart
+      - SC030.revocation.pre_deadline
+      - SC030.revocation.deadline
+      - SC030.purge.success
+      - SC030.purge.rollback
+      - SC030.restore.catch_up
+      - SC030.anonymization.denied_linkable
+
+  sc032_idempotency:
+    criteria: [SC-032]
+    operations:
+      - createRoadmap
+      - createGuidance
+      - createProgressCheckIn
+      - startLearningSession
+      - completeLearningStep
+      - createReviewAttempt
+      - answerReviewQuestion
+      - submitReviewAttempt
+      - reportLabReference
+    denominator_per_operation: 9
+    expanded_denominator: 81
+    expectations: Same-intent cases commit exactly once and conflict cases commit zero additional transitions.
+    case_suffixes:
+      - simultaneous_tabs
+      - delayed_same_key_retry
+      - changed_payload
+      - different_actor_same_key
+      - process_restart_processing
+      - timeout_after_commit
+      - retryable_failure
+      - final_failure
+      - expired_result_replay
+    case_id_template: SC032.{operation}.{case_suffix}
+
+  sc036_sc048_controller_audit:
+    criteria: [SC-036, SC-048]
+    denominator: 10
+    expectations: Accepted attempts finalize exactly once; the unaccepted trigger creates no attempt.
+    cases:
+      - SC036.accepted.success
+      - SC036.accepted.failure
+      - SC036.accepted.abort
+      - SC036.trigger.unaccepted
+      - SC036.controller.restart
+      - SC036.controller.disk_loss_restore
+      - SC036.agent.pre_allocation_failure
+      - SC036.agent.connection
+      - SC036.repository.missing_audit_call
+      - SC036.repository.shadow_attempt
+
+  sc039_agent_identity_isolation:
+    criteria: [SC-039]
+    denominator: 17
+    expectations: All unauthorized token, identity, reference, and stage attempts fail.
+    cases:
+      - SC039.validator.required_identityless
+      - SC039.validator.missing_declaration
+      - SC039.validator.swapped_identity
+      - SC039.validator.additional_identity
+      - SC039.validator.system_assigned_identity
+      - SC039.publisher.required_identity
+      - SC039.publisher.missing_identity
+      - SC039.publisher.swapped_identity
+      - SC039.publisher.additional_identity
+      - SC039.publisher.system_assigned_identity
+      - SC039.deployer.required_identity
+      - SC039.deployer.missing_identity
+      - SC039.deployer.swapped_identity
+      - SC039.deployer.additional_identity
+      - SC039.deployer.system_assigned_identity
+      - SC039.reference.pull_request
+      - SC039.reference.protected
+
+  sc040_sc041_rotation:
+    criteria: [SC-040, SC-041]
+    denominator: 12
+    expectations: All normal, partial, rollback, and emergency gates and saved-data outcomes pass.
+    credential_types: [bff_client_certificate, gateway_private_core_tls, jenkins_cloud_credential]
+    case_suffixes: [normal, partial_convergence, rollback_injection, emergency]
+    case_id_template: SC040.{credential_type}.{case_suffix}
+
+  sc042_evidence_retention:
+    criteria: [SC-042]
+    denominator: 20
+    expectations: Every required allow, deny, lifecycle, immutability, and prohibited-content assertion passes.
+    cases:
+      - SC042.reader.authorized
+      - SC042.reader.unauthorized
+      - SC042.writer.cross_prefix
+      - SC042.writer.read_denied
+      - SC042.writer.list_denied
+      - SC042.writer.overwrite_denied
+      - SC042.writer.delete_denied
+      - SC042.hold_manager.set_request
+      - SC042.hold_manager.extend_request
+      - SC042.hold_manager.release_request
+      - SC042.hold_manager.direct_azure_denied
+      - SC042.reconciler.exact_version
+      - SC042.reconciler.cross_version_denied
+      - SC042.reconcile.partial_set
+      - SC042.reconcile.partial_clear
+      - SC042.hold.expiry
+      - SC042.hold.early_release
+      - SC042.storage.post_lock_delete
+      - SC042.hold.ceiling_180_day
+      - SC042.content.prohibited_data

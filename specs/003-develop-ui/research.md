@@ -92,6 +92,20 @@
 ## Decision 7: Keep BFF orchestration thin and contracts independent
 
 - **Decision**: Version UI-to-BFF as `/bff/v1` and BFF-to-core as `/api/v1`.
+  Treat `specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml` as the
+  machine-readable browser/BFF source of truth and generate BFF route validators
+  plus UI client/types/validators from it.
+  Treat `specs/003-develop-ui/contracts/core-api-v1.openapi.yaml` as the
+  machine-readable core API source of truth. Validate it and fail on checked-in
+  generated-client/type/validator drift before generating the BFF core client
+  and before core or BFF tests/builds. The BFF mapping layer has explicit
+  contracts proving that each camelCase browser DTO maps to a valid core DTO;
+  both boundaries and all generated consumers record their contract digest.
+  Treat `specs/003-develop-ui/contracts/supported-guidance-topics-v1.yaml` as the
+  source of truth for canonical topic IDs and aliases. Generate the core runtime
+  catalog plus BFF/UI consumer artifacts from it and fail when any generated
+  content drifts, duplicates an ID/alias, or changes deterministic order without
+  a catalog-version change.
   The BFF validates view requests, composes UI DTOs, maps safe errors, propagates
   idempotency and trace context, and never scores reviews, authorizes ownership,
   chooses next actions, or persists domain state. Each boundary exposes
@@ -108,30 +122,52 @@
 - **Alternatives considered**: One shared API version couples releases.
   Duplicating domain decisions in the BFF creates inconsistent behavior.
   Build-time version assumptions alone cannot protect independently deployed
-  old/new combinations.
+  old/new combinations. Generating a contract from implementation after the
+  endpoint is written makes drift detection too late and was rejected. Separate
+  hand-maintained UI, BFF, and core topic lists were rejected because support
+  decisions would diverge across independently deployed services.
+
+- **Route ownership**: Foundation provides shared core and BFF route registries
+  for auth, health, capabilities, and cross-cutting dependencies. Each story
+  contributes one feature route module through the registry. A monolithic router
+  edited by every story was rejected because it creates false cross-story merge
+  and verification dependencies.
 
 ## Decision 8: Retain normalized core learning persistence
 
 - **Decision**: Normalize identity ownership, employee-session progress,
   reviews, answers, milestones, and lab reports in the core database. Keep
   versioned authored content as structured snapshots. Use Alembic for deployed
-  schema evolution. Put the employee-owned roadmap identity, stable milestone
-  key, and ownership constraints in the Foundation migration chain. Give US3 a
-  deterministic owned-roadmap plus published-content fixture and US4 a
-  deterministic owned-roadmap fixture; neither story migration depends on US1.
+  schema evolution. Put actor-owned roadmap identity, stable milestone keys,
+  and exactly-one employee/application ownership constraints in Foundation
+  revision `006_owned_roadmaps`. Give US3 a deterministic employee-owned
+  roadmap plus published-content fixture and US4 a deterministic employee-owned
+  roadmap fixture. US3 revision `007_learning_sessions` and
+  US4 revision `008_owned_progress` are sibling Alembic heads with
+  `down_revision = 006_owned_roadmaps`; merge revision
+  `009_merge_learning_progress` depends on both heads and is required for a
+  combined release. Targeted upgrades name the intended branch head rather than
+  ambiguous `head`; neither story migration depends on US1 or the other story.
 - **Rationale**: Atomic scoring/completion, idempotent resume, ownership, and
   audit history require constraints and transactions. Foundation ownership
-  removes the hidden `006 -> 007 -> 008` story dependency and keeps the four
-  slices independently testable. Only the core may access these records.
+  removes the hidden sequential dependency from `006_owned_roadmaps` through
+  `007_learning_sessions` to `008_owned_progress` and keeps the four slices
+  independently testable. Only the core may access these records.
 - **Alternatives considered**: JSON-only records weaken concurrency and query
   guarantees. BFF storage of learning state violates domain ownership. Seeding
   a fixture into a schema created by US1 would still make US3/US4 depend on US1.
+  A single sequential chain from `006_owned_roadmaps` through
+  `007_learning_sessions` to `008_owned_progress` was rejected because it makes
+  US4 schema verification depend on US3 despite their independent stories.
 
 ## Decision 9: Use Redis only for BFF session state
 
 - **Decision**: Store opaque session records, auth state/nonce, CSRF secret,
-  expiry, and encrypted MSAL cache material in a BFF-owned Redis dependency.
-  UI and core do not access it.
+  expiry, encryption-key version, and encrypted MSAL cache material in a
+  BFF-owned Redis dependency. Use a versioned Key Vault key ring with one active
+  encrypting version, a bounded decrypt-only overlap set, lazy rewrite on
+  authenticated access, and key-version indexes for compromise revocation. UI
+  and core do not access Redis directly.
 - **Rationale**: BFF replicas and restarts need shared revocable state. Redis is
   purpose-fit for expiring sessions and does not couple browser auth state to
   core persistence.
@@ -140,9 +176,14 @@
 
 ## Decision 10: Use path routing, NetworkPolicy, and independent health
 
-- **Decision**: Deploy UI, BFF, and core as separate ClusterIP Services.
-  Gateway/Ingress reaches UI and BFF; BFF alone reaches core by private service
-  DNS. NetworkPolicy denies UI-to-core. Each service exposes process-local
+- **Decision**: Deploy UI, BFF, and core as separate workloads. A pinned ALB
+  Controller manages the Application Gateway for Containers Gateway/HTTPRoutes
+  for public UI and BFF only; the legacy NGINX Ingress/Web App Routing add-on and Ingress
+  are removed. BFF reaches core through ClusterIP service DNS. Approved machines
+  reach a separate Azure-internal L4 `LoadBalancer` through private DNS and
+  approved VNet/peered/private-connected networks; core terminates HTTPS with a
+  rotated Key Vault/CSI certificate, restricted source ranges/NSGs, and app-role
+  authentication. NetworkPolicy denies UI-to-core. Each service exposes process-local
   liveness and dependency-aware readiness without making liveness depend on a
   downstream service. Each workload has resource requests, an HPA with two
   minimum/four maximum replicas and a 70% CPU target, a PDB with
@@ -169,8 +210,20 @@
   mutation, append the previous/intended state, compatibility result, mutation,
   compensating action, and reversibility to a journal. On failure, execute only
   completed reversible compensations in reverse order. Never automatically
-  reverse a destructive database migration; an irreversible mutation requires
-  an operator-approved recovery plan before promotion.
+  reverse a destructive database migration. Schema delivery runs a compatibility
+  gate, writes accepted evidence, applies only an expand migration through
+  `scripts/ci/migrate-core.sh` by creating a bounded Kubernetes Job in a
+  dedicated namespace. Deployer RBAC permits Job `create/get/watch/delete`, Pod
+  `get/list/watch`, and `get` on `pods/log`, while denying exec/attach/port-
+  forward/secret/configuration/service-account mutation and database access. A
+  cluster-admin-owned admission policy enforces the migrator service account,
+  exact ACR core repository by digest, fixed runner/target set, nonprivileged
+  security, allowlisted environment/volumes, and deadline/retry/TTL. The Job's
+  dedicated Workload Identity alone receives the migration-only PostgreSQL DDL/backfill grants and network path. Job identity,
+  immutable image digest, target, before/after heads, status/logs, timeout/retry,
+  and cleanup become required evidence. The pipeline records the resulting
+  branch heads as an irreversible journal entry and only then rolls out core. An irreversible
+  mutation requires an operator-approved recovery plan before promotion.
 - **Rationale**: This meets independent release/rollback requirements while
   preventing incompatible writes and keeping database migrations safe. A
   reverse journal restores all mutations made by the failed rollout rather than
@@ -179,7 +232,9 @@
 - **Alternatives considered**: A combined image or synchronized release train
   violates independent operation. Blind database rollback risks data loss.
   A snapshot without compensating operations cannot safely unwind a partial
-  multi-step rollout.
+  multi-step rollout. Contract-first expansion was chosen so a failed core
+  rollout can restore the previous image against the retained expanded schema;
+  automatic down-migration was rejected as a data-loss risk.
 
 ## Decision 12: Test boundaries and journeys separately
 
@@ -192,14 +247,26 @@
   elapsed time from `career.result.fetch-resolved`, recorded after the complete
   response body is parsed and validated, to
   `career.result.accessible-render-committed`. Core performance uses
-  `performance-profile-v1`: two independent roadmap and guidance scenarios,
+  the approved
+  [`performance-profile-v1`](../../tests/performance/performance-profile-v1.json):
+  two independent roadmap and guidance scenarios,
   each with 10 concurrent workers, two excluded successful warm-up requests per
   worker, and 10 measured requests per worker. The committed fixture set spans
   approved beginner, intermediate, and advanced profiles and supported guidance
-  topics. Measurement uses a monotonic clock from core ASGI request entry through
-  completion of response serialization. Nearest-rank p95 is calculated over all
-  100 measured valid attempts per scenario; failures and timeouts remain in the
-  denominator.
+  topics. The profile's full-profile and fixture-set digests cover the complete
+  evidence schema; pinned BFF/core contract-byte digests bind the declared
+  operation pairing. CI digest-matches both contracts, regenerates the
+  BFF-to-core mapper, rejects drift, and retains the used mapper digest before
+  deterministic worker assignment and 45-second roadmap/20-second guidance hard
+  cancellation.
+  Measurement uses a monotonic clock from core ASGI request entry through
+  completion of response serialization after mapping and BFF transport have
+  been excluded.
+  Nearest-rank p95 is calculated over all 100 measured values per scenario;
+  failures and timeouts remain in the denominator and contribute the scenario
+  timeout value. Universal scenario enumeration separately comes from the
+  approved manifest-digest and derived per-case-fixture-digest verified
+  [readiness manifest](../../tests/fixtures/readiness-scenario-manifest-v1.yaml).
   Normal certificate rotation
   tests both a fresh authorization-code callback and an existing-session token
   refresh through every BFF replica before the old certificate can retire.
@@ -216,10 +283,13 @@
 
 ## Decision 13: Run all application services on one Azure AKS platform
 
-- **Decision**: Deploy UI, BFF, and core as independent AKS Deployments and
-  ClusterIP Services in a shared application namespace. Use the AKS
-  Application Gateway for Containers with Gateway API for the UI and BFF
-  public paths; do not create a public route for core.
+- **Decision**: Deploy UI, BFF, and core as independent AKS Deployments in a
+  shared application namespace. Install a version-pinned ALB Controller with a
+  dedicated Workload Identity/RBAC before creating Application Gateway for
+  Containers Gateway API resources for UI/BFF public paths. Keep core private:
+  BFF uses ClusterIP, while approved machines use a TLS core endpoint behind an
+  Azure-internal L4 LoadBalancer and private DNS. Do not create a public route
+  for core.
 - **Rationale**: This meets the Azure-only hosting requirement while reusing
   cluster capacity, identity, policy, DNS, and observability. Independent
   Kubernetes workloads preserve separate scaling and rollback without the cost
@@ -242,8 +312,46 @@
   and core distinct service names and attach environment, service version, and
   image digest to safe telemetry. Record route-class rate/error/duration,
   readiness, dependency outcome, restart, replica, and HPA-saturation signals;
-  alert on five-minute readiness loss, sustained 5xx/latency breach, restart
-  loops, and sustained maximum-replica saturation.
+  use versioned `operational-alert-profile-v1`: alert on zero ready replicas for
+  five minutes; 5xx at or above 5% with at least 20 requests in each of two
+  five-minute windows; route p95 above 2 seconds for UI static, 30 seconds for
+  roadmap, 10 seconds for guidance, or 5 seconds for other personalized API
+  traffic across the same two-window/minimum-sample gate; three restarts in 10
+  minutes; four HPA replicas at or above 70% average CPU for 15 minutes; an
+  unacknowledged session-revocation outbox row at 2/6/12 hours; gateway/private-
+  core certificate expiry at 30/14/7 days and critical below 48 hours; no
+  successful directory reconciliation at 6/8 hours; or active-lab validation
+  age at 30/36 hours, with immediate content-operations alert after three
+  consecutive failures or an unavailable destination.
+  Readiness/restart and second-window 5xx/latency breaches page Application
+  Operations. HPA saturation warns Application and Platform Operations at 15
+  minutes and pages both at 30; gateway, cluster, and managed-dependency causes
+  also route to Platform Operations. Revocation backlog warns at 2 hours, pages
+  at 6, and becomes a critical 12-hour deadline breach.
+  Certificate alerts route to Platform Operations; reconciliation warnings/
+  pages route to Application and Platform Operations; lab warnings route to
+  Learning Content Operations and 36-hour pages also route to Application
+  Operations.
+  A bounded 12-hour AKS CronJob is the sole runtime allowed to assume the
+  gateway-certificate/DNS identity and runs overlap/activation/reload/rollback
+  from a digest-pinned runner. A separate bounded 20-hour CronJob assumes only
+  the lab-validation identity and updates validation state; its NetworkPolicy
+  excludes private/link-local/metadata/cluster destinations while the validator
+  enforces the provider-domain/redirect allowlist.
+- **Data-plane bootstrap**: An interactive Platform Operations identity, outside
+  Jenkins, establishes the Managed Redis data-plane assignment and PostgreSQL
+  Entra administrator plus separate core DML; lifecycle known-identity/status/
+  reconciliation/outbox and unclaimed-retention-scheduling; retention audited
+  security-definer claim/process-due procedure-only; lab-validation destination/
+  status/counter-only; and migration DDL/backfill principals. Lifecycle may insert or narrowly update unclaimed scheduling
+  fields but cannot read/delete/claim/complete queue rows. The retention
+  procedures enforce eligibility, delete the identity and personalized owner
+  graph, remove every link, and only then anonymize eligible security evidence,
+  without granting direct queue or learning-row reads. The lab role cannot
+  access profiles, learning sessions, or reviews. Bootstrap
+  proves cross-role denial before access
+  keys/password fallback are disabled. Jenkins may validate but cannot grant
+  these roles.
 - **Rationale**: Managed services remove backups, patching, failover, and
   storage scheduling from the application cluster. Workload Identity avoids
   long-lived Azure credentials. PostgreSQL also removes the single-writer
@@ -280,9 +388,12 @@
   client and a core protected API exposing a delegated scope. The browser gets
   only an opaque BFF cookie. The BFF obtains an employee-delegated core access
   token; the core validates allowed algorithm/signature, `iss`, `tid`, `aud`,
-  `nbf`/`exp`, `azp`, `scp`, and `(tid, oid)`. Separately, assign
-  least-privilege Workload Identities to BFF,
-  core, and gateway, while the AKS kubelet identity pulls from ACR.
+  `nbf`/`exp`, `azp`, `scp`, and `(tid, oid)`. For private capability and
+  readiness reads that cannot depend on an employee session, the BFF uses the
+  same confidential-client certificate to obtain an app-only token containing
+  only `CareerAgent.Health.Read`. Separately, assign
+  least-privilege Workload Identities to BFF, core, lifecycle reconciliation,
+  and gateway, while the AKS kubelet identity pulls from ACR.
 - The BFF authenticates its confidential-client code redemption with a rotating
   certificate stored in Key Vault and mounted by CSI; this credential is not
   reused for Azure resource access.
@@ -305,9 +416,15 @@
 - **Decision**: Expose dedicated core API application roles to approved machine
   registrations. Accept client-credentials tokens only on documented machine
   operations reached through an approved private route. Employee operations
-  continue to require delegated scopes.
+  continue to require delegated scopes. BFF-specific compatibility headers are
+  conditional on delegated BFF calls and are not part of machine request
+  semantics. Machine roadmap creation uses application ownership keyed to the
+  validated principal; machine progress may reference only that application's
+  roadmap; guidance remains stateless apart from application-scoped
+  idempotency/audit. No app-only call fabricates or selects an employee owner.
 - **Rationale**: Automation remains independent of UI/BFF availability while
-  the core can distinguish an application from an employee delegation. Private
+  the core can distinguish an application from an employee delegation and
+  preserve stateful machine outcomes without weakening ownership. Private
   routing preserves the no-public-core requirement.
 - **Alternatives considered**: Anonymous compatibility violates the security
   boundary. Employee tokens prevent unattended automation. Routing machines
@@ -326,25 +443,49 @@
 
 ## Decision 19: Reconcile Entra lifecycle and enforce retention in core
 
-- **Decision**: Run a daily core-image CronJob that checks known Entra object
-  IDs for disabled/deleted status. Mark departure, revoke BFF sessions, block
-  personalized access, and delete identity/profile/domain/idempotency records
-  by day 90. Security evidence may remain only after irreversible removal of
-  direct and indirect identity; aggregate telemetry must be non-reidentifiable.
-  Checkpoint reconciliation and retry throttling/transient failures without
-  treating them as departure.
+- **Decision**: Run a four-hour core-image CronJob (stricter than the daily
+  minimum) that checks known Entra object
+  IDs for disabled/deleted status using a dedicated Workload Identity with
+  administrator-consented, read-only Microsoft Graph `User.Read.All`. Mark
+  departure, block personalized access, and enqueue both a durable revocation
+  outbox row and an unclaimed retention action in one transaction before
+  advancing the reconciliation checkpoint. Lifecycle can schedule but cannot
+  read, claim, complete, or delete retention work; the separate retention
+  identity processes due work only through audited security-definer procedures. A
+  dispatcher running at least every five minutes sends the authenticated,
+  idempotent command to a private BFF route protected by
+  `LearningBff.Session.Revoke`, retries with at most a one-hour delay until
+  acknowledgement, alerts at two hours, pages at six, and reaches a 12-hour
+  post-recognition deadline so total disablement-to-revocation remains below 24
+  hours; delete identity/profile/domain/idempotency and owner-linked outbox
+  records by day 90. The successful retention transaction nulls the completed
+  action's `ON DELETE SET NULL` owner FK only through identity deletion; the
+  retained action contains no tenant/object/owner identifier or reversible
+  hash. Security evidence may remain only after irreversible removal of every
+  direct and indirect identity link; aggregate telemetry must be
+  non-reidentifiable. Checkpoint reconciliation and retry throttling/transient
+  failures without treating them as departure.
 - **Rationale**: Sign-in checks stop returning users; reconciliation also catches
-  employees who never return. Core owns data and retention transitions.
+  employees who never return. The explicit control path revokes distributed
+  Redis sessions without giving core direct Redis access. The transactional
+  outbox prevents checkpoint/crash loss, and the dedicated identity confines
+  Graph and revocation permission. Core owns data and retention transitions.
 - **Alternatives considered**: Login-only checks miss dormant accounts. A new
   HR integration is outside scope. Inactivity is not proof of departure.
+- **Source**: [Get user - Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0)
 
 ## Decision 20: Persist actor-scoped idempotency in core
 
 - **Decision**: Require `Idempotency-Key` on retryable mutations. Persist a
   unique actor/operation/key record with canonical request hash, state, and
   established result. Invalid requests do not consume the key; identical valid
-  replays return the result; changed payloads return `409`. Retain the compact
-  record while replay could repeat a transition and purge it with the owner.
+  replays return the result; changed payloads return `409
+  IDEMPOTENCY_KEY_REUSED`. Retain complete response bodies for 30 days, then
+  retain a non-reusable actor/operation/key/hash/status/resource tombstone while
+  the actor remains eligible. A same-hash replay whose body cannot be
+  reconstructed returns the sole approved expired-result response, `409
+  IDEMPOTENCY_RESULT_EXPIRED`, without execution; `410`, generic conflict, and
+  key reuse are prohibited. Purge the tombstone only with the owner graph.
 - **Rationale**: UI controls and BFF deduplication cannot prevent replica races,
   timeouts after commit, or direct machine retries. Core is the only boundary
   able to guarantee one domain transition.
@@ -358,6 +499,16 @@
   verification, and rollback behavior in versioned repository scripts. Jenkins
   runs selected service validation in parallel with fail-fast behavior, then
   serializes protected-branch deployment in compatibility order.
+- **Recovery and notification policy**: Manual rebuild/recovery requires a
+  Jenkins Delivery Recovery Operator and a distinct Platform Operations
+  approver. Automatic compensation uses at most three attempts with
+  0/15/45-second delays and a 20-minute total deadline, stops at the first
+  unverified reverse dependency, and quarantines as `rollback_failed` for
+  two-person recovery. Pre-mutation application/platform/evidence failures route
+  to their owning Application/Platform/Security teams; post-mutation and
+  rollback failures page Application and Platform Operations with 15-minute
+  acknowledgement and 30-minute incident escalation. Successful delivery is
+  informational to Delivery and Application Operations.
 - **Rationale**: Jenkins is the specified CI platform. A thin pipeline makes
   delivery reviewable with the source while keeping critical behavior locally
   testable. Declarative Pipeline supports parallel stages, fail-fast behavior,
@@ -392,6 +543,30 @@
   build emits immutable change and release manifests, deploys only ACR digests,
   snapshots existing service digests, and promotes changed services in
   `core -> BFF -> UI` order without rebuilding.
+- **Controller and ACR loss handling**: The trusted controller plugin fsyncs
+  every accepted-attempt transition to the normal run record and a host-managed
+  append-only replicated audit volume before ACI allocation. Protected
+  scheduling stops when either copy is unhealthy. Platform Operations performs
+  hourly integrity checks and encrypted backup. The replica supplies RPO 0
+  after an accepted transition and RTO at most four hours for controller-disk-
+  loss recovery. Recovery restores the replica and reconciles build IDs against
+  queue/run metadata, webhook audit, and Azure evidence. An accepted nonterminal
+  orphan becomes `aborted_recovered`; protected delivery stays blocked until
+  every post-mutation orphan has verified rollback or approved recovery in a
+  verified terminal state. A digest published but not promoted is marked
+  `published_unpromoted`, quarantined from release aliases, and cannot be used by
+  another build without a new release manifest and fresh gates. Unreferenced
+  unpromoted content becomes GC-eligible after 30 days while build ID, revision,
+  scan, SBOM, release-manifest digest, and disposition evidence remain for 90
+  days. Promoted or held digests are excluded from GC.
+- **Validation template**: Every ref runs checkout, change planning,
+  contract/catalog drift, lint, typecheck, unit, contract, and non-Azure
+  integration validation on `azure-aci-validator`. The template has neither a
+  system-assigned nor a user-assigned managed identity and its stages cannot
+  invoke Azure login, ACR publication, evidence upload, database migration, or
+  AKS operations. Pull requests and unprotected refs stop on this template.
+  Reusing a publisher identity for validation was rejected because untrusted
+  source would inherit delivery permission.
 - **Rationale**: This uses the existing, user-confirmed cloud-agent connection
   instead of inventing a new controller endpoint or network path. Distinct ACI
   identities keep application-delivery permission out of the controller-held
@@ -403,44 +578,115 @@
   Platform Operations owns this credential, rotates it at least every 90 days,
   and receives expiry alerts at 30, 14, and 7 days. Missing/unreadable expiry or
   fewer than 30 valid days quarantines Azure agent provisioning for protected
-  deployments while retaining local validation. Validate that both ACI
-  templates can provision and connect with their intended managed identities
-  before revoking the prior credential; revoke immediately after suspected
+  deployments. Developer-local validation remains possible, but Jenkins never
+  falls back to its controller or a local agent; all-ref Jenkins validation
+  resumes only on the identityless ACI validator. Validate that the identityless
+  validator plus publisher and deployer ACI templates can provision and connect
+  with their declared identity boundaries before revoking the prior credential;
+  revoke immediately after suspected
   compromise. Update the stable Jenkins credential ID only through the
   authenticated localhost API with CSRF protection using a dedicated Jenkins
   credential-manager identity. That identity may update only the stable cloud
   credential and cannot configure jobs, run builds, or read other credentials.
   Accept replacement secret material only through protected standard input or
   an inherited file descriptor with redacted logs and guaranteed cleanup.
-  Quarantine clears only after both replacement templates pass.
+  Quarantine clears only after all three replacement-template checks pass.
+- **External infrastructure bootstrap**: Platform Operations, not Jenkins, uses
+  an interactive Entra identity to initialize locked Azure Storage remote state
+  and apply/import reviewed Terraform with pinned AzureRM/AzureAD providers and
+  a committed provider lock file. `bootstrap-ui-platform.sh` applies/imports all
+  reviewed Terraform, including evidence-lifecycle and monitoring resources;
+  `bootstrap-data-principals.sh` creates and denial-tests the scoped data roles.
+  Platform Operations installs the pinned ALB Controller and the cluster-admin-
+  owned migration namespace/RBAC/admission guardrails. Neither bootstrap script
+  emits the environment manifest. After all modules and delivery identities are
+  applied, data principals are verified, and the controller and guardrails are
+  live, `finalize-ui-platform.sh` alone emits a schema-validated,
+  non-secret reviewed manifest containing state lineage/serial, repository
+  configuration digest, resource/identity IDs, origins, controller/migration-
+  policy attestations, and seven-day
+  provider/quota/capacity attestations. Jenkins has no Terraform apply/import or
+  state-read permission and blocks protected delivery when the manifest is
+  missing, expired, stale, or inconsistent with live resources.
+  Bootstrap privileges are PIM-activated and scoped by action: state-container
+  `Storage Blob Data Contributor`, application-RG `Contributor` and `Role Based
+  Access Control Administrator`, named shared Network/Private-DNS roles, a
+  provider-registration/quota-read custom subscription role, JIT `Application
+  Administrator`, and a separate JIT `Privileged Role Administrator` approver
+  for the Microsoft Graph `User.Read.All` application consent. `Owner`, `Global
+  Administrator`, standing privilege, unrelated app/data access, and Jenkins
+  principals are denied. This split reflects that Azure Contributor cannot
+  assign roles and that Application/Cloud Application Administrator consent
+  excludes Microsoft Graph application permissions.
+  The repository digest is defined by
+  `config/platform-configuration-digest-v1.yaml`, which includes itself and
+  canonicalizes allowlisted platform file path/mode/length/content in bytewise
+  order. It excludes the emitted environment manifest plus local secrets,
+  Terraform state/plan/cache, runtime evidence/logs, and VCS metadata, so it is
+  non-self-referential and changes for matching add/remove/rename/mode/content
+  drift.
 - **Template identity binding**: Bind the Terraform output for the publisher
   identity only to `azure-aci-publisher`, and the deployer identity only to
-  `azure-aci-deployer`. Preflight rejects missing, additional, swapped, or
-  system-assigned identities by comparing the live Jenkins template and running
-  ACI resource IDs with the Terraform outputs.
+  `azure-aci-deployer`. The deployer additionally receives control-plane
+  `Reader` on only the target/configured resource group for live manifest and
+  preflight checks, with no Terraform-state, Key Vault-secret, ACR-content,
+  Redis-data, or PostgreSQL-data read. Post-bootstrap delivery-identity validation rejects
+  missing, additional, swapped, or system-assigned identities by comparing the
+  live Jenkins template and running ACI resource IDs with the reviewed manifest;
+  it also proves that the validator is identityless.
+- **Two-phase readiness**: The identityless validator checks manifest schema and
+  repository digest. On protected refs the deployer performs target-resource-
+  group-only live checks for AKS version/capacity/networking/OIDC, ALB Controller,
+  ACR reachability, private DNS, data-plane principals, and legacy-ingress
+  absence; subscription provider/quota checks use the unexpired external
+  attestation rather than a Jenkins subscription-wide grant. Then run a separate
+  delivery-identity validation for kubelet pull, publisher push,
+  deployer AKS access, controller denial, cross-identity denial, and exact
+  tenant/subscription/resource-group scope.
 - **Evidence authority**: Store delivery manifests and verification evidence in
   a dedicated, access-restricted Azure Storage container. The normal retention
-  period is 90 days; an incident hold may extend an identified evidence set to
-  no more than 180 days and must include owner, reason, incident reference,
-  start, and expiry. Both delivery identities have custom writer roles with
+  period is a fixed locked 90-day version-level time policy. An incident hold
+  sets the Azure version-level legal-hold boolean on every enumerated evidence-
+  set blob version and may protect the set only through an expiry no later than
+  180 days from creation; separate audit metadata includes hold ID, owner,
+  reason, incident reference, start, target versions, and expiry. Partial set or
+  clear enters retrying reconciliation and cannot be reported active/released.
+  Release clears every version hold but cannot shorten the base lock, so deletion waits until both the
+  90-day `immutable_until` has elapsed and no legal hold remains. Both delivery identities have custom writer roles with
   Azure ABAC conditions restricting their environment/stage prefixes; uploads
   use atomic create-if-absent semantics. Required-artifact and prohibited-content
   validation must pass, accepted pre-mutation evidence must exist, and the blob
   version receives a locked time-based immutability policy before promotion.
   Configured Delivery Operators and Security Reviewers Microsoft Entra groups
   hold read access. A separately configured Evidence Hold Managers Microsoft
-  Entra group receives a custom role that may mutate only incident-hold
-  metadata; it cannot read delivery evidence, create artifacts, change base
-  retention, or delete blobs. Jenkins controller archives are
-  convenience copies, not the system of record. A minimal controller audit uses
-  append-only `started -> agent_requested -> agent_connected -> evidence_active`
-  events and exactly one `succeeded | failed | aborted` terminal state. Every
-  exit path records timestamps and failed stage. Authoritative evidence is
+  Entra group is the sole authority for creating, extending, and releasing hold
+  requests and mutating their audited control metadata; it has no direct Azure
+  blob-version hold permission. A separate reconciler identity is the sole data-
+  plane principal that may apply or clear the exact enumerated version legal
+  holds authorized by that metadata. Neither principal can read delivery
+  evidence, create artifacts, change base retention, or delete blobs. Jenkins
+  controller archives are
+  convenience copies, not the system of record. A globally trusted,
+  administrator-installed controller plugin built from a pinned protected
+  revision and verified digest uses `RunListener` to create a controller
+  `RunAction` with `pending` state before `node`, agent allocation, checkout, or
+  workspace creation. It runs independently of repository Jenkinsfile/shared-
+  library calls, so omission or symbol shadowing cannot bypass creation; it owns
+  monotonic updates, restart recovery, retention, and exactly-once finalization.
+  Repository shell code may request allowed updates/synchronization but cannot
+  create, replace, suppress, or finalize this state. The record is authoritative for controller
+  lifecycle state and explicitly non-authoritative as delivery evidence. The
+  audit uses append-only
+  `started -> agent_requested -> agent_connected -> evidence_active` events and
+  exactly one `succeeded | failed | aborted` terminal state. Every exit path
+  records timestamps and failed stage. Authoritative evidence is
   required only after an authenticated delivery agent is available. Evidence
   must not contain tokens, kubeconfigs, secrets, or personal learner data.
   Digest pinning prevents a mutable tag from changing the deployed artifact;
   signed/fingerprinted evidence makes the source-to-environment transition
-  auditable. Per-service snapshots support the required scoped rollback.
+  auditable. Per-service snapshots support attempt-wide rollback of every
+  service mutated by the accepted attempt while leaving untouched services
+  unchanged.
 - **Alternatives considered**: A dedicated Azure VM agent duplicates the
   existing ACI capability. Publishing the localhost controller as an OIDC
   issuer is insecure. Reusing the provisioning service principal for delivery
@@ -448,4 +694,70 @@
   Mutable tags cannot prove which bytes were deployed. A synchronized
   three-service release train unnecessarily redeploys unaffected services.
 - **Sources**: [Azure managed identities](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview),
-  [ACR image tagging and versioning](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-image-tag-version)
+  [ACR image tagging and versioning](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-image-tag-version),
+  [Azure built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles),
+  [Entra application-management roles](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/delegate-app-roles),
+  [Entra built-in role consent limits](https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference),
+  [Terraform state in Azure Storage](https://learn.microsoft.com/en-us/azure/developer/terraform/store-state-in-azure-storage)
+
+## Decision 24: Make readiness and requirements traceability release authorities
+
+- **Decision**: Treat
+  [implementation-readiness-contract.md](./contracts/implementation-readiness-contract.md)
+  as the normative authority for outcome states, stable codes, numeric bounds,
+  owners, evidence, SLO measurement, and prerequisite failure behavior. Treat
+  [requirements-traceability.md](./requirements-traceability.md) as the
+  exhaustive FR/SC-to-task/test/evidence ledger. A missing, empty, duplicate,
+  out-of-order, or unknown-task row blocks implementation and release.
+- **Pilot SLO decision**: The pilot has no production SLA and is measured only
+  on Israel business days from 08:00-18:00:
+
+  | Concern | Exact decision |
+  |---|---|
+  | Browser journey | 99.0% per calendar month. Run one observation per eligible minute; it succeeds only when public TLS Gateway, UI/runtime-config, and `/bff/v1/capabilities` readiness/contract checks all pass. Availability is successful eligible observations divided by all eligible observations. Maintenance is excluded only with at least 24-hour notice and is capped at four hours/month; unannounced and above-cap minutes remain in the denominator. |
+  | Stateless UI/BFF/core | RPO 0 for Git, immutable ACR digest, and reviewed configuration; RTO at most 60 minutes. |
+  | PostgreSQL | RPO at most five minutes; RTO at most four hours; continuous backup/PITR retention is seven days, and restored access waits for retention catch-up plus owner/access checks. |
+  | Redis sessions | Durable-session RPO is intentionally excluded; RTO at most 60 minutes. Session loss may require sign-in but cannot lose core learning data, and restored state requires key/version validation. |
+  | Delivery evidence | RPO 0 after immutable-version acceptance; access RTO at most four hours, with delivery blocked until recovery/completeness. |
+  | Jenkins controller audit | RPO 0 after a two-copy fsync; RTO at most four hours for replica restore and queue/run, webhook, and Azure-evidence reconciliation. Protected delivery stays blocked until accepted orphans are terminal and post-mutation orphans have verified rollback or approved recovery. |
+  | Telemetry and labs | Telemetry may lose at most five minutes or 1,000 safe envelopes per process. Labs claim no provider RTO/RPO; scheduled validation runs every 20 hours and never exceeds 24 hours, while a report triggers validation within 15 minutes. |
+  | Regional DR | Cross-region Entra/Azure managed-service failover and provider SLA commitments are excluded; dependency behavior still fails closed. |
+
+  Monthly evidence contains scheduled/excluded minutes and notice, eligible/
+  successful/failed one-minute observations, achieved availability, incidents,
+  exercised RTO/RPO, PostgreSQL restore results, replicated controller-audit
+  restore/reconciliation results, and owner approval. RTO runs from the first
+  failed eligible observation or declared outage, whichever is earlier, to the
+  first complete successful functional recovery check. RPO compares restored
+  state with the last accepted authoritative domain transaction, deployment
+  digest/configuration, controller transition, or immutable evidence version.
+- **Prerequisite decision**: Planning-time existence is never evidence. The
+  linked readiness contract defines each required evidence payload; the exact
+  freshness and accountable-owner register is:
+
+  | Prerequisite | Owner | Exact freshness/gate |
+  |---|---|---|
+  | Entra tenant/apps/scopes/roles/consent/groups/issuer | Identity/Security Operations | Validate within 24 hours before pilot and after every identity/config change. |
+  | Approved machine clients/private networks | Security Reviewers and Platform Operations | Manifest attestation at most seven days old plus live DNS/TLS/denial probe on verification day. |
+  | External bootstrap and final reviewed manifest | Platform Operations | Plan/state/assignment/controller/migration/provider/quota/capacity evidence at most seven days old; compare live target-RG resources on every protected build. |
+  | AKS/ACR and platform controls | Platform Operations | Live capacity/OIDC/Workload-Identity/ALB/PDB/HPA/topology/private-DNS/migration/legacy-ingress preflight within 15 minutes of promotion. |
+  | Jenkins controller/cloud `azure` | Platform Operations | Check daily and on every protected build; provisioning principal must retain at least 30 valid days. |
+  | ACI validator/publisher/deployer | Platform Operations | Smoke after credential/template change and within 24 hours before protected release. |
+  | Redis/PostgreSQL/Key Vault/CSI/Gateway/Monitor/evidence | Platform Operations with Application Operations | Live identity/denial/readiness/version/immutable-write/exporter checks within 15 minutes of pilot opening and protected release. |
+  | Lab providers/references | Learning Content Operations and Security Reviewers | Dual approvals and complete validation at most 24 hours old. |
+  | Pilot population | Product/UX Research | Freeze roster/allocation/consent/script/facilitator evidence within seven days of the first participant. |
+  | Browsers/assistive technology | Product/UX Research and Application Operations | Capture exact versions and matrix smoke on verification day; release evidence must be at most 30 days old. |
+
+  A stale or failed row has the precise blocking effect in the readiness
+  contract: it blocks the affected identity, consumer, publication, promotion,
+  pilot opening, measured study, or UI release; there is no fallback credential,
+  tenant, agent, service, or inferred assumption.
+- **Rationale**: A single normative behavior contract plus an exhaustive ledger
+  turns readiness from prose into reviewable implementation, test, evidence,
+  and release gates. Exact denominators and freshness windows prevent teams from
+  reporting success against different populations or stale prerequisites.
+- **Alternatives considered**: Scattered best-effort guidance was rejected
+  because values and stable codes drift. A production-grade regional SLA was
+  rejected because this feature is a small non-production pilot. Treating
+  planning assumptions as preflight evidence was rejected because external
+  identity, capacity, controller, provider, and browser state can change.
