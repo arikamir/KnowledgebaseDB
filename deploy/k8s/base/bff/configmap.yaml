@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bff-runtime-config
+data:
+  BFF_HOST: 0.0.0.0
+  BFF_PORT: "3000"
+  CORE_BASE_URL: "https://core.career-agent.svc:8443/api/v1"
+  PUBLIC_ORIGIN: "${PUBLIC_ORIGIN}"
+  REDIS_URL: "rediss://${MANAGED_REDIS_HOST}:10000"
+  READINESS_REQUIRED_DEPENDENCIES: "redis,tenant-jwks,session-key,bff-client-certificate,core-tls"

@@ -1,4 +1,7 @@
 resources:
-  - deployment.yaml
-  - service.yaml
+  - ui
+  - bff
+  - core
+  - lifecycle
+  - retention
   - ingress.yaml

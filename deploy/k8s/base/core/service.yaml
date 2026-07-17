@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: core
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: core}
+  ports:
+    - {name: http, port: 8000, targetPort: http}

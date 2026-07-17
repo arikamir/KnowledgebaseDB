@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+  labels: {app.kubernetes.io/name: core, app.kubernetes.io/component: domain-api}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: core}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core
+        app.kubernetes.io/component: domain-api
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: core
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: core
+          image: "${CORE_IMAGE_REPOSITORY}@${CORE_IMAGE_DIGEST}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8000}
+          envFrom:
+            - configMapRef: {name: core-runtime-config}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            readOnlyRootFilesystem: true
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}

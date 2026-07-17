@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lifecycle-reconciliation
+spec:
+  schedule: "17 */4 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: lifecycle-reconciliation, azure.workload.identity/use: "true"}
+        spec:
+          serviceAccountName: lifecycle
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: reconciliation
+              image: "${CORE_IMAGE_REPOSITORY}@${CORE_IMAGE_DIGEST}"
+              command: ["python", "-m", "lifecycle.reconcile_directory"]
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: 250m, memory: 256Mi}
