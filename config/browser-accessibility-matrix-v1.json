@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "matrixId": "browser-accessibility-matrix-v1",
+  "frozenAt": "2026-07-17T00:00:00Z",
+  "status": "approved-for-execution",
+  "versionPolicy": "The latest two stable major release lines verified from vendor release notes on the frozen date; beta, developer, nightly, and extended-stable channels are excluded.",
+  "browsers": {
+    "chrome": {
+      "majors": [150, 149],
+      "exactDesktopVersions": ["150.0.7871.101", "149.0.7827.197"],
+      "source": "https://chromereleases.googleblog.com/2026/"
+    },
+    "edge": {
+      "majors": [150, 149],
+      "exactDesktopVersions": ["150.0.4078.65", "149.0.4022.98"],
+      "source": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-relnote-stable-channel"
+    },
+    "firefox": {
+      "majors": [152, 151],
+      "exactDesktopVersions": ["152.0.6", "151.0.4"],
+      "source": "https://www.firefox.com/en-US/releases/"
+    },
+    "safari": {
+      "majors": [26, 18],
+      "exactDesktopVersions": ["26.5", "18.6"],
+      "source": "https://developer.apple.com/documentation/safari-release-notes"
+    }
+  },
+  "desktop": {
+    "windows": {"os": "Windows 11", "browsers": ["chrome", "edge", "firefox"], "widths": [320, 375, 768, 1024, 1440, 1920], "assistiveTechnology": ["keyboard", "NVDA latest with Chrome 150", "NVDA latest with Firefox 152"]},
+    "macos": {"osVersions": ["current", "previous"], "browsers": ["chrome", "firefox", "safari"], "widths": [320, 375, 768, 1024, 1440, 1920], "assistiveTechnology": ["keyboard", "VoiceOver with Safari 26.5"]}
+  },
+  "mobile": {
+    "engines": ["chromium", "webkit"],
+    "viewports": [{"width": 375, "height": 812}, {"width": 812, "height": 375}, {"width": 320, "height": 568}],
+    "inputs": ["touch", "on-screen-keyboard", "orientation-change", "focus-restoration"]
+  },
+  "magnification": {
+    "zoom200Percent": ["chrome", "edge", "firefox", "safari"],
+    "textScaling200Percent": ["chrome", "safari"]
+  },
+  "journeys": ["roadmap", "guidance", "focused-learning", "progress-review"],
+  "persistenceStates": ["not_yet_saved", "saving", "save_unknown", "failed_to_save", "saved"],
+  "resultPolicy": {
+    "requiredOutcome": "passed",
+    "setupDependencyCrashTimeoutOrMissingEvidence": "failed",
+    "substitution": "prohibited",
+    "denominatorReduction": "prohibited"
+  }
+}
