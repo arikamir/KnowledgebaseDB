@@ -13,7 +13,7 @@ fi
 
 mkdir -p "$repo_root/infra"
 mkdir -p "$target"
-for file in versions.tf variables.tf main.tf outputs.tf terraform.tfvars.example .gitignore .terraform.lock.hcl; do
+for file in versions.tf variables.tf main.tf jenkins-agent-identities.tf delivery-evidence-storage.tf outputs.tf terraform.tfvars.example .gitignore .terraform.lock.hcl; do
   [[ -f "$template/$file" ]] && cp "$template/$file" "$target/$file"
 done
 

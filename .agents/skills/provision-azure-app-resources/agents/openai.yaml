@@ -1,4 +1,4 @@
 interface:
   display_name: "Provision Azure App Resources"
-  short_description: "Auto-create missing Azure deployment infrastructure"
-  default_prompt: "Use $provision-azure-app-resources to ensure required Azure infrastructure exists, then continue the requested application deployment."
+  short_description: "Create the complete feature-003 Azure and identity topology"
+  default_prompt: "Use $provision-azure-app-resources to validate or create the complete three-service AGC/AKS/data/evidence topology and all least-privilege identities, then continue the requested deployment."

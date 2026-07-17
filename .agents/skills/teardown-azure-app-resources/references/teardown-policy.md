@@ -7,10 +7,14 @@ The companion provisioning skill creates these resources in one non-production r
 - Azure Kubernetes Service cluster
 - Azure Container Registry
 - Log Analytics workspace
-- AKS kubelet `AcrPull` role assignment
+- nine workload identities and one-to-one federated credentials
+- separate Jenkins publisher/deployer identities and exact ACR/AKS/Reader/evidence assignments
+- AKS kubelet exact-ACR `AcrPull` role assignment (never a federated application identity)
+- AGC/private-core/Redis/PostgreSQL/Key Vault/evidence resources declared by the feature-003 state
 - Resource group
 
 Terraform state, not this list, is the deletion authority. Stop if the destroy plan includes resources outside the expected application scope.
+Stop when any required declared identity is absent from state; reconcile/import state first so teardown cannot orphan a principal or role assignment.
 
 ## Allowed environments
 
@@ -28,4 +32,3 @@ Before apply, capture:
 - exact confirmation phrase.
 
 After apply, capture Terraform's result and read-only Azure verification. Do not commit credentials, state, plan files, kubeconfig, or exported secrets.
-

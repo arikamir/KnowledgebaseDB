@@ -1,4 +1,4 @@
 interface:
   display_name: "Teardown Azure App Resources"
-  short_description: "Safely destroy this app Azure infrastructure"
-  default_prompt: "Use $teardown-azure-app-resources to plan and safely remove this application Azure infrastructure."
+  short_description: "Safely destroy the complete app and identity topology"
+  default_prompt: "Use $teardown-azure-app-resources to verify state parity, plan, and safely remove the complete feature-003 Azure topology without orphaning identities or roles."

@@ -45,20 +45,18 @@ resource "azurerm_kubernetes_cluster" "app" {
 
   identity { type = "SystemAssigned" }
 
+  oidc_issuer_enabled       = true
+  workload_identity_enabled = true
+
   oms_agent {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.app.id
-  }
-
-  web_app_routing {
-    dns_zone_ids             = []
-    default_nginx_controller = "External"
   }
 
   role_based_access_control_enabled = true
   tags                              = local.tags
 }
 
-resource "azurerm_role_assignment" "acr_pull" {
+resource "azurerm_role_assignment" "kubelet_exact_acr_pull" {
   scope                = azurerm_container_registry.app.id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_kubernetes_cluster.app.kubelet_identity[0].object_id
