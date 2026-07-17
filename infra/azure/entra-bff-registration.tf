@@ -68,6 +68,20 @@ resource "azuread_service_principal" "bff" {
   }
 }
 
+resource "azuread_application_certificate" "bff_active" {
+  application_id = azuread_application.bff.id
+  type           = "AsymmetricX509Cert"
+  encoding       = "hex"
+  value          = azurerm_key_vault_certificate.bff_client.certificate_data
+  start_date     = azurerm_key_vault_certificate.bff_client.certificate_attribute[0].not_before
+  end_date       = azurerm_key_vault_certificate.bff_client.certificate_attribute[0].expires
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [value, start_date, end_date]
+  }
+}
+
 output "entra_bff_registration" {
   description = "Non-secret BFF confidential-client and protected internal-API registration metadata."
   value = {
@@ -80,6 +94,11 @@ output "entra_bff_registration" {
     internal_api_audience       = local.bff_api_audience
     session_revoke_role_id      = azuread_application.bff.app_role_ids["LearningBff.Session.Revoke"]
     session_revoke_role_value   = "LearningBff.Session.Revoke"
+    certificate_registration_id = azuread_application_certificate.bff_active.id
+    certificate_thumbprint      = azurerm_key_vault_certificate.bff_client.thumbprint
+    certificate_version         = azurerm_key_vault_certificate.bff_client.version
+    certificate_material        = "public-x509-only"
+    certificate_rotation_owner  = "T076-T078"
     import_application_command  = "terraform -chdir=infra/azure import azuread_application.bff /applications/<application-object-id>"
     import_principal_command    = "terraform -chdir=infra/azure import azuread_service_principal.bff /servicePrincipals/<service-principal-object-id>"
   }

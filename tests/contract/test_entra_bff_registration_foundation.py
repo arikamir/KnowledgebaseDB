@@ -43,7 +43,7 @@ def test_registration_has_a_locked_service_principal_and_nonsecret_importable_ou
     text = source()
     assert 'resource "azuread_service_principal" "bff"' in text
     assert "app_role_assignment_required = true" in text
-    assert text.count("prevent_destroy = true") == 2
+    assert text.count("prevent_destroy = true") == 3
     assert 'output "entra_bff_registration"' in text
     for field in (
         "application_object_id",
@@ -53,9 +53,27 @@ def test_registration_has_a_locked_service_principal_and_nonsecret_importable_ou
         "logout_uri",
         "internal_api_audience",
         "session_revoke_role_id",
+        "certificate_registration_id",
+        "certificate_thumbprint",
+        "certificate_version",
         "import_application_command",
         "import_principal_command",
     ):
         assert field in text
     for secret_field in ("client_secret", "private_key", "certificate_value", "password"):
         assert secret_field not in text.lower()
+
+
+def test_entra_registration_receives_only_public_x509_certificate_material() -> None:
+    text = source()
+    assert 'resource "azuread_application_certificate" "bff_active"' in text
+    assert 'type           = "AsymmetricX509Cert"' in text
+    assert 'encoding       = "hex"' in text
+    assert "value          = azurerm_key_vault_certificate.bff_client.certificate_data" in text
+    assert "certificate_attribute[0].not_before" in text
+    assert "certificate_attribute[0].expires" in text
+    assert 'certificate_material        = "public-x509-only"' in text
+    assert "prevent_destroy = true" in text
+    assert "ignore_changes  = [value, start_date, end_date]" in text
+    for forbidden in ("secret_id", "versionless_secret_id", "certificate_data_base64", "private_key", "pfx"):
+        assert forbidden not in text.lower()
