@@ -47,6 +47,7 @@ Add excluded components only when the user or a newer specification requires the
 - Grant the non-federatable AKS kubelet identity only `AcrPull` scoped to the exact ACR; prove push/delete/import/admin/role/federation/pod-assumption denial.
 - Require OIDC/Workload Identity and one federated subject per BFF, core, lifecycle, retention, lab-revalidation, migration, evidence-hold-reconciler, ALB-controller, and gateway-certificate/DNS identity.
 - Publisher may push only to the application ACR and publish/verify exact prefix-scoped immutable evidence. Deployer may mutate only the exact AKS target, read only the target resource group, and publish/verify exact prefix-scoped evidence. Neither may read Terraform state, secrets, Redis/PostgreSQL data, or assume the other role.
+- Grant evidence read access only to the separately configured Delivery Operators and Security Reviewers Microsoft Entra group object IDs; reader membership never grants writer or hold-management authority.
 - Output the ACR login server so the Kustomize image reference can use `<login-server>/<repository>@sha256:<digest>`.
 - Install the pinned ALB Controller before Gateway resources and route only UI/BFF through AGC HTTPS.
 - Resolve and report the Gateway's actual public `https://<address>/` URL after rollout.

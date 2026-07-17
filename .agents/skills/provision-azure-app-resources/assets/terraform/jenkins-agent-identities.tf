@@ -68,30 +68,5 @@ resource "azurerm_role_assignment" "deployer_target_rg_reader" {
   role_definition_name = "Reader"
   principal_id         = azurerm_user_assigned_identity.jenkins_deployer.principal_id
 }
-resource "azurerm_role_definition" "delivery_evidence_exact_writer" {
-  name  = "${local.stem}-delivery-evidence-exact-writer"
-  scope = azurerm_storage_account.delivery_evidence.id
-  permissions {
-    actions          = ["Microsoft.Storage/storageAccounts/blobServices/containers/read"]
-    data_actions     = ["Microsoft.Storage/storageAccounts/blobServices/containers/blobs/add/action", "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write", "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read"]
-    not_actions      = ["Microsoft.Authorization/*", "Microsoft.Storage/storageAccounts/listKeys/action"]
-    not_data_actions = ["Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete", "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/tags/write"]
-  }
-  assignable_scopes = [azurerm_storage_account.delivery_evidence.id]
-}
-resource "azurerm_role_assignment" "publisher_evidence_prefix" {
-  scope              = azurerm_storage_account.delivery_evidence.id
-  role_definition_id = azurerm_role_definition.delivery_evidence_exact_writer.role_definition_resource_id
-  principal_id       = azurerm_user_assigned_identity.jenkins_publisher.principal_id
-  condition_version  = "2.0"
-  condition          = "((@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringEquals 'delivery-evidence') AND (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers/blobs:path] StringLike 'deliveries/${var.environment}/*'))"
-}
-resource "azurerm_role_assignment" "deployer_evidence_prefix" {
-  scope              = azurerm_storage_account.delivery_evidence.id
-  role_definition_id = azurerm_role_definition.delivery_evidence_exact_writer.role_definition_resource_id
-  principal_id       = azurerm_user_assigned_identity.jenkins_deployer.principal_id
-  condition_version  = "2.0"
-  condition          = "((@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringEquals 'delivery-evidence') AND (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers/blobs:path] StringLike 'deliveries/${var.environment}/*'))"
-}
 output "workload_identity_manifest" { value = { for name, identity in azurerm_user_assigned_identity.workload : name => { resource_id = identity.id, client_id = identity.client_id, principal_id = identity.principal_id, subject = local.workload_identity_subjects[name], contract = local.workload_identity_contract[name] } } }
 output "jenkins_delivery_identity_manifest" { value = { publisher = { resource_id = azurerm_user_assigned_identity.jenkins_publisher.id, client_id = azurerm_user_assigned_identity.jenkins_publisher.client_id }, deployer = { resource_id = azurerm_user_assigned_identity.jenkins_deployer.id, client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id }, validator = null, ui = null, contract = local.delivery_identity_contract } }

@@ -22,4 +22,4 @@ if command -v terraform >/dev/null 2>&1; then
 fi
 
 echo "[azure-infra] Created deterministic Terraform foundation at $target"
-echo "[azure-infra] Copy terraform.tfvars.example to an ignored terraform.tfvars and set subscription_id"
+echo "[azure-infra] Copy terraform.tfvars.example to an ignored terraform.tfvars and set the subscription plus configured evidence-reader group IDs"

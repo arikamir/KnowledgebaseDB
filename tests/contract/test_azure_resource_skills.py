@@ -56,13 +56,19 @@ def test_ui_validator_publisher_deployer_and_kubelet_boundaries_are_explicit() -
 
 
 def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() -> None:
-    source = IDENTITIES
+    source = (INFRA / "delivery-evidence-storage.tf").read_text()
     assert source.count('condition_version  = "2.0"') == 2
-    assert source.count("deliveries/${var.environment}/*") == 2
+    for stage in ("validation", "build", "scan", "publish", "pre-promotion", "promotion", "migration", "core", "bff", "ui", "verify", "rollback", "final"):
+        assert f'"{stage}"' in source
+    assert "deliveries/${var.environment}/*/${stage}/*" in source
     assert "blobs/add/action" in source and "blobs/write" in source and "blobs/read" in source
     assert "blobs/delete" in source and "blobs/tags/write" in source
     assert "listKeys/action" in source
-    assert "evidence-list-delete-overwrite" in source
+    assert "legalHolds/*" in source and "permanentDelete/action" in source
+    assert 'role_definition_name = "Storage Blob Data Reader"' in source
+    assert "delivery_operators_group_object_id" in source
+    assert "security_reviewers_group_object_id" in source
+    assert 'principal_type       = "Group"' in source
 
 
 def test_provision_skill_and_assets_describe_complete_three_service_agc_topology() -> None:

@@ -45,6 +45,24 @@ variable "managed_redis_sku" {
   default     = "Balanced_B0"
 }
 
+variable "delivery_operators_group_object_id" {
+  description = "Object ID of the separately configured Delivery Operators Microsoft Entra group."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.delivery_operators_group_object_id))
+    error_message = "delivery_operators_group_object_id must be a Microsoft Entra object ID."
+  }
+}
+
+variable "security_reviewers_group_object_id" {
+  description = "Object ID of the separately configured Security Reviewers Microsoft Entra group."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.security_reviewers_group_object_id))
+    error_message = "security_reviewers_group_object_id must be a Microsoft Entra object ID."
+  }
+}
+
 variable "location" {
   type    = string
   default = "israelcentral"

@@ -1,4 +1,6 @@
 subscription_id = "00000000-0000-0000-0000-000000000000"
+delivery_operators_group_object_id = "00000000-0000-0000-0000-000000000000"
+security_reviewers_group_object_id = "00000000-0000-0000-0000-000000000000"
 # location     = "israelcentral"
 # prefix       = "devopscareer"
 # environment  = "nonprod"
