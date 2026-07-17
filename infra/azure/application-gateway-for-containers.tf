@@ -26,6 +26,66 @@ resource "azurerm_subnet" "application_gateway_for_containers" {
   }
 }
 
+resource "azurerm_network_security_group" "application_gateway_for_containers" {
+  name                = "nsg-agc-${local.stem}"
+  location            = azurerm_resource_group.app.location
+  resource_group_name = azurerm_resource_group.app.name
+  tags                = local.tags
+
+  security_rule {
+    name                       = "allow-approved-public-https"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefixes    = var.browser_gateway_source_cidrs
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow-azure-load-balancer"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow-aks-backends"
+    priority                   = 100
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = var.aks_subnet_cidr
+  }
+
+  security_rule {
+    name                       = "allow-azure-control-plane"
+    priority                   = 110
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "AzureCloud"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "application_gateway_for_containers" {
+  subnet_id                 = azurerm_subnet.application_gateway_for_containers.id
+  network_security_group_id = azurerm_network_security_group.application_gateway_for_containers.id
+}
+
 resource "azurerm_application_load_balancer" "app" {
   name                = "agc-${local.stem}"
   location            = azurerm_resource_group.app.location
@@ -38,6 +98,7 @@ resource "azurerm_application_load_balancer_subnet_association" "app" {
   application_load_balancer_id = azurerm_application_load_balancer.app.id
   subnet_id                    = azurerm_subnet.application_gateway_for_containers.id
   tags                         = local.tags
+  depends_on                   = [azurerm_subnet_network_security_group_association.application_gateway_for_containers]
 }
 
 resource "azurerm_application_load_balancer_frontend" "public" {

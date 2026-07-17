@@ -38,3 +38,9 @@ resource "azurerm_role_assignment" "platform_key_bootstrap" {
   role_definition_name = "Key Vault Crypto Officer"
   principal_id         = data.azuread_client_config.current.object_id
 }
+
+resource "azurerm_role_assignment" "platform_certificate_bootstrap" {
+  scope                = azurerm_key_vault.app.id
+  role_definition_name = "Key Vault Certificates Officer"
+  principal_id         = data.azuread_client_config.current.object_id
+}

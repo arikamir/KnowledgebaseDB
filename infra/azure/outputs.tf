@@ -17,6 +17,21 @@ output "evidence_hold_authorization" {
     reconciler_version_assignment   = azurerm_role_assignment.evidence_hold_reconciler_versions.id
   }
 }
+output "gateway_certificate_dns_bootstrap" {
+  description = "Non-secret certificate-version, trust, DNS, and least-privilege rotation metadata."
+  value = {
+    browser_url                  = "https://${local.public_gateway_hostname}/"
+    browser_dns_record_id        = azurerm_dns_cname_record.browser.id
+    browser_validation_record_id = azurerm_dns_txt_record.browser_certificate_validation.id
+    private_core_url             = "https://${local.private_core_hostname}/"
+    private_core_dns_record_id   = azurerm_private_dns_a_record.core.id
+    certificate_versions         = local.gateway_certificate_versions
+    rotation_identity_id         = azurerm_user_assigned_identity.workload["gateway-certificate-dns"].id
+    certificate_assignment_ids   = { for name, assignment in azurerm_role_assignment.gateway_certificate_versions : name => assignment.id }
+    dns_assignment_ids           = { for name, assignment in azurerm_role_assignment.gateway_named_dns_records : name => assignment.id }
+    private_key_exportable       = false
+  }
+}
 output "application_url_lookup_command" {
   description = "Run after the Kubernetes deployment to print the browser URL."
   value       = "bash .agents/skills/provision-azure-app-resources/scripts/get-application-url.sh"

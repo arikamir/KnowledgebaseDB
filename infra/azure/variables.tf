@@ -49,6 +49,56 @@ variable "application_gateway_for_containers_subnet_cidr" {
   }
 }
 
+variable "browser_dns_zone_name" {
+  description = "Authoritative public DNS zone for the browser gateway."
+  type        = string
+}
+
+variable "browser_gateway_source_cidrs" {
+  description = "Reviewed public source CIDRs allowed to reach the AGC HTTPS frontend."
+  type        = list(string)
+  validation {
+    condition     = length(var.browser_gateway_source_cidrs) > 0 && alltrue([for cidr in var.browser_gateway_source_cidrs : can(cidrnetmask(cidr))])
+    error_message = "browser_gateway_source_cidrs must contain at least one valid reviewed CIDR."
+  }
+}
+
+variable "browser_dns_record_name" {
+  description = "Relative record name for the browser gateway."
+  type        = string
+  default     = "career-agent"
+}
+
+variable "private_core_dns_zone_name" {
+  description = "Private DNS trust domain for the core machine endpoint."
+  type        = string
+  default     = "career-agent.internal"
+}
+
+variable "private_core_load_balancer_ip" {
+  description = "Reserved AKS-subnet address used by the internal core LoadBalancer."
+  type        = string
+  default     = "10.42.0.100"
+}
+
+variable "public_certificate_issuer_name" {
+  description = "Preconfigured Key Vault issuer for a browser-trusted public certificate."
+  type        = string
+  validation {
+    condition     = !contains(["Self", "Unknown", ""], var.public_certificate_issuer_name)
+    error_message = "public_certificate_issuer_name must name a configured browser-trusted Key Vault issuer."
+  }
+}
+
+variable "private_core_certificate_issuer_name" {
+  description = "Preconfigured Key Vault private-CA issuer for the core server certificate."
+  type        = string
+  validation {
+    condition     = !contains(["Self", "Unknown", ""], var.private_core_certificate_issuer_name)
+    error_message = "private_core_certificate_issuer_name must name the configured private CA issuer."
+  }
+}
+
 variable "managed_redis_sku" {
   description = "Azure Managed Redis SKU; Balanced_B0 is the non-production baseline."
   type        = string
