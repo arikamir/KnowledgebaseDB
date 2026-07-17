@@ -28,6 +28,20 @@ resource "azuread_application" "bff" {
     value                = "LearningBff.Session.Revoke"
   }
 
+  required_resource_access {
+    resource_app_id = azuread_application.core_api.client_id
+
+    resource_access {
+      id   = azuread_application.core_api.oauth2_permission_scope_ids[local.core_employee_scope]
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = azuread_application.core_api.app_role_ids["CareerAgent.Health.Read"]
+      type = "Role"
+    }
+  }
+
   web {
     homepage_url  = local.bff_browser_origin
     redirect_uris = [local.bff_redirect_uri]

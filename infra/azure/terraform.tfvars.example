@@ -9,6 +9,16 @@ browser_dns_zone_name = "example.invalid"
 browser_gateway_source_cidrs = ["0.0.0.0/0"] # Replace with reviewed pilot source ranges.
 public_certificate_issuer_name = "ConfiguredPublicIssuer"
 private_core_certificate_issuer_name = "ConfiguredPrivateCaIssuer"
+approved_machine_consumers = {
+  existing-machine-client = {
+    display_name = "Existing Career Agent machine client"
+    roles = [
+      "CareerAgent.Roadmap.Generate",
+      "CareerAgent.Guidance.Read",
+      "CareerAgent.Progress.Write",
+    ]
+  }
+}
 # location     = "israelcentral"
 # prefix       = "devopscareer"
 # environment  = "nonprod"

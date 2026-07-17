@@ -29,6 +29,18 @@ resource "azuread_application" "core_api" {
     }
   }
 
+  dynamic "app_role" {
+    for_each = local.core_application_roles
+    content {
+      allowed_member_types = ["Application"]
+      description          = app_role.value.description
+      display_name         = app_role.value.display_name
+      enabled              = true
+      id                   = app_role.value.id
+      value                = app_role.key
+    }
+  }
+
   lifecycle {
     prevent_destroy = true
   }

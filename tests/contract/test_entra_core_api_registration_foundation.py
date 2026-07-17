@@ -29,7 +29,8 @@ def test_core_exposes_only_the_exact_delegated_employee_scope_at_this_checkpoint
     assert 'type                       = "User"' in text
     assert "value                      = local.core_employee_scope" in text
     assert "core_employee_scope_uri = \"${local.core_api_audience}/${local.core_employee_scope}\"" in text
-    assert "app_role {" not in text
+    assert 'dynamic "app_role"' in text
+    assert "for_each = local.core_application_roles" in text
     for prohibited in ("LearningBff.Session.Revoke", "User.Read.All", "client_secret", "password"):
         assert prohibited not in text
 

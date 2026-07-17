@@ -132,6 +132,32 @@ variable "evidence_hold_managers_group_object_id" {
   }
 }
 
+variable "approved_machine_consumers" {
+  description = "Reviewed machine-client inventory; every entry receives only its declared core API roles."
+  type = map(object({
+    display_name = string
+    roles        = set(string)
+  }))
+
+  validation {
+    condition     = length(var.approved_machine_consumers) > 0
+    error_message = "approved_machine_consumers must contain at least one reviewed machine client."
+  }
+
+  validation {
+    condition = alltrue([
+      for consumer in values(var.approved_machine_consumers) :
+      length(consumer.roles) > 0 && length(setsubtract(consumer.roles, toset([
+        "CareerAgent.Roadmap.Generate",
+        "CareerAgent.Guidance.Read",
+        "CareerAgent.Progress.Write",
+        "CareerAgent.Health.Read",
+      ]))) == 0
+    ])
+    error_message = "Each machine client must declare a nonempty subset of the four approved CareerAgent application roles."
+  }
+}
+
 variable "location" {
   type    = string
   default = "israelcentral"

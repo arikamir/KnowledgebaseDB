@@ -32,7 +32,10 @@ def test_bff_internal_api_exposes_only_lifecycle_session_revocation() -> None:
     assert 'allowed_member_types = ["Application"]' in text
     assert 'value                = "LearningBff.Session.Revoke"' in text
     assert "requested_access_token_version = 2" in text
-    for prohibited in ("CareerAgent.Health.Read", "CareerAgent.Roadmap.Generate", "User.Read.All"):
+    assert text.count('type = "Scope"') == 1
+    assert text.count('type = "Role"') == 1
+    assert 'app_role_ids["CareerAgent.Health.Read"]' in text
+    for prohibited in ("CareerAgent.Roadmap.Generate", "CareerAgent.Guidance.Read", "CareerAgent.Progress.Write", "User.Read.All"):
         assert prohibited not in text
 
 
