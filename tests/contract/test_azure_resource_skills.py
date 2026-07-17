@@ -8,7 +8,9 @@ ROOT = Path(__file__).resolve().parents[2]
 INFRA = ROOT / "infra/azure"
 PROVISION = ROOT / ".agents/skills/provision-azure-app-resources"
 TEARDOWN = ROOT / ".agents/skills/teardown-azure-app-resources"
-IDENTITIES = (INFRA / "jenkins-agent-identities.tf").read_text()
+WORKLOAD_IDENTITIES = (INFRA / "identity.tf").read_text()
+DELIVERY_IDENTITIES = (INFRA / "jenkins-agent-identities.tf").read_text()
+IDENTITIES = WORKLOAD_IDENTITIES + DELIVERY_IDENTITIES
 ASSET_IDENTITIES = (PROVISION / "assets/terraform/jenkins-agent-identities.tf").read_text()
 
 WORKLOADS = {
@@ -29,7 +31,7 @@ def test_aks_uses_oidc_workload_identity_and_no_legacy_ingress() -> None:
 
 
 def test_every_runtime_actor_has_one_exact_federated_subject_and_contract() -> None:
-    for source in (IDENTITIES, ASSET_IDENTITIES):
+    for source in (WORKLOAD_IDENTITIES, ASSET_IDENTITIES):
         assert 'for_each  = local.workload_identity_subjects' in source
         assert 'audience  = ["api://AzureADTokenExchange"]' in source
         for workload in WORKLOADS:
@@ -41,7 +43,7 @@ def test_every_runtime_actor_has_one_exact_federated_subject_and_contract() -> N
 
 
 def test_ui_validator_publisher_deployer_and_kubelet_boundaries_are_explicit() -> None:
-    source = IDENTITIES
+    source = DELIVERY_IDENTITIES + (INFRA / "main.tf").read_text() + WORKLOAD_IDENTITIES
     assert re.search(r'ui\s*= \{ identity = "none"', source)
     assert re.search(r'validator\s*= \{ identity = "none"', source)
     assert 'resource "azurerm_user_assigned_identity" "jenkins_publisher"' in source
