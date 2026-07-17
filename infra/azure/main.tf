@@ -38,9 +38,10 @@ resource "azurerm_kubernetes_cluster" "app" {
   dns_prefix          = local.stem
 
   default_node_pool {
-    name       = "system"
-    vm_size    = var.node_vm_size
-    node_count = var.node_count
+    name           = "system"
+    vm_size        = var.node_vm_size
+    node_count     = var.node_count
+    vnet_subnet_id = azurerm_subnet.aks.id
   }
 
   identity { type = "SystemAssigned" }
@@ -53,7 +54,12 @@ resource "azurerm_kubernetes_cluster" "app" {
   }
 
   role_based_access_control_enabled = true
-  tags                              = local.tags
+  network_profile {
+    network_plugin = "azure"
+    network_policy = "azure"
+    outbound_type  = "loadBalancer"
+  }
+  tags = local.tags
 }
 
 resource "azurerm_role_assignment" "kubelet_exact_acr_pull" {

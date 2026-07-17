@@ -36,6 +36,25 @@ resource "azurerm_application_insights" "app" {
   tags                = local.tags
 }
 
+resource "azurerm_monitor_diagnostic_setting" "managed_data_planes" {
+  for_each = {
+    key-vault  = azurerm_key_vault.app.id
+    redis      = azurerm_managed_redis.bff.id
+    postgresql = azurerm_postgresql_flexible_server.core.id
+  }
+  name                       = "${each.key}-to-${azurerm_log_analytics_workspace.app.name}"
+  target_resource_id         = each.value
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.app.id
+
+  enabled_log {
+    category_group = "allLogs"
+  }
+
+  enabled_metric {
+    category = "AllMetrics"
+  }
+}
+
 resource "azurerm_monitor_action_group" "application_operations" {
   name                = "application-operations"
   resource_group_name = azurerm_resource_group.app.name

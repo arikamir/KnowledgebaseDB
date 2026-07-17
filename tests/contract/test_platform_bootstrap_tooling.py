@@ -74,8 +74,8 @@ def test_bootstrap_dry_run_requires_exact_jit_scope_and_never_emits_manifest(tmp
     attestation = tmp_path / "attestation.json"
     attestation.write_text(json.dumps({"schemaVersion": 1, "capturedAt": (now-timedelta(minutes=5)).isoformat().replace("+00:00","Z"), "expiresAt": (now+timedelta(days=6)).isoformat().replace("+00:00","Z"), "providers": {}, "quotas": {}, "capacity": {}}))
     result = subprocess.run([str(BOOTSTRAP), "dry-run", "--repo-root", str(ROOT), "--authorization", str(authorization), "--attestation", str(attestation)], cwd=ROOT, text=True, capture_output=True)
-    # T053 owns backend.tf, so T052 dry-run correctly fails closed until that dependency exists.
-    assert result.returncode != 0 and "backend" in result.stderr
+    assert result.returncode == 0, result.stderr
+    assert "provider lock" in result.stdout
     assert not (ROOT / "config/platform-bootstrap-nonprod.json").exists()
     source = BOOTSTRAP.read_text() + (ROOT / "scripts/azure/bootstrap-data-principals.sh").read_text()
     assert "platform-bootstrap-nonprod.json" not in source

@@ -3,6 +3,48 @@ variable "subscription_id" {
   type        = string
 }
 
+variable "tenant_id" {
+  description = "Microsoft Entra tenant used by workload identities and data-plane authentication."
+  type        = string
+}
+
+variable "postgresql_bootstrap_admin_object_id" {
+  description = "Object ID of the PIM-controlled Platform Operations group used only to bootstrap database roles."
+  type        = string
+}
+
+variable "postgresql_bootstrap_admin_name" {
+  description = "Display name of the PIM-controlled PostgreSQL bootstrap administrator group."
+  type        = string
+  default     = "DevOps Career Platform Operations"
+}
+
+variable "virtual_network_cidr" {
+  type    = string
+  default = "10.42.0.0/16"
+}
+
+variable "aks_subnet_cidr" {
+  type    = string
+  default = "10.42.0.0/20"
+}
+
+variable "private_endpoint_subnet_cidr" {
+  type    = string
+  default = "10.42.16.0/24"
+}
+
+variable "postgresql_subnet_cidr" {
+  type    = string
+  default = "10.42.17.0/24"
+}
+
+variable "managed_redis_sku" {
+  description = "Azure Managed Redis SKU; Balanced_B0 is the non-production baseline."
+  type        = string
+  default     = "Balanced_B0"
+}
+
 variable "location" {
   type    = string
   default = "israelcentral"
