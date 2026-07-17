@@ -63,6 +63,15 @@ variable "security_reviewers_group_object_id" {
   }
 }
 
+variable "evidence_hold_managers_group_object_id" {
+  description = "Object ID of the separately configured Evidence Hold Managers Microsoft Entra group."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.evidence_hold_managers_group_object_id))
+    error_message = "evidence_hold_managers_group_object_id must be a Microsoft Entra object ID."
+  }
+}
+
 variable "location" {
   type    = string
   default = "israelcentral"
