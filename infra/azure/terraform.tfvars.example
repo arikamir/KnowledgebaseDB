@@ -10,3 +10,4 @@ pilot_public_url = "https://career-agent.example.invalid"
 # environment  = "nonprod"
 # node_vm_size = "Standard_B2s"
 # node_count   = 1
+# application_gateway_for_containers_subnet_cidr = "10.42.18.0/24"

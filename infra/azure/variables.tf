@@ -39,6 +39,16 @@ variable "postgresql_subnet_cidr" {
   default = "10.42.17.0/24"
 }
 
+variable "application_gateway_for_containers_subnet_cidr" {
+  description = "Dedicated /24 subnet for the single Application Gateway for Containers deployment."
+  type        = string
+  default     = "10.42.18.0/24"
+  validation {
+    condition     = can(cidrnetmask(var.application_gateway_for_containers_subnet_cidr)) && endswith(var.application_gateway_for_containers_subnet_cidr, "/24")
+    error_message = "application_gateway_for_containers_subnet_cidr must be a valid /24 CIDR."
+  }
+}
+
 variable "managed_redis_sku" {
   description = "Azure Managed Redis SKU; Balanced_B0 is the non-production baseline."
   type        = string
