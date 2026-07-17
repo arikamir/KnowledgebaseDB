@@ -1,0 +1,28 @@
+schemaVersion: 1
+profileId: operational-alert-profile-v1
+evaluation:
+  readiness: {thresholdReadyReplicas: 0, consecutiveMinutes: 5}
+  requestGate: {minimumRequests: 20, windowMinutes: 5, consecutiveWindows: 2}
+  errorRate: {operator: greaterThanOrEqual, percent: 5}
+  latencyP95Seconds:
+    ui-static: 2
+    roadmap: 30
+    guidance: 10
+    personalized-other: 5
+  restartLoop: {minimumRestarts: 3, windowMinutes: 10}
+  hpaSaturation: {replicas: 4, averageCpuPercent: 70, warningMinutes: 15, pageMinutes: 30}
+  revocationOldestUnacknowledgedHours: {warning: 2, page: 6, critical: 12}
+  certificateExpiryDays: {warning: [30, 14, 7], criticalBelowHours: 48}
+  directoryReconciliationHours: {warning: 6, page: 8}
+  labValidationHours: {warning: 30, page: 36, immediateFailureCount: 3, unavailableImmediate: true}
+routing:
+  readiness: [application-operations]
+  request-errors-and-latency: [application-operations]
+  restart-loop: [application-operations]
+  hpa-saturation: [application-operations, platform-operations]
+  session-revocation: [application-operations]
+  certificate-expiry: [platform-operations]
+  directory-reconciliation: [application-operations, platform-operations]
+  lab-validation-warning: [learning-content-operations]
+  lab-validation-page: [learning-content-operations, application-operations]
+requiredDimensions: [environment, service_name, route_class, threshold, window, first_observed_at, attribution]

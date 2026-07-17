@@ -1,0 +1,21 @@
+schemaVersion: 1
+profileId: pilot-availability-profile-v1
+timezone: Asia/Jerusalem
+businessDays: [Sunday, Monday, Tuesday, Wednesday, Thursday]
+window: {start: "08:00", end: "18:00"}
+observationIntervalMinutes: 1
+targetAvailabilityPercent: 99.0
+checks: [public-tls-gateway, ui-runtime-config, bff-v1-capabilities-readiness-contract]
+maintenance: {minimumNoticeHours: 24, monthlyExclusionCapMinutes: 240}
+missedObservationDisposition: failed
+rollupPeriod: calendar-month
+evidence:
+  immutableCreateOnly: true
+  pathTemplate: pilot-availability/{month}/monthly-close.json
+  requiredFields: [scheduledMinutes, excludedMinutes, eligibleMinutes, successfulMinutes, failedMinutes, availabilityPercent, incidents, rtoRpoExercises, ownerApproval, recoveryEvidenceCoApproval]
+ownership:
+  observations: application-operations
+  monthlyClose: application-operations
+  recoveryEvidenceCoApproval: platform-operations
+nextPilotOpening:
+  blockWhenPriorMonthCloseMissing: true

@@ -35,3 +35,12 @@ variable "node_count" {
   type    = number
   default = 1
 }
+
+variable "pilot_public_url" {
+  description = "Authoritative public AGC HTTPS URL used by pilot availability tests."
+  type        = string
+  validation {
+    condition     = can(regex("^https://[^/]+$", var.pilot_public_url))
+    error_message = "pilot_public_url must be an HTTPS origin without a path."
+  }
+}
