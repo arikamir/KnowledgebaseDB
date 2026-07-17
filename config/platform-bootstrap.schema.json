@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledgebasedb.local/schemas/platform-bootstrap-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "manifestStatus", "environment", "tenantId", "subscriptionId", "resourceGroup", "state", "configuration", "resources", "identities", "origins", "attestations", "review"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "manifestStatus": {"enum": ["example", "reviewed"]},
+    "environment": {"enum": ["nonprod", "dev", "test", "stage"]},
+    "tenantId": {"type": "string", "pattern": "^[0-9a-fA-F-]{36}$"},
+    "subscriptionId": {"type": "string", "pattern": "^[0-9a-fA-F-]{36}$"},
+    "resourceGroup": {"type": "string", "pattern": "^rg-[a-z0-9-]+$"},
+    "state": {"type": "object", "additionalProperties": false, "required": ["lineage", "serial", "backendContainer", "locked"], "properties": {"lineage": {"type": "string", "minLength": 8}, "serial": {"type": "integer", "minimum": 1}, "backendContainer": {"type": "string", "minLength": 3}, "locked": {"const": true}}},
+    "configuration": {"type": "object", "additionalProperties": false, "required": ["policy", "algorithm", "digest", "recordCount"], "properties": {"policy": {"const": "config/platform-configuration-digest-v1.yaml"}, "algorithm": {"const": "sha256-canonical-path-mode-length-content-v1"}, "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "recordCount": {"type": "integer", "minimum": 1}}},
+    "resources": {"type": "object", "required": ["aksId", "acrId", "agcId", "keyVaultId", "redisId", "postgresqlId", "evidenceStorageId"], "additionalProperties": {"type": "string"}},
+    "identities": {"type": "object", "required": ["workloads", "publisher", "deployer", "kubelet", "ui", "validator"], "properties": {"workloads": {"type": "object", "minProperties": 9}, "publisher": {"type": "string"}, "deployer": {"type": "string"}, "kubelet": {"type": "string"}, "ui": {"type": "null"}, "validator": {"type": "null"}}},
+    "origins": {"type": "object", "additionalProperties": false, "required": ["public", "privateCore"], "properties": {"public": {"type": "string", "pattern": "^https://"}, "privateCore": {"type": "string", "pattern": "^https://"}}},
+    "attestations": {"type": "object", "required": ["providerQuotaCapacity", "albController", "migrationPolicy", "jitPermissions", "identityDenials"], "additionalProperties": {"type": "object"}},
+    "review": {"type": "object", "required": ["generatedAt", "expiresAt", "platformOperationsObjectId", "securityApproverObjectId"], "additionalProperties": {"type": ["string", "null"]}}
+  }
+}

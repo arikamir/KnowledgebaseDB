@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "manifestStatus": "example",
+  "environment": "nonprod",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "rg-devopscareer-nonprod",
+  "state": {"lineage": "example-lineage", "serial": 1, "backendContainer": "tfstate", "locked": true},
+  "configuration": {"policy": "config/platform-configuration-digest-v1.yaml", "algorithm": "sha256-canonical-path-mode-length-content-v1", "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "recordCount": 1},
+  "resources": {"aksId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/aks", "acrId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.ContainerRegistry/registries/acr", "agcId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.ServiceNetworking/trafficControllers/agc", "keyVaultId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/kv", "redisId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.Cache/redisEnterprise/redis", "postgresqlId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/pg", "evidenceStorageId": "/subscriptions/000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/evidence"},
+  "identities": {"workloads": {"bff": "id", "core": "id", "lifecycle": "id", "retention": "id", "lab-revalidation": "id", "migration": "id", "evidence-hold-reconciler": "id", "alb-controller": "id", "gateway-certificate-dns": "id"}, "publisher": "publisher-id", "deployer": "deployer-id", "kubelet": "kubelet-id", "ui": null, "validator": null},
+  "origins": {"public": "https://career.example.invalid", "privateCore": "https://core.internal.example.invalid"},
+  "attestations": {"providerQuotaCapacity": {"status": "example", "capturedAt": "2026-07-17T00:00:00Z"}, "albController": {"version": "pinned", "ready": false}, "migrationPolicy": {"uid": "example", "resourceVersion": "example", "ready": false}, "jitPermissions": {"status": "example"}, "identityDenials": {"status": "example"}},
+  "review": {"generatedAt": "2026-07-17T00:00:00Z", "expiresAt": "2026-07-24T00:00:00Z", "platformOperationsObjectId": null, "securityApproverObjectId": null}
+}
