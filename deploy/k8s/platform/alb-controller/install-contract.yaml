@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alb-controller-install-contract
+  namespace: azure-alb-system
+data:
+  chartRepository: oci://mcr.microsoft.com/application-lb/charts/alb-controller
+  chartVersion: "1.11.1"
+  gatewayApiCrdVersion: "v1.5.1"
+  gatewayApiCrdSource: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+  gatewayApiCrdSha256: "${GATEWAY_API_V1_5_1_STANDARD_INSTALL_SHA256}"
+  chartArtifactSha256: "${ALB_CONTROLLER_1_11_1_CHART_SHA256}"
+  helmValues: |
+    serviceAccount:
+      create: false
+      name: alb-controller-sa
+    podLabels:
+      azure.workload.identity/use: "true"
+    albController:
+      podIdentity:
+        clientID: "${ALB_CONTROLLER_CLIENT_ID}"
+  installOrder: gateway-api-crds,alb-controller,controller-ready-attestation,gateway-resources
+  installOwner: platform-operations-t194
+  liveInstallAllowed: "false-before-T194"

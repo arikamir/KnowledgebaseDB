@@ -1,0 +1,24 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: public-ui-bff
+spec:
+  parentRefs:
+    - {name: public-gateway, sectionName: https}
+  hostnames: ["${PUBLIC_GATEWAY_HOSTNAME}"]
+  rules:
+    # Reserved server prefixes deliberately reach the UI server's fixed 404
+    # handlers and can never resolve to the private core or internal routes.
+    - matches:
+        - path: {type: PathPrefix, value: /api/}
+        - path: {type: PathPrefix, value: /internal/}
+      backendRefs:
+        - {name: ui, port: 80}
+    - matches:
+        - path: {type: PathPrefix, value: /bff/}
+      backendRefs:
+        - {name: bff, port: 3000}
+    - matches:
+        - path: {type: PathPrefix, value: /}
+      backendRefs:
+        - {name: ui, port: 80}

@@ -111,3 +111,23 @@ def test_no_skill_asset_or_output_can_emit_credentials_or_terraform_state() -> N
     assert "kubeconfig" not in (PROVISION / "assets/terraform/outputs.tf").read_text().lower()
     outputs = (INFRA / "outputs.tf").read_text()
     assert "client_secret" not in outputs and "terraform.tfstate" not in outputs
+
+
+def test_skill_assets_preserve_exact_alb_gateway_kubelet_and_ui_denial_contracts() -> None:
+    root_contract = WORKLOAD_IDENTITIES + DELIVERY_IDENTITIES
+    asset_contract = ASSET_IDENTITIES
+    for source in (root_contract, asset_contract):
+        for required in (
+            "exact-agc-resource-group-configuration", "exact-subnet-join",
+            "named-certificate-version-read", "named-dns-record-write",
+            "private-key-export", "unrelated-certificate", "zone-destroy",
+            "acr-push-delete-import-admin", "role-assignment", "federation",
+            "application-pod-assumption", 'ui        = { identity = "none"',
+        ):
+            assert required in source
+    main_asset = (PROVISION / "assets/terraform/main.tf").read_text()
+    assert 'role_definition_name = "AcrPull"' in main_asset
+    assert "azurerm_container_registry.app.id" in main_asset
+    teardown = (TEARDOWN / "scripts/teardown.sh").read_text()
+    for actor in WORKLOADS | {"jenkins_publisher", "jenkins_deployer", "kubelet_exact_acr_pull"}:
+        assert actor in teardown or "required_workloads" in teardown

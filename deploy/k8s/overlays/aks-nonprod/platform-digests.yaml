@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: platform-artifact-digests}
+data:
+  uiImage: "${UI_IMAGE_REPOSITORY}@${UI_IMAGE_DIGEST}"
+  bffImage: "${BFF_IMAGE_REPOSITORY}@${BFF_IMAGE_DIGEST}"
+  coreImage: "${CORE_IMAGE_REPOSITORY}@${CORE_IMAGE_DIGEST}"
+  albControllerChart: "oci://mcr.microsoft.com/application-lb/charts/alb-controller@${ALB_CONTROLLER_1_11_1_CHART_SHA256}"
+  gatewayApiCrds: "v1.5.1@${GATEWAY_API_V1_5_1_STANDARD_INSTALL_SHA256}"

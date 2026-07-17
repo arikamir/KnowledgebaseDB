@@ -6,11 +6,15 @@ import os
 import re
 import subprocess
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 TERRAFORM = ROOT / "infra/azure/delivery-evidence-storage.tf"
 MANAGER = ROOT / "scripts/ci/manage-evidence-hold.sh"
 RECONCILER = ROOT / "deploy/k8s/base/evidence-hold-reconciler"
+AUTHORIZATION = ROOT / "infra/azure/delivery-evidence-hold-managers.tf"
+VALIDATE_EVIDENCE = ROOT / "scripts/ci/validate-evidence.sh"
 
 
 def source() -> str:
@@ -97,6 +101,58 @@ def test_storage_surfaces_are_private_versioned_and_keyless() -> None:
     assert text.count("versioning_enabled  = true") == 2
 
 
+def test_writer_reader_manager_and_reconciler_authority_is_separated() -> None:
+    storage = source()
+    authorization = AUTHORIZATION.read_text()
+    writer = block(
+        storage,
+        'resource "azurerm_role_definition" "delivery_evidence_exact_writer"',
+        'resource "azurerm_role_assignment" "publisher_evidence_prefix"',
+    )
+    assert "blobs/delete" in writer
+    assert "containers/legalHolds/*" in writer
+    assert "containers/immutabilityPolicies/*" in writer
+    assert "listKeys/action" in writer
+    assert "blobs/list" not in writer
+    assert "publisher_evidence_condition" in storage
+    assert "deployer_evidence_condition" in storage
+    assert "Storage Blob Data Reader" in storage
+
+    manager = block(
+        authorization,
+        'resource "azurerm_role_definition" "evidence_hold_manager_control"',
+        'resource "azurerm_role_assignment" "evidence_hold_manager_inventory"',
+    )
+    reconciler = block(
+        authorization,
+        'resource "azurerm_role_definition" "evidence_version_hold_reconciler"',
+        'resource "azurerm_role_assignment" "evidence_hold_reconciler_versions"',
+    )
+    assert "delivery-evidence itself" in authorization
+    assert "containers/legalHolds/*" in manager
+    assert "immutabilityPolicies/*" in manager
+    assert "data_actions = []" in reconciler
+    for denied in ("blobs/read", "blobs/write", "blobs/delete", "blobs/tags/write"):
+        assert denied in reconciler
+    assert "azurerm_storage_container.delivery_evidence.id" in authorization
+    assert "evidence_hold_audit" not in reconciler
+
+
+def test_authorization_contract_records_cross_prefix_and_cross_role_denials() -> None:
+    authorization = AUTHORIZATION.read_text()
+    for required in (
+        "hold-request-create-extend-release", "hold-audit-append-read",
+        "delivery-blob-content", "direct-version-hold", "fixed-policy-mutation",
+        "hold-inventory-read", "enumerated-version-hold-set-clear",
+        "delivery-blob-content-read-list-delete", "delivery-evidence-write",
+        "hold-request-write", "hold-audit-access",
+    ):
+        assert required in authorization
+    storage = source()
+    assert "deliveries/${var.environment}/*/${stage}/*" in storage
+    assert "environment-prefix-evidence" in (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
+
+
 def inventory(tmp_path: Path) -> Path:
     path = tmp_path / "inventory.json"
     path.write_text(json.dumps({
@@ -146,6 +202,34 @@ def test_manager_validates_complete_exact_version_inventory_and_180_day_ceiling(
     assert not (tmp_path / "state/too-long.json").exists()
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value.update(inventoryComplete=False),
+        lambda value: value.update(expectedVersionCount=3),
+        lambda value: value["versions"].append(dict(value["versions"][0])),
+        lambda value: value["versions"][0].update(blob="other-prefix/nonprod/build-42/plan.json"),
+        lambda value: value["versions"][0].update(immutableUntil="not-a-date"),
+        lambda value: value.update(container="cross-environment-evidence"),
+    ],
+)
+def test_malformed_incomplete_cross_prefix_inventory_fails_without_state_or_audit(
+    tmp_path: Path, mutation,
+) -> None:
+    payload = json.loads(inventory(tmp_path).read_text())
+    mutation(payload)
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text(json.dumps(payload))
+    result = run_manager(
+        tmp_path, "create", "--inventory", str(malformed), "--hold-id", "incident-42",
+        "--owner", "platform-operator-1", "--reason", "incident investigation",
+        "--incident", "INC-42", "--expires-at", "2026-12-01T12:00:00Z",
+    )
+    assert result.returncode != 0
+    assert not (tmp_path / "state/incident-42.json").exists()
+    assert not list((tmp_path / "audit").glob("*.jsonl"))
+
+
 def test_only_manager_requests_changes_and_only_reconciler_touches_azure(tmp_path: Path) -> None:
     inv = inventory(tmp_path)
     denied = run_manager(tmp_path, "create", "--inventory", str(inv), "--hold-id", "denied", role="reconciler")
@@ -156,6 +240,18 @@ def test_only_manager_requests_changes_and_only_reconciler_touches_azure(tmp_pat
     assert "az storage blob list" not in source
     assert "immutability-policy" not in source
     assert "EVIDENCE_HOLD_ROLE" in source
+
+
+@pytest.mark.parametrize(("action", "role"), [("extend", "writer"), ("release", "reader"), ("reconcile-all", "manager")])
+def test_unauthorized_hold_actions_fail_closed(tmp_path: Path, action: str, role: str) -> None:
+    create_hold(tmp_path)
+    args = [action]
+    if action != "reconcile-all":
+        args += ["--hold-id", "incident-42"]
+    if action == "extend":
+        args += ["--expires-at", "2026-12-15T12:00:00Z"]
+    result = run_manager(tmp_path, *args, role=role)
+    assert result.returncode != 0
 
 
 def create_hold(tmp_path: Path, hold_id: str = "incident-42") -> None:
@@ -255,3 +351,24 @@ def test_reconciler_manifests_are_hourly_identity_bound_and_content_blind() -> N
     assert set(re.findall(r"- ([a-z-]+\.yaml)", kustomization)) == {
         "namespace.yaml", "service-account.yaml", "cronjob.yaml", "network-policy.yaml",
     }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"client_secret":"not-allowed"}',
+        '{"access_token":"not-allowed"}',
+        '{"employeeId":"person-42"}',
+        "kubeconfig: not-allowed",
+        "-----BEGIN PRIVATE KEY-----",
+    ],
+)
+def test_prohibited_evidence_content_is_rejected_before_retention(tmp_path: Path, payload: str) -> None:
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text(payload)
+    result = subprocess.run(
+        [str(VALIDATE_EVIDENCE), "--file", str(evidence)],
+        cwd=ROOT, text=True, capture_output=True,
+    )
+    assert result.returncode != 0
+    assert "prohibited" in result.stderr

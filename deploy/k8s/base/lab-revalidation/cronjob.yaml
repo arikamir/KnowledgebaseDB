@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: lab-revalidation}
+spec:
+  schedule: "13 */20 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: lab-revalidation, azure.workload.identity/use: "true"}
+        spec:
+          serviceAccountName: lab-revalidation
+          restartPolicy: Never
+          securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: lab-revalidation
+              image: "${CORE_IMAGE_REPOSITORY}@${CORE_IMAGE_DIGEST}"
+              command: ["python", "-m", "lifecycle.revalidate_labs"]
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: 250m, memory: 256Mi}

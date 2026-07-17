@@ -14,7 +14,7 @@ def document(path: str) -> dict:
 
 
 def test_ui_bff_and_core_are_independent_digest_pinned_workloads_and_services() -> None:
-    for name, port in (("ui", 8080), ("bff", 3000), ("core", 8000)):
+    for name, port in (("ui", 8080), ("bff", 3000), ("core", 8443)):
         deployment = document(f"{name}/deployment.yaml")
         service = document(f"{name}/service.yaml")
         container = deployment["spec"]["template"]["spec"]["containers"][0]

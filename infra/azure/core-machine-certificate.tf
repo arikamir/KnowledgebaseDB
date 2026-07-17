@@ -69,3 +69,9 @@ resource "azurerm_role_assignment" "gateway_named_dns_records" {
   role_definition_id = azurerm_role_definition.gateway_named_dns_records.role_definition_resource_id
   principal_id       = azurerm_user_assigned_identity.workload["gateway-certificate-dns"].principal_id
 }
+
+resource "azurerm_role_assignment" "core_tls_certificate_csi" {
+  scope                = "${azurerm_key_vault.app.id}/secrets/${azurerm_key_vault_certificate.private_core.name}"
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.workload["core"].principal_id
+}

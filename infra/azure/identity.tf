@@ -13,7 +13,7 @@ locals {
 
   workload_identity_contract = {
     bff                      = { allowed = ["redis-session", "core-delegated-token", "named-key-vault-certificate"], denied = ["postgresql", "acr", "aks", "evidence", "other-key-vault-secret"] }
-    core                     = { allowed = ["postgresql-application-dml", "named-signing-key-metadata"], denied = ["redis", "graph", "acr", "aks", "evidence", "terraform-state"] }
+    core                     = { allowed = ["postgresql-application-dml", "named-signing-key-metadata", "named-core-tls-certificate"], denied = ["redis", "graph", "other-key-vault-secret", "acr", "aks", "evidence", "terraform-state"] }
     lifecycle                = { allowed = ["graph-known-user-read", "bff-session-revoke", "lifecycle-outbox"], denied = ["learning-row-write", "retention-procedure", "acr", "aks"] }
     retention                = { allowed = ["audited-retention-claim-process-procedures"], denied = ["direct-queue-read", "direct-learning-read", "eligibility-tamper", "acr", "aks"] }
     lab-revalidation         = { allowed = ["lab-destination-status-counter"], denied = ["employee-learning-data", "content-publish", "acr", "aks"] }

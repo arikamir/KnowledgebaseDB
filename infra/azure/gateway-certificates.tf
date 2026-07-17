@@ -62,7 +62,7 @@ resource "azurerm_key_vault_certificate" "private_core" {
   certificate_policy {
     issuer_parameters { name = var.private_core_certificate_issuer_name }
     key_properties {
-      exportable = false
+      exportable = true
       key_size   = 3072
       key_type   = "RSA"
       reuse_key  = false
@@ -71,7 +71,7 @@ resource "azurerm_key_vault_certificate" "private_core" {
       action { action_type = "AutoRenew" }
       trigger { days_before_expiry = 30 }
     }
-    secret_properties { content_type = "application/x-pkcs12" }
+    secret_properties { content_type = "application/x-pem-file" }
     x509_certificate_properties {
       subject            = "CN=${local.private_core_hostname}"
       validity_in_months = 3
@@ -87,7 +87,7 @@ resource "azurerm_key_vault_certificate" "private_core" {
     }
   }
 
-  tags       = merge(local.tags, { trust_domain = var.private_core_dns_zone_name, lifecycle = "candidate-active-retired" })
+  tags       = merge(local.tags, { trust_domain = var.private_core_dns_zone_name, lifecycle = "candidate-active-retired", private_key_access = "exact-core-csi-only" })
   depends_on = [azurerm_role_assignment.platform_certificate_bootstrap, azurerm_key_vault_key.private_core_ca]
 }
 

@@ -31,10 +31,17 @@ def upgrade() -> None:
         BEGIN
           RETURN QUERY
           WITH candidate AS (
-            SELECT id FROM retention_actions
-            WHERE status IN ('pending','retryable_failed')
-              AND due_at <= p_now AND employee_identity_id IS NOT NULL
-            ORDER BY due_at, id FOR UPDATE SKIP LOCKED LIMIT 1
+            SELECT r.id FROM retention_actions r
+            JOIN employee_identities e ON e.id=r.employee_identity_id
+            WHERE r.status IN ('pending','retryable_failed')
+              AND r.due_at <= p_now
+              AND e.lifecycle_status='departed'
+              AND e.departed_at IS NOT NULL
+              AND e.retention_due_at IS NOT NULL
+              AND r.due_at=e.retention_due_at
+              AND e.retention_due_at = e.departed_at + interval '90 days'
+              AND e.departed_at + interval '90 days' <= p_now
+            ORDER BY r.due_at, r.id FOR UPDATE SKIP LOCKED LIMIT 1
           )
           UPDATE retention_actions r
              SET status='running', attempt_count=attempt_count+1
@@ -47,18 +54,65 @@ def upgrade() -> None:
         CREATE OR REPLACE FUNCTION process_retention_action(p_action_id varchar, p_now timestamptz)
         RETURNS TABLE(action_id varchar, action_status varchar)
         LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
-        DECLARE owner_id varchar; deleted_outbox integer := 0; deleted_idempotency integer := 0;
+        DECLARE
+          owner_id varchar; profile_id varchar;
+          deleted_one integer := 0;
+          deleted_outbox integer := 0; deleted_idempotency integer := 0;
+          deleted_roadmaps integer := 0; deleted_learning integer := 0;
+          deleted_progress integer := 0; deleted_profile integer := 0;
         BEGIN
-          SELECT employee_identity_id INTO owner_id FROM retention_actions
-           WHERE id=p_action_id AND status='running' AND due_at <= p_now FOR UPDATE;
+          SELECT r.employee_identity_id, e.employee_profile_id INTO owner_id, profile_id
+            FROM retention_actions r JOIN employee_identities e ON e.id=r.employee_identity_id
+           WHERE r.id=p_action_id AND r.status='running' AND r.due_at <= p_now
+             AND e.lifecycle_status='departed' AND e.departed_at IS NOT NULL
+             AND e.retention_due_at=r.due_at
+             AND r.due_at = e.departed_at + interval '90 days'
+             AND e.departed_at + interval '90 days' <= p_now
+           FOR UPDATE OF r, e;
           IF owner_id IS NULL THEN RAISE EXCEPTION 'RETENTION_ACTION_INELIGIBLE'; END IF;
+          IF to_regclass('public.progress_reviews') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM progress_reviews WHERE actor_type=''employee'' AND employee_identity_id=$1' USING owner_id;
+            GET DIAGNOSTICS deleted_progress = ROW_COUNT;
+          END IF;
+          IF to_regclass('public.owned_progress_check_ins') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM owned_progress_check_ins WHERE actor_type=''employee'' AND employee_identity_id=$1' USING owner_id;
+            GET DIAGNOSTICS deleted_one = ROW_COUNT;
+            deleted_progress := deleted_progress + deleted_one;
+          END IF;
+          IF to_regclass('public.learning_activity_events') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM learning_activity_events WHERE employee_identity_id=$1' USING owner_id;
+          END IF;
+          IF to_regclass('public.lab_link_reports') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM lab_link_reports WHERE employee_identity_id=$1' USING owner_id;
+          END IF;
+          IF to_regclass('public.learning_milestone_completions') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM learning_milestone_completions WHERE employee_identity_id=$1' USING owner_id;
+          END IF;
+          IF to_regclass('public.employee_learning_sessions') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM employee_learning_sessions WHERE employee_identity_id=$1' USING owner_id;
+            GET DIAGNOSTICS deleted_learning = ROW_COUNT;
+          END IF;
+          IF to_regclass('public.owned_roadmaps') IS NOT NULL THEN
+            EXECUTE 'DELETE FROM owned_roadmaps WHERE owner_type=''employee'' AND employee_identity_id=$1' USING owner_id;
+            GET DIAGNOSTICS deleted_roadmaps = ROW_COUNT;
+          END IF;
           DELETE FROM session_revocation_outbox WHERE employee_identity_id=owner_id;
           GET DIAGNOSTICS deleted_outbox = ROW_COUNT;
           DELETE FROM idempotency_records WHERE actor_type='employee' AND actor_id=owner_id;
           GET DIAGNOSTICS deleted_idempotency = ROW_COUNT;
+          IF profile_id IS NOT NULL THEN
+            DELETE FROM progress_check_ins WHERE employee_profile_id=profile_id;
+            DELETE FROM roadmaps WHERE employee_profile_id=profile_id;
+            DELETE FROM employee_profiles WHERE id=profile_id;
+            GET DIAGNOSTICS deleted_profile = ROW_COUNT;
+          END IF;
           DELETE FROM employee_identities WHERE id=owner_id;
           UPDATE retention_actions SET employee_identity_id=NULL, status='completed', completed_at=p_now,
-            aggregate_counts=jsonb_build_object('outbox',deleted_outbox,'idempotency',deleted_idempotency)
+            last_error_code=NULL,
+            aggregate_counts=jsonb_build_object(
+              'outbox',deleted_outbox,'idempotency',deleted_idempotency,
+              'roadmaps',deleted_roadmaps,'learning',deleted_learning,
+              'progress',deleted_progress,'profiles',deleted_profile)
             WHERE id=p_action_id;
           RETURN QUERY SELECT p_action_id, 'completed'::varchar;
         END $$;

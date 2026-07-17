@@ -31,6 +31,26 @@ and live preflight gates allocate the separately scoped publisher/deployer
 templates. No controller, built-in, or local-agent fallback is allowed when
 ACI provisioning or validation fails.
 
+## Configure protected-delivery templates
+
+Only after the sole Platform Operations finalizer has emitted the fresh,
+reviewed `config/platform-bootstrap-nonprod.json`, set
+`PLATFORM_BOOTSTRAP_MANIFEST` to that file and set `PUBLISHER_IMAGE` and
+`DEPLOYER_IMAGE` to reviewed `repository@sha256:<digest>` references. Run
+`scripts/jenkins/configure-publisher-deployer-agents.groovy` through the same
+authenticated administrator channel used for the validator configuration.
+
+The script binds `azure-aci-publisher` to exactly `identities.publisher` and
+`azure-aci-deployer` to exactly `identities.deployer` from the reviewed
+manifest. Both reject system-assigned or additional identities, use one-shot
+agents, expose no credential volumes or environment, and have no Terraform
+capability. The existing `azure-aci-validator` remains identityless. Publisher
+and deployer permissions come only from their Azure UAMIs: publisher has exact
+ACR/evidence publication authority, while deployer has exact AKS/evidence
+delivery authority and Reader only on the target application resource group.
+Neither identity may read Terraform state, Key Vault secret values, ACR
+content, Redis data, or PostgreSQL data, and they cannot assume one another.
+
 ## Verify after configuration
 
 Export the live `azure-aci-validator` template to a non-secret JSON document
@@ -46,3 +66,11 @@ also rejects Azure/ARM/Kubernetes delivery environment variables and proves
 that the Azure instance metadata identity endpoint does not issue a token.
 Any verification failure quarantines the template; it never enables fallback
 or delivery permission.
+
+After the publisher/deployer templates are configured, export the non-secret
+template shapes, running ACI identity attachments, reference/stage request,
+exact positive assignments, and denial results. Validate them against the
+same reviewed manifest with `scripts/jenkins/verify-aci-identity-binding.sh`.
+That command is a mandatory post-finalization gate; a missing, swapped,
+additional, or system-assigned identity, an unauthorized reference or stage,
+or any assignment/denial drift blocks protected delivery.

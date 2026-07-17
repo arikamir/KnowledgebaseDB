@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "cloud": "azure",
+  "controllerOrLocalFallback": false,
+  "templates": {
+    "validator": {
+      "name": "azure-aci-validator",
+      "systemAssignedIdentity": false,
+      "identitySource": null,
+      "allowedStages": ["checkout", "change-plan", "contract-drift", "lint", "typecheck", "unit-test", "contract-test", "non-azure-integration-test"]
+    },
+    "publisher": {
+      "name": "azure-aci-publisher",
+      "systemAssignedIdentity": false,
+      "identitySource": "identities.publisher",
+      "allowedStages": ["build", "scan", "sbom", "publish", "pre-promotion-evidence"]
+    },
+    "deployer": {
+      "name": "azure-aci-deployer",
+      "systemAssignedIdentity": false,
+      "identitySource": "identities.deployer",
+      "allowedStages": ["promotion", "migration", "deployment", "verification", "rollback", "delivery-evidence"]
+    }
+  },
+  "referenceRules": {
+    "pull_request": ["validator"],
+    "unprotected": ["validator"],
+    "protected": ["validator", "publisher", "deployer"]
+  },
+  "deployerAssignments": [
+    {"roleDefinitionName": "Reader", "scopeSource": "resourceGroup"},
+    {"roleDefinitionName": "Azure Kubernetes Service RBAC Writer", "scopeSource": "resources.aksId"}
+  ],
+  "publisherAssignments": [
+    {"roleDefinitionName": "AcrPush", "scopeSource": "resources.acrId"}
+  ],
+  "requiredDenials": [
+    "terraform-state-read",
+    "key-vault-secret-read",
+    "acr-content-read",
+    "redis-data-access",
+    "postgresql-data-access"
+  ],
+  "crossIdentityDenials": [
+    "publisher-as-deployer",
+    "deployer-as-publisher",
+    "application-workload",
+    "alb-controller",
+    "gateway-certificate-dns",
+    "aks-kubelet"
+  ]
+}

@@ -47,6 +47,18 @@ resource "azurerm_key_vault_certificate" "bff_client" {
   depends_on = [azurerm_role_assignment.platform_certificate_bootstrap]
 }
 
+resource "azurerm_role_assignment" "bff_client_certificate_csi" {
+  scope                = "${azurerm_key_vault.app.id}/secrets/${azurerm_key_vault_certificate.bff_client.name}"
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.workload["bff"].principal_id
+}
+
+resource "azurerm_role_assignment" "bff_core_trust_csi" {
+  scope                = "${azurerm_key_vault.app.id}/certificates/${azurerm_key_vault_certificate.private_core.name}"
+  role_definition_name = "Key Vault Certificate User"
+  principal_id         = azurerm_user_assigned_identity.workload["bff"].principal_id
+}
+
 output "bff_client_certificate" {
   description = "Non-secret Key Vault BFF client-certificate version and public metadata."
   value = {

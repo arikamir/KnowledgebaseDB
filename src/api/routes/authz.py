@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import Header, HTTPException, Request
 
 from auth.bearer import BearerValidationError, ValidatedPrincipal
+from auth.machine_roles import OPERATION_ROLES, require_machine_role
 
 
 def bearer_token(authorization: str | None = Header(default=None)) -> str:
@@ -56,6 +57,43 @@ def machine_principal(request: Request) -> ValidatedPrincipal:
     else:
         principal = principal_from_state(request)
     if principal.token_type != "application":
+        raise HTTPException(status_code=401, detail="WRONG_TOKEN_TYPE")
+    return principal
+
+
+def employee_or_machine_principal(request: Request, operation_id: str) -> ValidatedPrincipal:
+    """Validate one bearer without allowing token-type impersonation."""
+    existing = getattr(request.state, "principal", None)
+    if existing is not None:
+        principal = existing
+    else:
+        token = _authorization_token(request)
+        principal = None
+        last_error: BearerValidationError | None = None
+        for attribute, expected in (("validate_delegated_token", "employee"), ("validate_machine_token", "application")):
+            validator = getattr(request.app.state, attribute, None)
+            if validator is None:
+                continue
+            try:
+                candidate = validator(token)
+            except BearerValidationError as error:
+                last_error = error
+                continue
+            if candidate.token_type == expected:
+                principal = candidate
+                break
+        if principal is None:
+            if last_error is not None:
+                raise authorization_http_error(last_error)
+            principal = principal_from_state(request)
+        request.state.principal = principal
+    if principal.token_type == "application":
+        required = OPERATION_ROLES[operation_id]
+        try:
+            require_machine_role(principal, operation_id, frozenset({required}))
+        except BearerValidationError as error:
+            raise authorization_http_error(error) from error
+    elif principal.token_type != "employee":
         raise HTTPException(status_code=401, detail="WRONG_TOKEN_TYPE")
     return principal
 

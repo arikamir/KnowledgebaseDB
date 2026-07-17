@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from storage.roadmap_models import classify_legacy_roadmap
 
 revision = "006_owned_roadmaps"
-down_revision = "004_identity_lifecycle_idempotency"
+down_revision = "005_lab_references"
 branch_labels = None
 depends_on = None
 

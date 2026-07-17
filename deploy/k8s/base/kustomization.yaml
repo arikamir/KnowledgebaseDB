@@ -4,4 +4,6 @@ resources:
   - core
   - lifecycle
   - retention
-  - ingress.yaml
+  - lab-revalidation
+  - gateway-certificate-rotation
+  - network-policies.yaml

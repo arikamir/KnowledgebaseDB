@@ -72,11 +72,38 @@ you intentionally want to discard local PostgreSQL and Redis data.
 
 ## AKS workflow
 
-The non-production AKS deployment path is documented in
-[specs/002-dockerize-deploy/quickstart.md](specs/002-dockerize-deploy/quickstart.md).
-The Kubernetes assets live under `deploy/k8s/` and use an immutable image digest
-for release promotion. If cluster access is unavailable, render the overlay
-locally with `kubectl kustomize deploy/k8s/overlays/aks-nonprod`.
+The current three-service workflow is documented in the
+[feature quickstart](specs/003-develop-ui/quickstart.md) and the
+[operations runbook](docs/operations-ui.md). The canonical API contracts are
+`specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml` and
+`specs/003-develop-ui/contracts/core-api-v1.openapi.yaml`; regenerate/check
+clients with `scripts/ci/generate_contracts.py --check` and validate the
+supported topic catalog with `scripts/ci/validate-api-contracts.sh`.
+
+Kubernetes assets live under `deploy/k8s/`. Render the complete non-production
+overlay locally with:
+
+```bash
+kubectl kustomize deploy/k8s/overlays/aks-nonprod
+```
+
+The public Application Gateway for Containers URL is authoritative; retrieve it
+only after bootstrap with `.agents/skills/provision-azure-app-resources/scripts/get-application-url.sh`.
+The public Gateway routes `/` to UI and `/bff/*` to BFF. Core has no public
+HTTPRoute and serves TLS on 8443 through ClusterIP plus the approved-source
+internal LoadBalancer/private DNS endpoint.
+
+Platform Operations provisions/tears down infrastructure only through the
+mandatory repository skills and reviewed Terraform. Jenkins validates the final
+manifest but cannot apply Terraform or read state. Protected delivery builds
+immutable UI/BFF/core digests once, runs the combined Alembic target
+`009_merge_learning_progress`, and promotes `core -> BFF -> UI` with evidence
+and reverse recovery gates.
+
+For local pipeline-equivalent verification run the Python suite, BFF/UI lint,
+typecheck and tests, API contract gate, and both Kustomize renders described in
+the feature quickstart. Local development uses SQLite/HTTP; deployed core uses
+PostgreSQL Entra authentication and HTTPS with no password/plaintext fallback.
 
 ## Feature scope
 

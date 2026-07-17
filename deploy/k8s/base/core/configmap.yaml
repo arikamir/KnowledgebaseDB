@@ -6,4 +6,4 @@ data:
   ENVIRONMENT: "${ENVIRONMENT}"
   DATABASE_URL: "postgresql+psycopg://${POSTGRESQL_HOST}/career_agent?sslmode=require"
   ENTRA_TENANT_ID: "${ENTRA_TENANT_ID}"
-  READINESS_REQUIRED_DEPENDENCIES: "postgresql,tenant-jwks,key-material"
+  READINESS_REQUIRED_DEPENDENCIES: "postgresql,tenant-jwks,key-material,tls-functional"

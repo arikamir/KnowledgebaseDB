@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from agent.contracts.skill_guidance import SkillGuidanceResponse, TopicGuidanceRequest
 from agent.skill_guidance_service import SkillGuidanceService
 from api.route_helpers import get_skill_guidance_service
-from api.routes.authz import employee_principal
+from api.routes.authz import employee_or_machine_principal
 from api.routes.registry import register_router
 from auth.bearer import ValidatedPrincipal
 from api.errors import ApiProblem
@@ -21,6 +21,10 @@ from storage.idempotency_repository import IdempotencyRepository
 router = APIRouter()
 foundation = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def guidance_principal(request: Request) -> ValidatedPrincipal:
+    return employee_or_machine_principal(request, "createGuidance")
 
 
 @router.post("/guidance", response_model=SkillGuidanceResponse)
@@ -37,7 +41,7 @@ def create_guidance(
     http_request: Request,
     idempotency_key: str = Header(alias="Idempotency-Key"),
     guidance_catalog_version: str | None = Header(default=None, alias="X-Guidance-Catalog-Version"),
-    principal: ValidatedPrincipal = Depends(employee_principal),
+    principal: ValidatedPrincipal = Depends(guidance_principal),
     skill_service: SkillGuidanceService = Depends(get_skill_guidance_service),
 ) -> SkillGuidanceResponse:
     started = time.monotonic()
@@ -57,7 +61,7 @@ def create_guidance(
         payload["employee_profile"].pop(generated_field, None)
     decision = claim_idempotency(
         repository,
-        actor_type="employee",
+        actor_type=principal.token_type,
         actor_id=principal.actor_id,
         operation="createGuidance",
         key=idempotency_key,

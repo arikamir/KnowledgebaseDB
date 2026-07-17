@@ -13,13 +13,15 @@ def source(name: str) -> str:
 
 def test_server_certificates_are_nonexportable_issuer_backed_and_exact_san() -> None:
     certificates = source("gateway-certificates.tf")
-    assert certificates.count("      exportable = false") == 2
+    assert certificates.count("      exportable = false") == 1
+    assert certificates.count("      exportable = true") == 1
     assert "var.public_certificate_issuer_name" in certificates
     assert "var.private_core_certificate_issuer_name" in certificates
     assert certificates.count('key_type   = "RSA"') == 2
     assert '"core.career-agent.svc"' in certificates
     assert '"core.career-agent.svc.cluster.local"' in certificates
     assert "local.public_gateway_hostname" in certificates
+    assert 'private_key_access = "exact-core-csi-only"' in certificates
     variables = source("variables.tf")
     assert '!contains(["Self", "Unknown", ""], var.public_certificate_issuer_name)' in variables
     assert '!contains(["Self", "Unknown", ""], var.private_core_certificate_issuer_name)' in variables
