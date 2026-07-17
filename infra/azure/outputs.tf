@@ -26,6 +26,7 @@ output "gateway_certificate_dns_bootstrap" {
     private_core_url             = "https://${local.private_core_hostname}/"
     private_core_dns_record_id   = azurerm_private_dns_a_record.core.id
     certificate_versions         = local.gateway_certificate_versions
+    rotation_contract            = local.gateway_certificate_rotation_contract
     rotation_identity_id         = azurerm_user_assigned_identity.workload["gateway-certificate-dns"].id
     certificate_assignment_ids   = { for name, assignment in azurerm_role_assignment.gateway_certificate_versions : name => assignment.id }
     dns_assignment_ids           = { for name, assignment in azurerm_role_assignment.gateway_named_dns_records : name => assignment.id }

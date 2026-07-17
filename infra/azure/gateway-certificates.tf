@@ -117,4 +117,33 @@ locals {
       }
     }
   }
+
+  gateway_certificate_rotation_contract = {
+    state_machine = [
+      "candidate-staged",
+      "candidate-active",
+      "partially-converged",
+      "converged",
+      "old-trust-retired",
+      "rolled-back",
+      "quarantined",
+      "compromised-revoked",
+    ]
+    scheduled_interval  = "PT12H"
+    candidate_overlap   = "PT24H"
+    retirement_deadline = "PT48H"
+    partial_retry       = "PT24H"
+    probes = [
+      "san",
+      "issuer",
+      "expiry",
+      "trust",
+      "reload",
+      "tls",
+      "route",
+    ]
+    evidence        = "versioned-nonsecret-per-transition"
+    unsafe_fallback = false
+    runner          = "scripts/azure/rotate-gateway-certificate.sh"
+  }
 }

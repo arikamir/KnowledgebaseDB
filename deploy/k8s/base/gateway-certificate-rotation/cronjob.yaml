@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gateway-certificate-rotation
+  namespace: career-agent
+spec:
+  schedule: "17 */12 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: gateway-certificate-rotation
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: gateway-certificate-rotation
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: rotation
+              image: "${GATEWAY_CERTIFICATE_ROTATION_IMAGE_REPOSITORY}@${GATEWAY_CERTIFICATE_ROTATION_IMAGE_DIGEST}"
+              imagePullPolicy: IfNotPresent
+              command: ["/workspace/scripts/azure/rotate-gateway-certificate.sh", "scheduled"]
+              args: ["--state-dir", "/rotation/state", "--evidence-dir", "/rotation/evidence"]
+              env:
+                - {name: ROTATION_MODE, value: live}
+                - {name: ROTATION_LIVE_AUTHORIZED, value: "true"}
+                - {name: KEY_VAULT_NAME, value: "${KEY_VAULT_NAME}"}
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: 250m, memory: 256Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: {drop: ["ALL"]}
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+              volumeMounts:
+                - {name: rotation, mountPath: /rotation}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: rotation
+              persistentVolumeClaim: {claimName: gateway-certificate-rotation-state}
+            - name: tmp
+              emptyDir: {sizeLimit: 64Mi}
