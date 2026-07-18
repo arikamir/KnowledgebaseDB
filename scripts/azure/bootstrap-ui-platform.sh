@@ -24,7 +24,7 @@ PY
 
 infra="$REPO_ROOT/infra/azure"
 [[ -f "$infra/.terraform.lock.hcl" && -f "$infra/versions.tf" ]] || { printf 'bootstrap: provider lock/config missing\n' >&2; exit 1; }
-rg -q 'backend[[:space:]]+"azurerm"' "$infra/backend.tf" 2>/dev/null || { printf 'bootstrap: locked Azure Storage backend missing\n' >&2; exit 1; }
+grep -Eq 'backend[[:space:]]+"azurerm"' "$infra/backend.tf" 2>/dev/null || { printf 'bootstrap: locked Azure Storage backend missing\n' >&2; exit 1; }
 printf '[bootstrap] reviewed Terraform, JIT scopes, provider lock, and seven-day attestation inputs validated\n'
 [[ "$MODE" == dry-run ]] && exit 0
 [[ "${PLATFORM_OPERATIONS_INTERACTIVE:-}" == true ]] || { printf 'bootstrap: interactive Platform Operations identity required\n' >&2; exit 1; }
