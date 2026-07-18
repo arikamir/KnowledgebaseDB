@@ -46,6 +46,11 @@ manifest. It also retargets the cloud's ACI resource group to the manifest's
 reviewed `resourceGroup`; this prevents a retained controller configuration
 from provisioning agents into an earlier region. The provisioning credential
 must already pass its scope and expiry verification for that target group.
+Its custom `Jenkins ACI Provisioner` role is maintained by
+`scripts/azure/configure-jenkins-aci-provisioner-role.sh`; the role includes
+resource-group-scoped ARM deployment lifecycle actions because the plugin
+creates container groups through `Microsoft.Resources/deployments`, plus only
+the required ACI group lifecycle and log-read actions.
 Both templates reject cross-subscription/resource-group, system-assigned, or
 additional identities, use one-shot
 agents, expose no credential volumes or environment, and have no Terraform
@@ -91,6 +96,10 @@ formal `reviewed` T194 manifest.
 The controller plugin must expose template-level system-assigned and
 user-assigned identity setters. Configuration fails before replacing the cloud
 when those APIs are absent. The upstream `azure-container-agents` release
-`372.v073266fff4a_7` does not expose them, so it cannot implement the exact-UAMI
-publisher/deployer contract; use a reviewed provider implementation that can
-attach one UAMI per ACI group before enabling these templates.
+`372.v073266fff4a_7` does not expose them. The reviewed, pinned patch and
+reproducible build in `vendor/jenkins/azure-container-agents-uami/` add only
+those template properties and the corresponding ARM container-group identity
+block. Its tests prove that the default template remains identityless and that
+an exact UAMI renders as `UserAssigned` without a system identity. Install the
+built HPI and verify the live plugin methods before enabling protected-delivery
+templates.

@@ -528,23 +528,18 @@ intersection, requested mutation, decision, and stable failure code.
 
 ### Population and sample
 
-- Recruit a pre-screened roster of 24 internal employees and freeze a randomized
-  order within three experience strata: 8 beginner, 8 intermediate, 8 advanced.
-  The measured sample is exactly the first eligible 7 beginner, 7 intermediate,
-  and 6 advanced participants in frozen order.
+- Recruit and pre-screen exactly one internal employee for the technical PoC and
+  record one measured participant row. This single-participant check is
+  exploratory, not representative, and cannot support population-level claims.
 - Eligibility requires organizational Entra access, English working proficiency,
   no contribution to feature requirements/design/code/tests, no prior exposure
   to the task script, and consent to anonymous task/timing collection.
-- A participant may be replaced only before the first measured task for consent
-  withdrawal, inability to authenticate caused by an independently verified
-  tenant/platform setup defect, or failure of an eligibility assertion. The next
-  reserve in the same stratum replaces them. After the first task starts, every
-  abandonment, outage, timeout, or inability is retained as a failed outcome and
-  no replacement is allowed.
-- At least five of the 20 participants perform the journey tasks at 375 CSS
-  pixels using Chrome mobile emulation and at least five at 1440 CSS pixels; the
-  remaining ten are balanced across 768 and 1024 pixels. Allocation is frozen
-  before testing.
+- Replacement is not permitted. If consent or eligibility fails before the
+  first measured task, the PoC remains incomplete. After the first task starts,
+  abandonment, outage, timeout, or inability is retained as a failed outcome.
+- The single participant performs the journey tasks at both 375 CSS pixels
+  using Chrome mobile emulation and 1440 CSS pixels in a frozen order; the
+  viewport allocation is recorded with the participant row.
 
 ### Standard task script and assistance
 
@@ -576,14 +571,11 @@ Use a five-point scale: 1 Strongly disagree, 2 Disagree, 3 Neither, 4 Agree,
 - SC-017: “The completion feedback and recommended next action make me want to
   continue learning.”
 
-SC-001 passes when at least 18 of all 20 unassisted participants both submit the
-roadmap and identify the exact core-returned first action. SC-007 and SC-015 each
-require at least 17 ratings of 4 or 5. SC-011 requires at least 18 accumulated
-required-content durations from 20 through first-review result to be 20-30
-minutes inclusive. SC-016 requires at least 18 participants to identify all
-three requested elements without assistance. SC-017 requires at least 16 ratings
-of 4 or 5. Missing answers, abandonment, assisted outcomes, or measurement errors
-count as failures; additional observations never enter the denominator.
+Each exploratory criterion uses a fixed denominator of one: SC-001, SC-007,
+SC-011, SC-015, SC-016, and SC-017 pass only when the single participant meets
+the corresponding requirement. Missing answers, abandonment, assisted outcomes,
+or measurement errors count as failures; no replacement or denominator reduction
+is permitted.
 
 Product/UX Research owns recruitment, frozen allocation, scripts, consent,
 facilitator log, raw anonymized events, calculation, and signed result summary.
@@ -771,7 +763,7 @@ evidence must be fresh at the stated gate.
 | ACI provisioning and connectivity | Provision/connect one identityless validator and identity-bound publisher/deployer smoke agent; validate on credential/template change and within 24 hours before a protected release. | Platform Operations | Block affected lane with no local/fallback agent. |
 | Azure Managed Redis, PostgreSQL, Key Vault/CSI, Gateway, Monitor, evidence storage | Resource IDs/private endpoints, Entra authentication, key/password fallback denial, readiness canaries, certificate/key versions, immutable evidence probe, and Monitor exporter health; live checks within 15 minutes of pilot opening and protected release. | Platform Operations with Application Operations | Do not open pilot or promote; runtime follows dependency matrix. |
 | Lab providers and references | Dual-approval policy version plus complete validation no older than 24 hours; report queue and 30/36-hour alerts healthy. | Learning Content Operations and Security Reviewers | Do not publish/display the affected reference. Other learning remains available. |
-| Pilot population | Frozen eligible roster/allocation, consent, non-contributor attestation, reserve order, task script, and facilitator briefing completed within seven days before first participant. | Product/UX Research | Do not begin measured pilot; no post-start denominator substitution. |
+| Pilot population | One eligible participant allocation, consent, non-contributor attestation, task script, and facilitator briefing completed within seven days before the PoC. | Product/UX Research | Do not begin the exploratory PoC; no replacement or denominator substitution. |
 | Supported browsers and assistive technology | Exact browser/OS/AT versions and release dates, installed automation images, viewport/orientation/zoom configuration, and smoke run; capture on verification day and keep evidence no older than 30 days at release. | Product/UX Research and Application Operations | Block UI release evidence until the complete frozen matrix passes. |
 
 ## Readiness-gap traceability

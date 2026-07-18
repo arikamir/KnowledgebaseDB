@@ -13,6 +13,9 @@ CONFIGURE_DELIVERY = ROOT / "scripts/jenkins/configure-publisher-deployer-agents
 VERIFY_CLOUD = ROOT / "scripts/jenkins/verify-cloud-credential.sh"
 VERIFY_BINDING = ROOT / "scripts/jenkins/verify-aci-identity-binding.sh"
 DOCS = ROOT / "docs/jenkins-azure-cloud.md"
+UAMI_PATCH_ROOT = ROOT / "vendor/jenkins/azure-container-agents-uami"
+PROVISIONER_ROLE = ROOT / "config/jenkins-aci-provisioner-role-v1.json"
+CONFIGURE_PROVISIONER_ROLE = ROOT / "scripts/azure/configure-jenkins-aci-provisioner-role.sh"
 
 
 def test_cloud_azure_provisioner_is_expiring_and_confined_to_aci_lifecycle() -> None:
@@ -33,6 +36,27 @@ def test_cloud_azure_provisioner_is_expiring_and_confined_to_aci_lifecycle() -> 
     assert 'emit_failure "minimum-validity"' in verifier
     assert 'emit_failure "role-assignment-drift"' in verifier
     assert 'emit_failure "identity-scope-invalid"' in verifier
+
+    role = json.loads(PROVISIONER_ROLE.read_text())
+    assert role["roleName"] == "Jenkins ACI Provisioner"
+    assert set(role["actions"]) == {
+        "Microsoft.Resources/subscriptions/resourceGroups/read",
+        "Microsoft.Resources/deployments/read",
+        "Microsoft.Resources/deployments/write",
+        "Microsoft.Resources/deployments/delete",
+        "Microsoft.Resources/deployments/operations/read",
+        "Microsoft.Resources/deployments/operationStatuses/read",
+        "Microsoft.ContainerInstance/containerGroups/read",
+        "Microsoft.ContainerInstance/containerGroups/write",
+        "Microsoft.ContainerInstance/containerGroups/delete",
+        "Microsoft.ContainerInstance/containerGroups/operationResults/read",
+        "Microsoft.ContainerInstance/containerGroups/containers/logs/read",
+    }
+    assert role["notActions"] == role["dataActions"] == role["notDataActions"] == []
+    role_script = CONFIGURE_PROVISIONER_ROLE.read_text()
+    assert "az role definition update" in role_script
+    assert "az role definition create" in role_script
+    assert "role action verification failed" in role_script
 
 
 def test_validator_is_identityless_and_provisioning_failure_has_no_fallback() -> None:
@@ -69,6 +93,26 @@ def test_publisher_and_deployer_have_distinct_exact_uamis_and_no_terraform_surfa
     assert "formalT194 == false" in source
     assert "installed azure-container-agents plugin cannot attach exact ACI managed identities" in source
     assert 'respondsTo(\n        capabilityProbe, "withUserAssignedIdentities", List)' in source
+
+
+def test_exact_uami_plugin_delta_is_pinned_reproducible_and_identityless_by_default() -> None:
+    readme = (UAMI_PATCH_ROOT / "README.md").read_text()
+    build = (UAMI_PATCH_ROOT / "build.sh").read_text()
+    patch = (UAMI_PATCH_ROOT / "exact-uami.patch").read_text()
+    commit = "073266fff4a73604454654e2e20bdac52cfea6dc"
+    image_digest = "sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237"
+
+    assert commit in readme and commit in build
+    assert image_digest in readme and image_digest in build
+    assert 'git -C "$checkout" apply --check' in build
+    assert 'PLUGIN_VERSION="372.v073266fff4a_7-uami.2"' in build
+    assert '-Dchangelist="$PLUGIN_VERSION" test hpi:hpi' in build
+    assert "templateWithoutManagedIdentityIsIdentityless" in patch
+    assert "legacyTemplateWithNullManagedIdentityListIsIdentityless" in patch
+    assert "templateAttachesExactUserAssignedIdentity" in patch
+    assert 'identity.put("type"' in patch
+    assert '"SystemAssigned, UserAssigned"' in patch
+    assert 'identity.set("userAssignedIdentities", identities)' in patch
 
 
 def test_terraform_grants_publisher_acr_only_and_deployer_aks_plus_target_rg_reader() -> None:

@@ -31,9 +31,9 @@
   },
   "configuration": {
     "algorithm": "sha256-canonical-path-mode-length-content-v1",
-    "digest": "sha256:058c247f0877599ed6756d096b92380232c7e9187b0d8eccef777115d3758d84",
+    "digest": "sha256:a7d1fe6d2bcba58216abf34ab25841b1959e85e608c0e3d0e87e9af631a4421f",
     "policy": "config/platform-configuration-digest-v1.yaml",
-    "recordCount": 172
+    "recordCount": 175
   },
   "environment": "nonprod",
   "identities": {
@@ -70,8 +70,8 @@
     "redisId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.Cache/redisEnterprise/redis-devopscareeruae-nonprod"
   },
   "review": {
-    "expiresAt": "2026-07-25T16:03:54Z",
-    "generatedAt": "2026-07-18T16:03:54Z",
+    "expiresAt": "2026-07-25T16:43:25Z",
+    "generatedAt": "2026-07-18T16:43:25Z",
     "platformOperationsObjectId": "237b2b0a-1815-4794-a044-dd2fd5fabec6",
     "securityApproverObjectId": "63c5a53b-d77a-420c-ae8e-3fa22e7a58c5"
   },

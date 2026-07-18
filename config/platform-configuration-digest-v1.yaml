@@ -3,6 +3,7 @@
   "algorithm": "sha256-canonical-path-mode-length-content-v1",
   "includes": [
     "config/platform-configuration-digest-v1.yaml",
+    "config/jenkins-aci-provisioner-role-v1.json",
     "infra/azure/*.tf",
     "infra/azure/.terraform.lock.hcl",
     "deploy/k8s/**/*.yaml",
@@ -10,6 +11,9 @@
     "scripts/jenkins/*.sh",
     "scripts/jenkins/*.groovy",
     "scripts/ci/*.sh",
+    "vendor/jenkins/azure-container-agents-uami/README.md",
+    "vendor/jenkins/azure-container-agents-uami/build.sh",
+    "vendor/jenkins/azure-container-agents-uami/exact-uami.patch",
     ".agents/skills/provision-azure-app-resources/**/*",
     ".agents/skills/teardown-azure-app-resources/**/*"
   ],

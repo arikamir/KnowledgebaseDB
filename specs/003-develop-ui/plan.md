@@ -750,7 +750,7 @@ freshness gate:
 | ACI validator/publisher/deployer | Platform Operations | Smoke after credential/template change and within 24 hours before protected release | Block the affected lane with no local/fallback agent. |
 | Redis/PostgreSQL/Key Vault/CSI/Gateway/Monitor/evidence | Platform Operations with Application Operations | Live identity, denial, readiness, version, immutable-write, and exporter checks within 15 minutes of pilot opening and protected release | Do not open the pilot or promote. |
 | Lab providers/references | Learning Content Operations and Security Reviewers | Dual-approval policy and complete validation at most 24 hours old | Do not publish/display the affected reference. |
-| Pilot population | Product/UX Research | Frozen roster/allocation/consent/script/facilitator evidence within seven days of first participant | Do not begin the measured pilot. |
+| Pilot population | Product/UX Research | Frozen single-participant PoC allocation/consent/script/facilitator evidence within seven days of the participant | Do not begin the exploratory PoC. |
 | Supported browsers/assistive technology | Product/UX Research and Application Operations | Exact version/matrix smoke on verification day; release evidence at most 30 days old | Block UI release evidence until the frozen matrix passes. |
 
 ### Jenkins delivery strategy

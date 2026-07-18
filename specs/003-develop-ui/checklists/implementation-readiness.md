@@ -37,7 +37,7 @@
 
 ## Acceptance Criteria Quality
 
-- [x] CHK021 Do all pilot outcomes define eligibility, exactly-20-participant sampling, replacement/exclusion rules, task scripts, assistance rules, questionnaire wording, data collection, and pass/fail calculations? [Measurability, Spec §SC-001, §SC-007, §SC-011, §SC-015–SC-017, Spec §Assumptions]
+- [x] CHK021 Does the exploratory PoC define one-participant eligibility, no-replacement/exclusion rules, task scripts, assistance rules, questionnaire wording, data collection, and fixed 1/1 pass/fail calculations? [Measurability, Spec §SC-001, §SC-007, §SC-011, §SC-015–SC-017, Spec §Assumptions]
 - [x] CHK022 Do the one-second validation and accessible-result criteria define test environment, event boundaries, instrumentation, run count, failure treatment, and aggregation with sufficient precision for reproducible assessment? [Measurability, Spec §SC-003–SC-004, Plan §Performance Goals]
 - [x] CHK023 Is the core performance profile fully traceable to an approved fixture set, full-profile and fixture-set digests, complete required-evidence schema, pinned BFF/core contract digests, regenerated mapper digest/drift gate, concurrency model, warm-up policy, attempt denominator, timeout policy, monotonic timing boundary, nearest-rank p95 calculation, and retained evidence? [Acceptance Criteria, Spec §SC-043, Tasks §T157]
 - [x] CHK024 Do all “100%,” “all tested,” and “exactly one” outcomes define an enumerated scenario matrix and denominator, including authorization, recovery, compatibility, identity isolation, lab policy, controller audit, and evidence retention? [Measurability, Spec §SC-009–SC-014, §SC-019–SC-042, §SC-048]

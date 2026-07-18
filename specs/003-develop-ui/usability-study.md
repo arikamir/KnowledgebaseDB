@@ -1,21 +1,19 @@
 # Pilot usability study protocol
 
 Status: frozen implementation-readiness protocol. Owner: Product/UX Research.
-This document materializes the normative protocol without changing its sample,
-tasks, wording, scoring, or failure treatment. Freeze the completed roster,
+This document materializes the normative single-participant PoC protocol. It is
+exploratory and not representative of a release population. Freeze the roster,
 allocation, consent, script, and facilitator evidence within seven days before
 the first participant. Do not begin measurement while that evidence is stale.
 
 ## Frozen population and selection
 
-Recruit and pre-screen exactly 24 internal employees. Assign anonymous IDs and
-randomize order independently within these fixed strata:
+Recruit and pre-screen exactly one internal employee. Assign the anonymous ID
+P01; no reserve or replacement is permitted.
 
 | Stratum | Roster | Measured sample | Reserve |
 |---|---:|---:|---:|
-| Beginner | 8 | first 7 eligible in frozen order | next 1 |
-| Intermediate | 8 | first 7 eligible in frozen order | next 1 |
-| Advanced | 8 | first 6 eligible in frozen order | next 2 |
+| PoC participant | 1 | P01 | none |
 
 For every roster member, Product/UX Research must record `stratum`,
 `frozen_order`, and boolean evidence that the person has organizational Entra
@@ -24,21 +22,17 @@ requirements/design/code/tests, has not seen the task script, and consented to
 anonymous task/timing collection. A failed assertion makes the person
 ineligible.
 
-Replacement is allowed only before the first measured task and only for consent
-withdrawal, an inability to authenticate caused by an independently verified
-tenant/platform setup defect, or failure of an eligibility assertion. Use the
-next reserve in frozen order from the same stratum and record the reason and
-verification. Once task 1 starts, no replacement is permitted: abandonment,
-outage, crash, timeout, inability, or missing evidence remains in the measured
-20 as a failed outcome.
+If consent, authentication, or eligibility fails before the first measured task,
+the PoC remains incomplete. Once task 1 starts, abandonment, outage, crash,
+timeout, inability, or missing evidence remains in the single measured row as a
+failed outcome.
 
 ## Frozen viewport allocation
 
-Freeze allocation before testing. At least five measured participants use 375
-CSS pixels with Chrome mobile emulation; at least five use 1440 CSS pixels. The
-remaining ten are balanced equally: five at 768 and five at 1024 CSS pixels.
-Record exact browser name/version and viewport for each participant. Changing
-allocation after measurement begins invalidates the study.
+Freeze allocation before testing. P01 uses 375 CSS pixels with Chrome mobile
+emulation and 1440 CSS pixels in that order. Record exact browser name/version
+and viewport. Changing allocation after measurement begins invalidates the
+study.
 
 ## Neutral five-task script
 
@@ -74,15 +68,10 @@ Use only this scale: `1 Strongly disagree`, `2 Disagree`, `3 Neither`, `4 Agree`
 
 ## Fixed calculations and failure treatment
 
-All denominators are the frozen measured 20. Additional observations are
+The denominator is the frozen measured one. Additional observations are
 reported separately and never enter a denominator.
 
-- SC-001 passes at 18/20 or more when an unassisted participant both submits the roadmap and identifies the exact core-returned first action.
-- SC-007 passes at 17/20 or more ratings of 4 or 5.
-- SC-011 passes at 18/20 or more valid accumulated required-content durations through first-review result within 20-30 minutes inclusive.
-- SC-015 passes at 17/20 or more ratings of 4 or 5.
-- SC-016 passes at 18/20 or more unassisted identifications of current milestone, completed milestones, and recommended next action.
-- SC-017 passes at 16/20 or more ratings of 4 or 5.
+- SC-001, SC-007, SC-011, SC-015, SC-016, and SC-017 pass only when P01 meets the corresponding criterion.
 
 Missing answers, abandonment, setup/dependency failure after task 1 starts,
 crash, timeout, assistance for an unassisted criterion, and missing or invalid
