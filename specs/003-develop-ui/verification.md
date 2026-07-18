@@ -1,5 +1,13 @@
 # T194 External Platform Verification
 
+## CI/CD orchestration update
+
+GitHub Actions is the authoritative CI/CD implementation. Validation is defined
+in `.github/workflows/ci.yml`; protected publication, promotion, and recovery
+are defined in `.github/workflows/delivery.yml`. Azure access uses short-lived
+GitHub OIDC tokens and environment protection. Jenkins artifacts are historical
+and are not a runtime dependency.
+
 Status: **awaiting authorized Platform Operations execution**
 
 This document is the non-secret evidence index for T194. Its presence is not a

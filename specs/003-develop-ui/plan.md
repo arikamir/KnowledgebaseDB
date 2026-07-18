@@ -3,6 +3,15 @@
 **Branch**: `003-develop-ui` | **Date**: 2026-07-11 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/003-develop-ui/spec.md`
 
+## CI/CD orchestration decision (2026-07-18)
+
+GitHub Actions supersedes Jenkins as the CI/CD orchestrator. The authoritative
+workflows are `.github/workflows/ci.yml` and
+`.github/workflows/delivery.yml`, using GitHub OIDC federation to the existing
+least-privilege Azure delivery identities. Jenkinsfile, controller-audit, and
+`scripts/jenkins/` assets are retained only as historical migration artifacts;
+they are not required by the delivery path.
+
 ## Summary
 
 Deliver the learning experience as three independently operated services: a
