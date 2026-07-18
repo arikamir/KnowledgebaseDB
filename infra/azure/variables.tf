@@ -272,3 +272,23 @@ variable "pilot_public_url" {
     error_message = "pilot_public_url must be an HTTPS origin without a path."
   }
 }
+
+variable "github_repository" {
+  description = "Owner/name of the GitHub repository trusted by Actions delivery identities."
+  type        = string
+  default     = "arikamir/KnowledgebaseDB"
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
+    error_message = "github_repository must be in owner/name form."
+  }
+}
+
+variable "github_actions_environment" {
+  description = "Protected GitHub environment name used in the Actions OIDC subject."
+  type        = string
+  default     = "nonprod"
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+$", var.github_actions_environment))
+    error_message = "github_actions_environment must be a simple environment name."
+  }
+}

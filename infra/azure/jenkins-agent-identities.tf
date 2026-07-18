@@ -54,6 +54,27 @@ resource "azurerm_role_assignment" "deployer_target_rg_reader" {
   principal_id         = azurerm_user_assigned_identity.jenkins_deployer.principal_id
 }
 
+# The delivery identities retain their least-privilege RBAC scopes while the
+# orchestrator moves from Jenkins to GitHub Actions. OIDC subjects are bound
+# to protected environments, not arbitrary branches or pull requests.
+resource "azurerm_federated_identity_credential" "github_actions_publisher" {
+  name                = "github-actions-publisher-${var.environment}"
+  resource_group_name = azurerm_resource_group.app.name
+  parent_id           = azurerm_user_assigned_identity.jenkins_publisher.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher"
+}
+
+resource "azurerm_federated_identity_credential" "github_actions_deployer" {
+  name                = "github-actions-deployer-${var.environment}"
+  resource_group_name = azurerm_resource_group.app.name
+  parent_id           = azurerm_user_assigned_identity.jenkins_deployer.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repository}:environment:${var.github_actions_environment}"
+}
+
 output "jenkins_delivery_identity_manifest" {
   value = {
     publisher = { resource_id = azurerm_user_assigned_identity.jenkins_publisher.id, client_id = azurerm_user_assigned_identity.jenkins_publisher.client_id, principal_id = azurerm_user_assigned_identity.jenkins_publisher.principal_id }
@@ -61,5 +82,21 @@ output "jenkins_delivery_identity_manifest" {
     validator = null
     ui        = null
     contract  = local.delivery_identity_contract
+  }
+}
+
+output "github_actions_delivery_identity_manifest" {
+  description = "Client IDs and OIDC subjects required by the GitHub Actions environments."
+  value = {
+    publisher = {
+      client_id = azurerm_user_assigned_identity.jenkins_publisher.client_id
+      subject   = azurerm_federated_identity_credential.github_actions_publisher.subject
+    }
+    deployer = {
+      client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id
+      subject   = azurerm_federated_identity_credential.github_actions_deployer.subject
+    }
+    issuer   = "https://token.actions.githubusercontent.com"
+    audience = "api://AzureADTokenExchange"
   }
 }

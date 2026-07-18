@@ -1,4 +1,9 @@
-# Jenkins Azure validation cloud
+# Legacy Jenkins Azure validation cloud
+
+GitHub Actions is now the authoritative CI/CD orchestrator. This document and
+the Jenkins assets it describes are retained only for migration and audit
+history; new delivery configuration must use
+`docs/github-actions-azure.md` and `.github/workflows/`.
 
 The Jenkinsfile uses `agent none`. Every source revision allocates only the
 one-shot `azure-aci-validator` label for checkout and the identical non-Azure

@@ -94,9 +94,10 @@ HTTPRoute and serves TLS on 8443 through ClusterIP plus the approved-source
 internal LoadBalancer/private DNS endpoint.
 
 Platform Operations provisions/tears down infrastructure only through the
-mandatory repository skills and reviewed Terraform. Jenkins validates the final
-manifest but cannot apply Terraform or read state. Protected delivery builds
-immutable UI/BFF/core digests once, runs the combined Alembic target
+mandatory repository skills and reviewed Terraform. GitHub Actions validates
+the final manifest and uses short-lived OIDC identities; it cannot apply
+Terraform or read state. See [GitHub Actions Azure delivery](docs/github-actions-azure.md).
+Protected delivery builds immutable UI/BFF/core digests once, runs the combined Alembic target
 `009_merge_learning_progress`, and promotes `core -> BFF -> UI` with evidence
 and reverse recovery gates.
 

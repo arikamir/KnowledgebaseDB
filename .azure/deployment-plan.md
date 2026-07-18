@@ -1,5 +1,9 @@
 # Azure Deployment Plan
 
+> **CI/CD update:** GitHub Actions in `.github/workflows/` is now the
+> authoritative delivery path. Jenkins references below are retained as
+> historical migration evidence and are not required for CI/CD execution.
+
 > **Status:** Deployed — single-admin technical PoC; not T194 or a protected release
 
 Generated: 2026-07-17
@@ -34,7 +38,7 @@ assignment; no additional location, SKU, naming, or networking policy was found.
 | UI | SPA frontend | React, Vite, Node.js 24 | `ui/` |
 | BFF | API/session boundary | Fastify, TypeScript, Node.js 24 | `bff/` |
 | Core | API and lifecycle workers | FastAPI, Python 3.11, Alembic | `src/`, `api/`, `alembic/` |
-| Delivery | Protected CI/CD | Jenkins and versioned shell/Groovy scripts | `Jenkinsfile`, `scripts/` |
+| Delivery | Protected CI/CD | GitHub Actions and versioned shell scripts | `.github/workflows/`, `scripts/` |
 | Platform | Azure infrastructure | Terraform and Kustomize | `infra/azure/`, `deploy/k8s/` |
 
 All three application components already have Dockerfiles. Terraform, Kubernetes
@@ -43,7 +47,7 @@ manifests, rollout scripts, rollback controls, and live-test harnesses exist.
 ## 4. Recipe selection
 
 **Selected:** Pure Terraform plus the repository's project-specific Azure
-bootstrap/finalization scripts and Jenkins protected-delivery workflow.
+bootstrap/finalization scripts and GitHub Actions protected-delivery workflow.
 
 **Rationale:** The normative delivery contract requires external Platform
 Operations to use the locked Azure Storage Terraform backend, prohibits Jenkins
@@ -203,11 +207,11 @@ release evidence. The exception has these hard boundaries:
 - the existing Israel resource group and workload are untouched;
 - no real employee, pilot, production, or personal learning data is permitted;
 - no T194 final manifest may be emitted and T194 remains unchecked;
-- Jenkins publisher/deployer protected stages remain disabled because their
+- GitHub Actions protected publisher/deployer stages remain disabled because their
   manifest and separation gates are intentionally unsatisfied;
-- Jenkins may run the identityless validation/build checks, but PoC provisioning,
+- GitHub Actions runs the identityless validation/build checks, but PoC provisioning,
   image publication, and rollout occur from the explicitly approved interactive
-  administrator session outside Jenkins;
+  administrator session outside GitHub Actions;
 - No Entra ID P2/Governance license is purchased for this PoC. The accepted
   no-cost path permits one manually coordinated Graph-consent action using the
   invited `arikamir3` guest, with MFA and an explicit non-release audit record;
@@ -221,8 +225,9 @@ release evidence. The exception has these hard boundaries:
   before any protected release/pilot, whichever occurs first.
 
 The formal release path is unchanged: rerun the scoped PIM/two-person bootstrap,
-emit the reviewed T194 manifest, configure Jenkins publisher/deployer agents,
-and execute the protected pipeline before claiming release readiness.
+emit the reviewed T194 manifest, configure GitHub OIDC identities and protected
+environments, and execute the protected Actions workflow before claiming release
+readiness.
 
 ### Human bootstrap versus Jenkins delivery
 
@@ -231,17 +236,17 @@ and execute the protected pipeline before claiming release readiness.
 | Tenant/bootstrap authorization | Human Platform Operations operator with time-bounded PIM activation | Interactive session outside Jenkins | Register provider; create state backend prerequisites; run reviewed Terraform plan/apply; create Entra apps, identities, RBAC, data principals, ALB/migration controls; finalize manifest |
 | Graph admin consent | A different human/JIT identity with `Privileged Role Administrator` | Entra approval flow outside Jenkins | Approve only the required Microsoft Graph application consent; cannot be the bootstrap actor |
 | Workload identities | Terraform-created managed identities | Azure/AKS | BFF, core, workers, ALB, rotation; no human login |
-| Jenkins validation | Identityless `azure-aci-validator` | Jenkins ACI agent | Contract, lint, typecheck, unit, and non-Azure integration gates |
-| Jenkins publication | Terraform-created publisher UAMI | Jenkins `azure-aci-publisher` | Build/scan/push digest-pinned images and publish immutable evidence |
-| Jenkins delivery | Terraform-created deployer UAMI | Jenkins `azure-aci-deployer` | Migration job, core → BFF → UI rollout, verification, evidence, and bounded rollback |
+| GitHub validation | Identityless hosted runner | GitHub Actions | Contract, lint, typecheck, unit, and non-Azure integration gates |
+| GitHub publication | Terraform-created publisher UAMI via OIDC | `nonprod-publisher` environment | Build/scan/push digest-pinned images and publish immutable evidence |
+| GitHub delivery | Terraform-created deployer UAMI via OIDC | protected `nonprod` environment | Migration job, core → BFF → UI rollout, verification, evidence, and bounded rollback |
 
 The repository scripts automate validation of the formal human authorization
 record and infrastructure work, but they cannot create their own PIM eligibility
 or self-approve Graph consent. For the approved PoC exception those formal
 scripts cannot be used to emit T194 evidence; a separate, clearly labelled
 non-release execution record is required. Once independent approval exists, the
-reviewed bootstrap manifest and Jenkins templates restore the normal protected
-pipeline without human Azure credentials in its agents.
+reviewed bootstrap manifest and GitHub OIDC federation restore the normal
+protected pipeline without human Azure credentials in its runners.
 
 ## 9. Execution checklist
 
@@ -274,15 +279,15 @@ pipeline without human Azure credentials in its agents.
 - [x] Execute the non-release PoC bootstrap without emitting a T194 manifest
 - [x] Build, publish, and deploy digest-pinned core, BFF, then UI from the approved interactive session
 - [x] Verify trusted HTTPS, public UI/BFF routing, private Core readiness, workload identities, and Key Vault CSI mounts
-- [ ] Execute formal rollback and immutable delivery-evidence gates (deferred to the protected Jenkins release)
+- [ ] Execute formal rollback and immutable delivery-evidence gates (deferred to the protected GitHub Actions release)
 - [x] Report the authoritative AGC `https://` URL
 
 ### Deferred formal release
 
 - [ ] Establish scoped PIM eligibility and a distinct Graph-consent approver
 - [ ] Run the authorized T194 bootstrap/data-principal/controller/finalization sequence
-- [x] Configure and verify Jenkins publisher/deployer protected-delivery templates
-- [ ] Execute the protected Jenkins delivery and retain immutable T194 evidence
+- [x] Configure and verify delivery identities for the GitHub Actions publisher/deployer environments
+- [ ] Execute the protected GitHub Actions delivery and retain immutable T194 evidence
 
 ## 10. Validation Proof
 
@@ -405,7 +410,7 @@ listeners are Ready/Programmed.
 - Port 80 remains available only to support ACME HTTP-01 renewal; application
   traffic is served over trusted HTTPS.
 - Provisioning and this first rollout used the explicitly approved interactive
-  administrator exception. Jenkins protected publication/deployment remains
+  administrator exception. GitHub Actions protected publication/deployment remains
   disabled until the formal T194 identity and independent-consent gates exist.
 
 ### Israel Central teardown verification
@@ -428,5 +433,5 @@ Before calling this a pilot or protected release, wire Core to Entra-authenticat
 PostgreSQL, register the BFF Redis/session and delegated-token integrations,
 restore production replica/rollout settings and scheduled workers, replace the
 single-admin exception with independent approval, and execute the protected
-Jenkins pipeline with rollback and immutable evidence gates. The formal Key
+GitHub Actions workflow with rollback and immutable evidence gates. The formal Key
 Vault issuer/T194 path remains unchanged.
