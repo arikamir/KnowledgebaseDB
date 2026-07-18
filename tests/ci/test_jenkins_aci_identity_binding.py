@@ -80,6 +80,30 @@ def run_gate(tmp_path: Path, templates: dict[str, object], runtime: dict[str, ob
     )
 
 
+def test_poc_manifest_requires_explicit_flag_and_nonformal_attestations(tmp_path: Path) -> None:
+    templates, runtime, authorization = valid_inputs()
+    manifest = bootstrap()
+    manifest["manifestStatus"] = "poc-reviewed"
+    manifest["attestations"] = {
+        "jitPermissions": {"formalT194": False},
+        "identityDenials": {"formalT194": False},
+    }
+    paths = []
+    for name, value in (("manifest", manifest), ("templates", templates), ("runtime", runtime), ("authorization", authorization)):
+        path = tmp_path / f"poc-{name}.json"
+        path.write_text(json.dumps(value))
+        paths.append(path)
+    command = [
+        str(VERIFY), "--manifest", str(paths[0]), "--templates", str(paths[1]),
+        "--runtime-identities", str(paths[2]), "--authorization", str(paths[3]),
+        "--policy", str(POLICY),
+    ]
+    denied = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+    allowed = subprocess.run(command + ["--allow-technical-poc"], cwd=ROOT, text=True, capture_output=True)
+    assert denied.returncode != 0
+    assert allowed.returncode == 0, allowed.stderr
+
+
 def mutate_case(case_id: str, templates: dict[str, object], runtime: dict[str, object], authorization: dict[str, object]) -> bool:
     _, actor, variant = case_id.split(".")
     if actor == "reference":
@@ -139,3 +163,36 @@ def test_unauthorized_token_or_stage_attempts_fail(actor: str, stage: str, tmp_p
     result = run_gate(tmp_path, templates, runtime, authorization)
     assert result.returncode != 0
 
+
+@pytest.mark.parametrize("actor", ["publisher", "deployer"])
+def test_delivery_identity_from_another_subscription_fails(actor: str, tmp_path: Path) -> None:
+    templates, runtime, authorization = valid_inputs()
+    foreign = templates["templates"][actor]["userAssignedIdentities"][0].replace(
+        "33333333-3333-4333-8333-333333333333",
+        "44444444-4444-4444-8444-444444444444",
+    )
+    templates["templates"][actor]["userAssignedIdentities"] = [foreign]
+    runtime[actor]["userAssignedIdentities"] = [foreign]
+    result = run_gate(tmp_path, templates, runtime, authorization)
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize("resource", ["aksId", "acrId"])
+def test_target_resource_from_another_resource_group_fails(resource: str, tmp_path: Path) -> None:
+    templates, runtime, authorization = valid_inputs()
+    manifest = bootstrap()
+    manifest["resources"][resource] = manifest["resources"][resource].replace(
+        "resourceGroups/rg-devopscareer-nonprod",
+        "resourceGroups/rg-unrelated-nonprod",
+    )
+    paths = []
+    for name, value in (("manifest", manifest), ("templates", templates), ("runtime", runtime), ("authorization", authorization)):
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(value))
+        paths.append(path)
+    result = subprocess.run(
+        [str(VERIFY), "--manifest", str(paths[0]), "--templates", str(paths[1]),
+         "--runtime-identities", str(paths[2]), "--authorization", str(paths[3]),
+         "--policy", str(POLICY)], cwd=ROOT, text=True, capture_output=True,
+    )
+    assert result.returncode != 0

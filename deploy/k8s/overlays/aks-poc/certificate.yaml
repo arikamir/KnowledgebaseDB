@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: public-gateway
+  namespace: career-agent
+spec:
+  secretName: public-gateway-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "${PUBLIC_GATEWAY_HOSTNAME}"

@@ -42,7 +42,12 @@ authenticated administrator channel used for the validator configuration.
 
 The script binds `azure-aci-publisher` to exactly `identities.publisher` and
 `azure-aci-deployer` to exactly `identities.deployer` from the reviewed
-manifest. Both reject system-assigned or additional identities, use one-shot
+manifest. It also retargets the cloud's ACI resource group to the manifest's
+reviewed `resourceGroup`; this prevents a retained controller configuration
+from provisioning agents into an earlier region. The provisioning credential
+must already pass its scope and expiry verification for that target group.
+Both templates reject cross-subscription/resource-group, system-assigned, or
+additional identities, use one-shot
 agents, expose no credential volumes or environment, and have no Terraform
 capability. The existing `azure-aci-validator` remains identityless. Publisher
 and deployer permissions come only from their Azure UAMIs: publisher has exact
@@ -74,3 +79,18 @@ same reviewed manifest with `scripts/jenkins/verify-aci-identity-binding.sh`.
 That command is a mandatory post-finalization gate; a missing, swapped,
 additional, or system-assigned identity, an unauthorized reference or stage,
 or any assignment/denial drift blocks protected delivery.
+
+For the approved single-administrator technical PoC only, an administrator may
+configure and verify the same exact template bindings from a `poc-reviewed`
+manifest by setting `ALLOW_TECHNICAL_POC=true` and passing
+`--allow-technical-poc` to the verifier. Both PoC attestations must explicitly
+record `formalT194: false`. This exception configures templates but does not
+unblock the Jenkinsfile: the protected live preflight continues to require a
+formal `reviewed` T194 manifest.
+
+The controller plugin must expose template-level system-assigned and
+user-assigned identity setters. Configuration fails before replacing the cloud
+when those APIs are absent. The upstream `azure-container-agents` release
+`372.v073266fff4a_7` does not expose them, so it cannot implement the exact-UAMI
+publisher/deployer contract; use a reviewed provider implementation that can
+attach one UAMI per ACI group before enabling these templates.

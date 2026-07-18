@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../aks-nonprod
+  - cluster-issuer.yaml
+  - certificate.yaml
+  - acme-solver-network-policy.yaml
+patches:
+  - path: gateway-http01-patch.yaml
+  - path: core-runtime-patch.yaml
+  - path: core-deployment-patch.yaml
+  - path: bff-runtime-patch.yaml
+  - path: numeric-runtime-users-patch.yaml
+  - path: private-machine-service-delete.yaml
+  - target:
+      kind: NetworkPolicy
+      name: ui-from-public-gateway
+    patch: |-
+      - op: remove
+        path: /spec/ingress/0/from
+  - target:
+      kind: NetworkPolicy
+      name: bff-browser-and-lifecycle
+    patch: |-
+      - op: remove
+        path: /spec/ingress/0/from
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: add
+        path: /spec/strategy
+        value:
+          type: Recreate
+  - target:
+      kind: HorizontalPodAutoscaler
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 1
+  - target:
+      kind: CronJob
+    patch: |-
+      - op: add
+        path: /spec/suspend
+        value: true

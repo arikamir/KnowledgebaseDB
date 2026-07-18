@@ -42,6 +42,10 @@ resource "azurerm_kubernetes_cluster" "app" {
     vm_size        = var.node_vm_size
     node_count     = var.node_count
     vnet_subnet_id = azurerm_subnet.aks.id
+
+    upgrade_settings {
+      max_surge = "10%"
+    }
   }
 
   identity { type = "SystemAssigned" }
@@ -51,6 +55,10 @@ resource "azurerm_kubernetes_cluster" "app" {
 
   oms_agent {
     log_analytics_workspace_id = azurerm_log_analytics_workspace.app.id
+  }
+
+  key_vault_secrets_provider {
+    secret_rotation_enabled = true
   }
 
   role_based_access_control_enabled = true

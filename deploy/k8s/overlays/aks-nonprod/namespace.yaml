@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: devops-career-agent-nonprod
+  name: career-agent
   labels:
     app.kubernetes.io/name: devops-career-agent
     app.kubernetes.io/part-of: devops-career-agent

@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff
+spec:
+  template:
+    spec:
+      containers:
+        - name: bff
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+spec:
+  template:
+    spec:
+      containers:
+        - name: core
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001

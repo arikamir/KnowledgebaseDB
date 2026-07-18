@@ -106,7 +106,7 @@ def test_admission_policy_makes_runner_image_target_and_sandbox_non_overridable(
     parameters = document("policy-parameters.yaml")
     policy, binding = documents("validating-admission-policy.yaml")
     assert parameters["immutable"] is True
-    assert parameters["data"]["coreRepository"] == "acrdevopscareernonprod.azurecr.io/devops-career-agent"
+    assert parameters["data"]["coreRepository"] == "${CORE_IMAGE_REPOSITORY}"
     assert policy["spec"]["failurePolicy"] == "Fail"
     assert policy["spec"]["paramKind"] == {"apiVersion": "v1", "kind": "ConfigMap"}
     assert binding["spec"]["paramRef"]["name"] == "core-migration-policy-v1"

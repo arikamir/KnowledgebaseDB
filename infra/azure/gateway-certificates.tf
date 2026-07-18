@@ -1,5 +1,5 @@
 locals {
-  public_gateway_hostname = "${var.browser_dns_record_name}.${var.browser_dns_zone_name}"
+  public_gateway_hostname = var.technical_poc_mode ? var.poc_public_hostname : "${var.browser_dns_record_name}.${var.browser_dns_zone_name}"
   private_core_hostname   = "core.${var.private_core_dns_zone_name}"
 }
 
@@ -26,6 +26,7 @@ resource "azurerm_key_vault_key" "private_core_ca" {
 }
 
 resource "azurerm_key_vault_certificate" "public_gateway" {
+  count        = var.technical_poc_mode ? 0 : 1
   name         = "public-gateway-server"
   key_vault_id = azurerm_key_vault.app.id
 
@@ -92,15 +93,16 @@ resource "azurerm_key_vault_certificate" "private_core" {
 }
 
 locals {
-  gateway_certificate_versions = {
+  gateway_certificate_versions = merge(var.technical_poc_mode ? {} : {
     public-gateway = {
-      active_version      = azurerm_key_vault_certificate.public_gateway.version
-      active_id           = azurerm_key_vault_certificate.public_gateway.id
+      active_version      = azurerm_key_vault_certificate.public_gateway[0].version
+      active_id           = azurerm_key_vault_certificate.public_gateway[0].id
       candidate_version   = null
       retired_versions    = []
       minimum_overlap     = "PT24H"
       retirement_deadline = "PT48H"
     }
+    }, {
     private-core = {
       active_version      = azurerm_key_vault_certificate.private_core.version
       active_id           = azurerm_key_vault_certificate.private_core.id
@@ -116,7 +118,7 @@ locals {
         private_key_exportable = false
       }
     }
-  }
+  })
 
   gateway_certificate_rotation_contract = {
     state_machine = [

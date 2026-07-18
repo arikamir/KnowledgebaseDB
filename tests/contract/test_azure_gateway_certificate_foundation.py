@@ -48,9 +48,9 @@ def test_rotation_identity_is_scoped_to_named_certificates_and_dns_records() -> 
     for operation in ("certificates/read", "certificates/create/action", "certificates/import/action", "certificates/update/action"):
         assert operation in allowed
     assert "secrets/" not in allowed and "certificates/delete" not in allowed
-    assert '"${azurerm_key_vault.app.id}/certificates/${azurerm_key_vault_certificate.public_gateway.name}"' in roles
+    assert '"${azurerm_key_vault.app.id}/certificates/${azurerm_key_vault_certificate.public_gateway[0].name}"' in roles
     assert '"${azurerm_key_vault.app.id}/certificates/${azurerm_key_vault_certificate.private_core.name}"' in roles
-    for exact_record in ("azurerm_dns_cname_record.browser.id", "azurerm_dns_txt_record.browser_certificate_validation.id", "azurerm_private_dns_a_record.core.id"):
+    for exact_record in ("azurerm_dns_cname_record.browser[0].id", "azurerm_dns_txt_record.browser_certificate_validation[0].id", "azurerm_private_dns_a_record.core.id"):
         assert exact_record in roles
     for denial in ("dnsZones/delete", "privateDnsZones/delete", "Microsoft.Authorization/*"):
         assert denial in roles

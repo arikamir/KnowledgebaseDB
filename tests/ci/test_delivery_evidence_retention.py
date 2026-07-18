@@ -35,7 +35,7 @@ def test_evidence_versions_receive_a_fixed_locked_ninety_day_policy() -> None:
     assert "versioning_enabled  = true" in evidence
     assert "change_feed_enabled = true" in evidence
     assert "period_since_creation_in_days = 90" in evidence
-    assert 'state                         = "Locked"' in evidence
+    assert "state = var.delivery_evidence_policy_state" in evidence
     assert "allow_protected_append_writes = false" in evidence
 
 
@@ -110,7 +110,8 @@ def test_writer_reader_manager_and_reconciler_authority_is_separated() -> None:
         'resource "azurerm_role_assignment" "publisher_evidence_prefix"',
     )
     assert "blobs/delete" in writer
-    assert "containers/legalHolds/*" in writer
+    assert "containers/setLegalHold/action" in writer
+    assert "containers/clearLegalHold/action" in writer
     assert "containers/immutabilityPolicies/*" in writer
     assert "listKeys/action" in writer
     assert "blobs/list" not in writer
@@ -129,7 +130,8 @@ def test_writer_reader_manager_and_reconciler_authority_is_separated() -> None:
         'resource "azurerm_role_assignment" "evidence_hold_reconciler_versions"',
     )
     assert "delivery-evidence itself" in authorization
-    assert "containers/legalHolds/*" in manager
+    assert "containers/setLegalHold/action" in manager
+    assert "containers/clearLegalHold/action" in manager
     assert "immutabilityPolicies/*" in manager
     assert "data_actions = []" in reconciler
     for denied in ("blobs/read", "blobs/write", "blobs/delete", "blobs/tags/write"):

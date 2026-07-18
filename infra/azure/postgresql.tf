@@ -30,7 +30,7 @@ resource "azurerm_postgresql_flexible_server_active_directory_administrator" "pl
   server_name         = azurerm_postgresql_flexible_server.core.name
   resource_group_name = azurerm_resource_group.app.name
   tenant_id           = var.tenant_id
-  object_id           = var.postgresql_bootstrap_admin_object_id
-  principal_name      = var.postgresql_bootstrap_admin_name
+  object_id           = local.effective_postgresql_bootstrap_admin_object_id
+  principal_name      = local.effective_postgresql_bootstrap_admin_name
   principal_type      = "Group"
 }

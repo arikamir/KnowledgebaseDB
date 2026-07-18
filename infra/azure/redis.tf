@@ -35,8 +35,7 @@ resource "azurerm_private_endpoint" "redis" {
   }
 }
 
-resource "azurerm_role_assignment" "bff_redis_data" {
-  scope                = azurerm_managed_redis.bff.id
-  role_definition_name = "Redis Data Contributor"
-  principal_id         = azurerm_user_assigned_identity.workload["bff"].principal_id
+resource "azurerm_managed_redis_access_policy_assignment" "bff" {
+  managed_redis_id = azurerm_managed_redis.bff.id
+  object_id        = azurerm_user_assigned_identity.workload["bff"].principal_id
 }

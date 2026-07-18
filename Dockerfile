@@ -14,6 +14,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY config ./config
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY scripts/runtime/run-core-migration.sh ./scripts/run-migration.sh

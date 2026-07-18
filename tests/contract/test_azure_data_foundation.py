@@ -38,11 +38,13 @@ def test_managed_dependencies_are_private_entra_only_and_monitored() -> None:
 
     assert "rbac_authorization_enabled    = true" in key_vault
     assert "purge_protection_enabled      = true" in key_vault
-    assert "public_network_access_enabled = false" in key_vault
+    assert "public_network_access_enabled = var.technical_poc_mode" in key_vault
+    assert 'default_action = "Deny"' in key_vault
+    assert "ip_rules       = var.technical_poc_mode ? var.poc_operator_source_cidrs : []" in key_vault
     assert 'public_network_access     = "Disabled"' in redis
     assert "access_keys_authentication_enabled = false" in redis
     assert 'client_protocol                    = "Encrypted"' in redis
-    assert 'role_definition_name = "Redis Data Contributor"' in redis
+    assert 'resource "azurerm_managed_redis_access_policy_assignment" "bff"' in redis
     assert 'azurerm_user_assigned_identity.workload["bff"]' in redis
     assert "active_directory_auth_enabled = true" in postgresql
     assert "password_auth_enabled         = false" in postgresql
@@ -53,7 +55,8 @@ def test_managed_dependencies_are_private_entra_only_and_monitored() -> None:
         assert zone in network
     for dependency in ("azurerm_key_vault.app.id", "azurerm_managed_redis.bff.id", "azurerm_postgresql_flexible_server.core.id"):
         assert dependency in monitoring
-    assert 'category_group = "allLogs"' in monitoring
+    assert 'for_each = each.key == "redis" ? [] : ["allLogs"]' in monitoring
+    assert "category_group = enabled_log.value" in monitoring
 
 
 def test_bff_key_ring_is_versioned_and_contains_no_key_material() -> None:

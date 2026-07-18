@@ -33,7 +33,10 @@ resource "azurerm_storage_account" "delivery_evidence" {
   immutability_policy {
     allow_protected_append_writes = false
     period_since_creation_in_days = 90
-    state                         = "Locked"
+    # Azure permits a new account-level policy to start only as Disabled or
+    # Unlocked. Formal delivery locks it in a reviewed second apply; the PoC
+    # remains Unlocked because it cannot publish protected-release evidence.
+    state = var.delivery_evidence_policy_state
   }
 
   tags = local.tags
@@ -60,7 +63,8 @@ resource "azurerm_role_definition" "delivery_evidence_exact_writer" {
       "Microsoft.Authorization/*",
       "Microsoft.Storage/storageAccounts/listKeys/action",
       "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/*",
-      "Microsoft.Storage/storageAccounts/blobServices/containers/legalHolds/*",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/setLegalHold/action",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/clearLegalHold/action",
     ]
     not_data_actions = [
       "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete",
@@ -90,8 +94,8 @@ resource "azurerm_role_assignment" "deployer_evidence_prefix" {
 
 resource "azurerm_role_assignment" "delivery_evidence_reader" {
   for_each = {
-    delivery-operators = var.delivery_operators_group_object_id
-    security-reviewers = var.security_reviewers_group_object_id
+    delivery-operators = local.effective_delivery_operators_group_object_id
+    security-reviewers = local.effective_security_reviewers_group_object_id
   }
   scope                = azurerm_storage_container.delivery_evidence.id
   role_definition_name = "Storage Blob Data Reader"

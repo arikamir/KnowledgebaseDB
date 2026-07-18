@@ -8,5 +8,5 @@ metadata:
     app.kubernetes.io/component: admission-parameters
 immutable: true
 data:
-  coreRepository: acrdevopscareernonprod.azurecr.io/devops-career-agent
+  coreRepository: ${CORE_IMAGE_REPOSITORY}
   databaseUrl: ${MIGRATION_DATABASE_URL}

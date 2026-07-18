@@ -5,7 +5,10 @@ import groovy.json.JsonSlurper
 import java.time.Instant
 import jenkins.model.Jenkins
 
-def manifestPath = System.getenv("PLATFORM_BOOTSTRAP_MANIFEST")
+def setting = { String name ->
+    System.getenv(name) ?: System.getProperty("knowledgebasedb.${name}")
+}
+def manifestPath = setting("PLATFORM_BOOTSTRAP_MANIFEST")
 if (manifestPath == null) {
     throw new IllegalArgumentException("PLATFORM_BOOTSTRAP_MANIFEST is required")
 }
@@ -14,18 +17,30 @@ if (!manifestFile.isFile()) {
     throw new IllegalArgumentException("reviewed bootstrap manifest does not exist")
 }
 def manifest = new JsonSlurper().parse(manifestFile)
-if (manifest.schemaVersion != 1 || manifest.manifestStatus != "reviewed" ||
+def subscriptionId = manifest.subscriptionId as String
+def resourceGroup = manifest.resourceGroup as String
+def identityPrefix = "/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/"
+def allowTechnicalPoc = setting("ALLOW_TECHNICAL_POC") == "true"
+def acceptedStatus = manifest.manifestStatus == "reviewed" ||
+    (allowTechnicalPoc && manifest.manifestStatus == "poc-reviewed" &&
+     manifest.attestations?.jitPermissions?.formalT194 == false &&
+     manifest.attestations?.identityDenials?.formalT194 == false)
+if (manifest.schemaVersion != 1 || !acceptedStatus ||
     manifest.state?.locked != true || manifest.identities?.validator != null ||
     manifest.identities?.ui != null ||
+    !(subscriptionId ==~ /[0-9a-fA-F-]{36}/) ||
+    !(resourceGroup ==~ /rg-[a-z0-9-]+/) ||
     !(manifest.identities?.publisher instanceof String) ||
     !(manifest.identities?.deployer instanceof String) ||
+    !manifest.identities.publisher.startsWith(identityPrefix) ||
+    !manifest.identities.deployer.startsWith(identityPrefix) ||
     manifest.identities.publisher == manifest.identities.deployer ||
     Instant.parse(manifest.review.expiresAt as String).isBefore(Instant.now())) {
     throw new IllegalStateException("fresh reviewed identityless-validator bootstrap manifest is required")
 }
 
-def publisherImage = System.getenv("PUBLISHER_IMAGE")
-def deployerImage = System.getenv("DEPLOYER_IMAGE")
+def publisherImage = setting("PUBLISHER_IMAGE")
+def deployerImage = setting("DEPLOYER_IMAGE")
 [publisherImage, deployerImage].each { image ->
     if (image == null || !(image ==~ /[^\s@]+@sha256:[0-9a-f]{64}/)) {
         throw new IllegalArgumentException("publisher and deployer images must be immutable digest references")
@@ -42,6 +57,16 @@ def validator = existing.templates.findAll {
 }
 if (validator.size() != 1) {
     throw new IllegalStateException("exactly one preconfigured identityless validator is required")
+}
+
+def capabilityProbe = new AciContainerTemplateBuilder()
+if (capabilityProbe.metaClass.respondsTo(
+        capabilityProbe, "withUseSystemAssignedIdentity", Boolean.TYPE).isEmpty() ||
+    capabilityProbe.metaClass.respondsTo(
+        capabilityProbe, "withUserAssignedIdentities", List).isEmpty()) {
+    throw new UnsupportedOperationException(
+        "installed azure-container-agents plugin cannot attach exact ACI managed identities"
+    )
 }
 
 def deliveryTemplate = { String name, String image, String identity ->
@@ -76,7 +101,9 @@ def retained = existing.templates.findAll {
 def replacement = new AciCloudBuilder()
     .withCloudName(existing.name)
     .withAzureCredentialsId(existing.credentialsId)
-    .withResourceGroup(existing.resourceGroup)
+    // The reviewed manifest is authoritative. This also prevents a controller
+    // retained from an earlier region from provisioning delivery agents there.
+    .withResourceGroup(resourceGroup)
     .withAzureLogAnalyticsCredentialsId(existing.logAnalyticsCredentialsId)
 (retained + validator + [publisher, deployer]).each { replacement.addToTemplates(it) }
 

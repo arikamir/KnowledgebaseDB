@@ -1,6 +1,7 @@
 locals {
   operational_alert_profile  = yamldecode(file("${path.module}/../../config/operational-alert-profile-v1.yaml"))
   pilot_availability_profile = yamldecode(file("${path.module}/../../config/pilot-availability-profile-v1.yaml"))
+  effective_pilot_public_url = var.technical_poc_mode ? "https://${var.poc_public_hostname}" : var.pilot_public_url
 
   operations_action_groups = {
     application-operations      = azurerm_monitor_action_group.application_operations.id
@@ -21,7 +22,7 @@ locals {
     certificate-expiry-30-14-7       = { severity = 2, frequency = "PT1H", window = "PT1H", periods = 1, routes = ["platform-operations"], query = "customMetrics | where name in ('gateway_certificate_expiry_days','private_core_certificate_expiry_days') and value in (30,14,7)" }
     certificate-expiry-critical      = { severity = 0, frequency = "PT5M", window = "PT5M", periods = 1, routes = ["platform-operations"], query = "customMetrics | where name in ('gateway_certificate_expiry_hours','private_core_certificate_expiry_hours') and value < 48" }
     directory-reconciliation-warning = { severity = 2, frequency = "PT30M", window = "PT6H", periods = 1, routes = ["application-operations", "platform-operations"], query = "customMetrics | where name == 'directory_reconciliation_age_hours' and value >= 6" }
-    directory-reconciliation-page    = { severity = 1, frequency = "PT30M", window = "PT8H", periods = 1, routes = ["application-operations", "platform-operations"], query = "customMetrics | where name == 'directory_reconciliation_age_hours' and value >= 8" }
+    directory-reconciliation-page    = { severity = 1, frequency = "PT30M", window = "PT6H", periods = 1, routes = ["application-operations", "platform-operations"], query = "customMetrics | where name == 'directory_reconciliation_age_hours' and value >= 8" }
     lab-validation-warning           = { severity = 2, frequency = "PT30M", window = "PT30M", periods = 1, routes = ["learning-content-operations"], query = "customMetrics | where name == 'active_lab_validation_age_hours' and value > 30" }
     lab-validation-page              = { severity = 1, frequency = "PT30M", window = "PT30M", periods = 1, routes = ["learning-content-operations", "application-operations"], query = "customMetrics | where (name == 'active_lab_validation_age_hours' and value > 36) or (name == 'lab_consecutive_failures' and value >= 3) or (name == 'lab_unavailable' and value == 1)" }
   }
@@ -46,8 +47,11 @@ resource "azurerm_monitor_diagnostic_setting" "managed_data_planes" {
   target_resource_id         = each.value
   log_analytics_workspace_id = azurerm_log_analytics_workspace.app.id
 
-  enabled_log {
-    category_group = "allLogs"
+  dynamic "enabled_log" {
+    for_each = each.key == "redis" ? [] : ["allLogs"]
+    content {
+      category_group = enabled_log.value
+    }
   }
 
   enabled_metric {
@@ -72,14 +76,15 @@ resource "azurerm_monitor_action_group" "learning_content_operations" {
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "operational" {
-  for_each             = local.operational_query_alerts
-  name                 = "${local.stem}-${each.key}"
-  resource_group_name  = azurerm_resource_group.app.name
-  location             = azurerm_resource_group.app.location
-  scopes               = [azurerm_log_analytics_workspace.app.id]
-  severity             = each.value.severity
-  evaluation_frequency = each.value.frequency
-  window_duration      = each.value.window
+  for_each              = local.operational_query_alerts
+  name                  = "${local.stem}-${each.key}"
+  resource_group_name   = azurerm_resource_group.app.name
+  location              = azurerm_resource_group.app.location
+  scopes                = [azurerm_log_analytics_workspace.app.id]
+  severity              = each.value.severity
+  evaluation_frequency  = each.value.frequency
+  window_duration       = each.value.window
+  skip_query_validation = true
   criteria {
     query                   = each.value.query
     time_aggregation_method = "Count"
@@ -124,20 +129,21 @@ resource "azurerm_logic_app_action_http" "pilot_availability" {
   name         = each.key
   logic_app_id = azurerm_logic_app_workflow.pilot_availability.id
   method       = "GET"
-  uri          = "${trimsuffix(var.pilot_public_url, "/")}${each.value}"
+  uri          = "${trimsuffix(local.effective_pilot_public_url, "/")}${each.value}"
   depends_on   = [azurerm_logic_app_trigger_recurrence.pilot_availability]
 }
 
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "pilot_availability_missed_observation" {
-  name                 = "${local.stem}-pilot-availability-missed-observation"
-  resource_group_name  = azurerm_resource_group.app.name
-  location             = azurerm_resource_group.app.location
-  scopes               = [azurerm_log_analytics_workspace.app.id]
-  severity             = 1
-  evaluation_frequency = "PT1M"
-  window_duration      = "PT5M"
+  name                  = "${local.stem}-pilot-availability-missed-observation"
+  resource_group_name   = azurerm_resource_group.app.name
+  location              = azurerm_resource_group.app.location
+  scopes                = [azurerm_log_analytics_workspace.app.id]
+  severity              = 1
+  evaluation_frequency  = "PT1M"
+  window_duration       = "PT5M"
+  skip_query_validation = true
   criteria {
-    query                   = "AzureDiagnostics | where TimeGenerated > ago(1m) | where ResourceProvider == 'MICROSOFT.LOGIC' and resource_workflowName_s == '${azurerm_logic_app_workflow.pilot_availability.name}' | summarize passed=dcountif(OperationName == 'Microsoft.Logic/workflows/workflowActionCompleted' and status_s == 'Succeeded', resource_actionName_s) | where passed < 3 // pilot_availability_observation"
+    query                   = "AzureDiagnostics | where TimeGenerated > ago(1m) | where ResourceProvider == 'MICROSOFT.LOGIC' and resource_workflowName_s == '${azurerm_logic_app_workflow.pilot_availability.name}' | summarize passed=dcountif(resource_actionName_s, OperationName == 'Microsoft.Logic/workflows/workflowActionCompleted' and status_s == 'Succeeded') | where passed < 3 // pilot_availability_observation"
     time_aggregation_method = "Count"
     threshold               = 0
     operator                = "GreaterThan"

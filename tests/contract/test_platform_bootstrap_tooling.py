@@ -100,3 +100,5 @@ def test_identityless_preflight_does_not_use_terraform_or_repair_resources() -> 
     assert "terraform apply" not in source and "terraform import" not in source
     assert "az group create" not in source and "kubectl apply" not in source
     assert "get ingress --all-namespaces" in source
+    assert "validatingadmissionpolicy core-migration-guardrails-v1" in source
+    assert "validatingadmissionpolicybinding core-migration-guardrails-v1" in source

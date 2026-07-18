@@ -6,7 +6,7 @@
   "required": ["schemaVersion", "manifestStatus", "environment", "tenantId", "subscriptionId", "resourceGroup", "state", "configuration", "resources", "identities", "origins", "attestations", "review"],
   "properties": {
     "schemaVersion": {"const": 1},
-    "manifestStatus": {"enum": ["example", "reviewed"]},
+    "manifestStatus": {"enum": ["example", "poc-reviewed", "reviewed"]},
     "environment": {"enum": ["nonprod", "dev", "test", "stage"]},
     "tenantId": {"type": "string", "pattern": "^[0-9a-fA-F-]{36}$"},
     "subscriptionId": {"type": "string", "pattern": "^[0-9a-fA-F-]{36}$"},

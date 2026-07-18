@@ -26,7 +26,8 @@ subscription="$(jq -r '.subscriptionId' "$MANIFEST")"; resource_group="$(jq -r '
 az group show --name "$resource_group" --query id -o tsv >/dev/null
 kubectl get --raw='/readyz' >/dev/null
 kubectl -n azure-alb-system get deployment alb-controller -o json >/dev/null
-kubectl get validatingadmissionpolicy career-migration-policy -o json >/dev/null
+kubectl get validatingadmissionpolicy core-migration-guardrails-v1 -o json >/dev/null
+kubectl get validatingadmissionpolicybinding core-migration-guardrails-v1 -o json >/dev/null
 ! kubectl get ingress --all-namespaces -o name | grep -q . || { printf 'preflight: legacy Ingress exists\n' >&2; exit 1; }
 [[ "$(az aks show --resource-group "$resource_group" --name "$(jq -r '.resources.aksId|split("/")|last' "$MANIFEST")" --query 'webAppRouting.identityResourceId' -o tsv)" == "" ]] || exit 1
 jq -cn '{status:"live-preflight-valid",terraformStateRead:false,subscriptionWideRead:false}'

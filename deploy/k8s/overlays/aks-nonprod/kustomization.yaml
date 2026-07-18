@@ -1,4 +1,4 @@
-namespace: devops-career-agent-nonprod
+namespace: career-agent
 resources:
   - namespace.yaml
   - ../../base

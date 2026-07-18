@@ -21,8 +21,8 @@ output "gateway_certificate_dns_bootstrap" {
   description = "Non-secret certificate-version, trust, DNS, and least-privilege rotation metadata."
   value = {
     browser_url                  = "https://${local.public_gateway_hostname}/"
-    browser_dns_record_id        = azurerm_dns_cname_record.browser.id
-    browser_validation_record_id = azurerm_dns_txt_record.browser_certificate_validation.id
+    browser_dns_record_id        = var.technical_poc_mode ? null : azurerm_dns_cname_record.browser[0].id
+    browser_validation_record_id = var.technical_poc_mode ? null : azurerm_dns_txt_record.browser_certificate_validation[0].id
     private_core_url             = "https://${local.private_core_hostname}/"
     private_core_dns_record_id   = azurerm_private_dns_a_record.core.id
     certificate_versions         = local.gateway_certificate_versions
@@ -31,6 +31,8 @@ output "gateway_certificate_dns_bootstrap" {
     certificate_assignment_ids   = { for name, assignment in azurerm_role_assignment.gateway_certificate_versions : name => assignment.id }
     dns_assignment_ids           = { for name, assignment in azurerm_role_assignment.gateway_named_dns_records : name => assignment.id }
     private_key_exportable       = false
+    technical_poc_mode           = var.technical_poc_mode
+    poc_acme_contact_email       = var.technical_poc_mode ? var.poc_acme_contact_email : null
   }
 }
 output "application_url_lookup_command" {

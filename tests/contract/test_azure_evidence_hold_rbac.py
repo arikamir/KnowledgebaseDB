@@ -24,9 +24,9 @@ def test_hold_managers_are_group_scoped_to_control_and_audit_only() -> None:
         'resource "azurerm_role_definition" "evidence_hold_inventory_reader"',
     )
     assert "blobs/add/action" in manager and "blobs/write" in manager and "blobs/read" in manager
-    for denied in ("listKeys/action", "containers/write", "containers/delete", "immutabilityPolicies/*", "legalHolds/*", "blobs/delete", "tags/write"):
+    for denied in ("listKeys/action", "containers/write", "containers/delete", "immutabilityPolicies/*", "setLegalHold/action", "clearLegalHold/action", "blobs/delete", "tags/write"):
         assert denied in manager
-    assert assignments.count("var.evidence_hold_managers_group_object_id") == 2
+    assert assignments.count("local.effective_evidence_hold_managers_group_object_id") == 2
     assert assignments.count('principal_type     = "Group"') == 2
     assert "evidence_hold_inventory.id" in assignments
     assert "evidence_hold_audit.id" in assignments
@@ -66,7 +66,7 @@ def test_version_hold_role_has_one_authorizing_action_and_no_content_action() ->
     )
     assert 'actions = ["Microsoft.Storage/storageAccounts/blobServices/containers/write"]' in role
     assert "data_actions = []" in role
-    for denied in ("containers/read", "containers/delete", "immutabilityPolicies/*", "legalHolds/*", "blobs/read", "blobs/write", "blobs/delete", "permanentDelete/action"):
+    for denied in ("containers/read", "containers/delete", "immutabilityPolicies/*", "setLegalHold/action", "clearLegalHold/action", "blobs/read", "blobs/write", "blobs/delete", "permanentDelete/action"):
         assert denied in role
     assert "azurerm_storage_container.delivery_evidence.id" in assignment
     assert 'workload["evidence-hold-reconciler"].principal_id' in assignment

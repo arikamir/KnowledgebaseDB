@@ -17,7 +17,8 @@ resource "azurerm_role_definition" "evidence_hold_manager_control" {
       "Microsoft.Storage/storageAccounts/blobServices/containers/write",
       "Microsoft.Storage/storageAccounts/blobServices/containers/delete",
       "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/*",
-      "Microsoft.Storage/storageAccounts/blobServices/containers/legalHolds/*",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/setLegalHold/action",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/clearLegalHold/action",
     ]
     not_data_actions = [
       "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete",
@@ -32,14 +33,14 @@ resource "azurerm_role_definition" "evidence_hold_manager_control" {
 resource "azurerm_role_assignment" "evidence_hold_manager_inventory" {
   scope              = azurerm_storage_container.evidence_hold_inventory.id
   role_definition_id = azurerm_role_definition.evidence_hold_manager_control.role_definition_resource_id
-  principal_id       = var.evidence_hold_managers_group_object_id
+  principal_id       = local.effective_evidence_hold_managers_group_object_id
   principal_type     = "Group"
 }
 
 resource "azurerm_role_assignment" "evidence_hold_manager_audit" {
   scope              = azurerm_storage_container.evidence_hold_audit.id
   role_definition_id = azurerm_role_definition.evidence_hold_manager_control.role_definition_resource_id
-  principal_id       = var.evidence_hold_managers_group_object_id
+  principal_id       = local.effective_evidence_hold_managers_group_object_id
   principal_type     = "Group"
 }
 
@@ -81,7 +82,8 @@ resource "azurerm_role_definition" "evidence_version_hold_reconciler" {
       "Microsoft.Storage/storageAccounts/blobServices/containers/read",
       "Microsoft.Storage/storageAccounts/blobServices/containers/delete",
       "Microsoft.Storage/storageAccounts/blobServices/containers/immutabilityPolicies/*",
-      "Microsoft.Storage/storageAccounts/blobServices/containers/legalHolds/*",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/setLegalHold/action",
+      "Microsoft.Storage/storageAccounts/blobServices/containers/clearLegalHold/action",
     ]
     data_actions = []
     not_data_actions = [
@@ -106,7 +108,7 @@ resource "azurerm_role_assignment" "evidence_hold_reconciler_versions" {
 locals {
   evidence_hold_authorization_contract = {
     managers = {
-      principal_id = var.evidence_hold_managers_group_object_id
+      principal_id = local.effective_evidence_hold_managers_group_object_id
       allowed      = ["hold-request-create-extend-release", "hold-audit-append-read"]
       denied       = ["delivery-blob-content", "direct-version-hold", "fixed-policy-mutation", "delete", "writer-role"]
     }

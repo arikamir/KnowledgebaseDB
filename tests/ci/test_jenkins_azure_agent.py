@@ -62,6 +62,13 @@ def test_publisher_and_deployer_have_distinct_exact_uamis_and_no_terraform_surfa
     assert ".withUseSystemAssignedIdentity(false)" in source
     assert ".withUserAssignedIdentities([identity])" in source
     assert "PLATFORM_BOOTSTRAP_MANIFEST" in source
+    assert ".withResourceGroup(resourceGroup)" in source
+    assert ".withResourceGroup(existing.resourceGroup)" not in source
+    assert "startsWith(identityPrefix)" in source
+    assert 'manifest.manifestStatus == "poc-reviewed"' in source
+    assert "formalT194 == false" in source
+    assert "installed azure-container-agents plugin cannot attach exact ACI managed identities" in source
+    assert 'respondsTo(\n        capabilityProbe, "withUserAssignedIdentities", List)' in source
 
 
 def test_terraform_grants_publisher_acr_only_and_deployer_aks_plus_target_rg_reader() -> None:
@@ -97,5 +104,4 @@ def test_binding_gate_rejects_wrong_template_uami_subscription_and_cross_role_su
         "role assignment or required denial evidence drifted",
     ):
         assert required in verifier
-    assert 'startswith("/subscriptions/")' in verifier
-
+    assert '"/subscriptions/" + .subscriptionId' in verifier

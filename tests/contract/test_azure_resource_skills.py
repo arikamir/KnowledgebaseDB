@@ -66,7 +66,7 @@ def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() 
     assert "blobs/add/action" in source and "blobs/write" in source and "blobs/read" in source
     assert "blobs/delete" in source and "blobs/tags/write" in source
     assert "listKeys/action" in source
-    assert "legalHolds/*" in source and "permanentDelete/action" in source
+    assert "setLegalHold/action" in source and "clearLegalHold/action" in source and "permanentDelete/action" in source
     assert 'role_definition_name = "Storage Blob Data Reader"' in source
     assert "delivery_operators_group_object_id" in source
     assert "security_reviewers_group_object_id" in source

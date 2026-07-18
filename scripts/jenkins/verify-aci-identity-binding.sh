@@ -3,10 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 POLICY="$ROOT/config/jenkins-aci-identity-policy-v1.json"
-MANIFEST="" TEMPLATES="" RUNTIME_IDENTITIES="" AUTHORIZATION=""
+MANIFEST="" TEMPLATES="" RUNTIME_IDENTITIES="" AUTHORIZATION="" ALLOW_TECHNICAL_POC=false
 
 usage() {
-  printf 'Usage: %s --manifest FILE --templates FILE --runtime-identities FILE --authorization FILE [--policy FILE]\n' "$0" >&2
+  printf 'Usage: %s --manifest FILE --templates FILE --runtime-identities FILE --authorization FILE [--policy FILE] [--allow-technical-poc]\n' "$0" >&2
   exit 2
 }
 
@@ -19,6 +19,7 @@ while (($#)); do
     --runtime-identities) RUNTIME_IDENTITIES="${2:-}"; shift 2 ;;
     --authorization) AUTHORIZATION="${2:-}"; shift 2 ;;
     --policy) POLICY="${2:-}"; shift 2 ;;
+    --allow-technical-poc) ALLOW_TECHNICAL_POC=true; shift ;;
     *) usage ;;
   esac
 done
@@ -28,11 +29,20 @@ for input in "$MANIFEST" "$TEMPLATES" "$RUNTIME_IDENTITIES" "$AUTHORIZATION" "$P
 done
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 
-jq -e '
-  .schemaVersion == 1 and .manifestStatus == "reviewed" and
+jq -e --argjson allowTechnicalPoc "$ALLOW_TECHNICAL_POC" '
+  .schemaVersion == 1 and
+  (.manifestStatus == "reviewed" or
+    ($allowTechnicalPoc and .manifestStatus == "poc-reviewed" and
+     .attestations.jitPermissions.formalT194 == false and
+     .attestations.identityDenials.formalT194 == false)) and
   .state.locked == true and .identities.validator == null and .identities.ui == null and
-  (.identities.publisher | type == "string" and startswith("/subscriptions/")) and
-  (.identities.deployer | type == "string" and startswith("/subscriptions/")) and
+  (.subscriptionId | test("^[0-9a-fA-F-]{36}$")) and
+  (.resourceGroup | test("^rg-[a-z0-9-]+$")) and
+  (("/subscriptions/" + .subscriptionId + "/resourceGroups/" + .resourceGroup) as $target |
+    (.identities.publisher | type == "string" and startswith($target + "/providers/Microsoft.ManagedIdentity/userAssignedIdentities/")) and
+    (.identities.deployer | type == "string" and startswith($target + "/providers/Microsoft.ManagedIdentity/userAssignedIdentities/")) and
+    (.resources.aksId | startswith($target + "/providers/Microsoft.ContainerService/managedClusters/")) and
+    (.resources.acrId | startswith($target + "/providers/Microsoft.ContainerRegistry/registries/"))) and
   .identities.publisher != .identities.deployer and
   (.review.generatedAt | fromdateiso8601 | type == "number") and
   (.review.expiresAt | fromdateiso8601 | type == "number")

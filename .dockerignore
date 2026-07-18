@@ -11,9 +11,19 @@ playwright-report/
 venv/
 env/
 .git/
+.agents/
+.azure/
+.github/
+.codex/
 .specify/
 specs/
 tests/
+infra/
+bff/
+ui/
+deploy/
+docs/
+jenkins-controller-audit-plugin/
 coverage/
 htmlcov/
 build/
@@ -28,5 +38,6 @@ Thumbs.db
 *.log
 *.log*
 .env*
+*.db
 Dockerfile*
 compose.yaml

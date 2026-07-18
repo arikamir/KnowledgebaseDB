@@ -39,7 +39,7 @@ resource "azurerm_network_security_group" "application_gateway_for_containers" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "443"
+    destination_port_ranges    = var.technical_poc_mode ? ["80", "443"] : ["443"]
     source_address_prefixes    = var.browser_gateway_source_cidrs
     destination_address_prefix = "*"
   }
@@ -127,6 +127,7 @@ output "application_gateway_for_containers_bootstrap" {
     application_gateway_id      = azurerm_application_load_balancer.app.id
     association_id              = azurerm_application_load_balancer_subnet_association.app.id
     frontend_id                 = azurerm_application_load_balancer_frontend.public.id
+    frontend_name               = azurerm_application_load_balancer_frontend.public.name
     frontend_fqdn               = azurerm_application_load_balancer_frontend.public.fully_qualified_domain_name
     delegated_subnet_id         = azurerm_subnet.application_gateway_for_containers.id
     controller_identity_id      = azurerm_user_assigned_identity.workload["alb-controller"].id

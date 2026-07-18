@@ -1,6 +1,6 @@
 # Azure Deployment Plan
 
-> **Status:** Approved — single-admin technical PoC preparation; not T194 or a protected release
+> **Status:** Deployed — single-admin technical PoC; not T194 or a protected release
 
 Generated: 2026-07-17
 
@@ -53,17 +53,19 @@ bootstrap manifest, and mandates exact identity/evidence controls. Adding an
 
 ## 5. Current Azure state
 
-- Resource group `rg-devopscareer-nonprod` exists in `israelcentral`.
-- ACR `acrdevopscareernonprod`, Log Analytics, and AKS
-  `aks-devopscareer-nonprod` exist.
-- AKS is running Kubernetes 1.35 with one `Standard_B2s` node.
-- One legacy `devops-career-agent` deployment is healthy and exposed through
-  managed Web App Routing over HTTP.
-- The required separate UI/BFF/core workloads, Managed Redis, PostgreSQL,
-  Key Vault, evidence stores, Application Insights, AGC, and reviewed platform
-  bootstrap manifest are absent.
-- The existing legacy routing directly conflicts with the target contract and
-  remains untouched during the isolated UAE rollout.
+- The legacy application resource group `rg-devopscareer-nonprod` and AKS
+  managed resource group in `israelcentral` were destroyed on 2026-07-18 after
+  the UAE deployment passed HTTPS verification.
+- The retired Israel stack's AKS cluster, ACR and images, Log Analytics data,
+  Container Insights solution, and exact ACR-pull assignment were deleted.
+- The recovered historical Terraform teardown state is empty. The original
+  ignored local state is retained unchanged as stale audit evidence and must
+  not be used for future plans.
+- `NetworkWatcher_israelcentral` remains in Azure's shared `NetworkWatcherRG`;
+  it is unrelated subscription infrastructure and was intentionally excluded
+  from the application destroy plan.
+- The UAE North deployment is now the only DevOps Career Agent application
+  stack in the subscription.
 
 The UAE deployment will use a new isolated stack and will not import, move, or
 replace the Israel resources:
@@ -74,8 +76,9 @@ replace the Israel resources:
 - AKS: `aks-devopscareeruae-nonprod`
 - ACR: `acrdevopscareeruaenonprod` (global name confirmed available)
 
-The legacy Israel deployment remains available until the UAE HTTPS endpoint and
-rollback gates pass. Its later retirement is a separate destructive operation.
+The legacy Israel deployment has been retired. Recreating an Israel application
+stack requires a new reviewed plan and state; it must not reuse the retained
+historical local state.
 
 ## 6. Target architecture
 
@@ -83,7 +86,7 @@ rollback gates pass. Its later retirement is a separate destructive operation.
 |---|---|
 | UI, BFF, core, lifecycle workers | New UAE AKS, independent digest-pinned workloads |
 | Images | New UAE ACR with admin credentials disabled |
-| Browser boundary | Application Gateway for Containers, ALB Controller, Gateway API, HTTPS |
+| Browser boundary | Application Gateway for Containers, ALB Controller, Gateway API, cert-manager/Let's Encrypt HTTPS on `career-agent.<AGC-IP>.sslip.io` |
 | Core machine boundary | Private DNS and internal load balancer only |
 | Sessions | Azure Managed Redis `Balanced_B0`, private endpoint, access keys disabled |
 | Durable learning data | PostgreSQL Flexible Server 16 `GP_Standard_D2s_v3`, 32 GiB, Entra-only, private delegated subnet |
@@ -126,6 +129,50 @@ marked as such.
 Required resource providers for AKS, ACR, Network, Storage, Key Vault, Managed
 Redis, PostgreSQL, and monitoring are registered. `Microsoft.ServiceNetworking`
 registration is the remaining provider bootstrap action.
+
+## 7a. Preparation research and local verification
+
+- The application is a multi-service Node.js/Python workload hosted on AKS;
+  `.NET Aspire` is not present, so the repository's pure-Terraform workflow
+  remains the correct recipe.
+- AKS supporting resources follow the existing managed-identity, private data
+  plane, Log Analytics, and Application Insights architecture. Application
+  telemetry is configured through the Application Insights connection string;
+  no instrumentation key or application secret is required.
+- Azure discovery found no public DNS zone and no Storage account in the
+  subscription. The UAE Terraform backend therefore needs a separately created
+  Azure Storage account/container before main-state initialization.
+- Azure discovery found no existing `DevOps Career` Entra groups. The PoC may
+  create the required role groups with the approved administrator as their sole
+  initial owner/member, but this is exception evidence and not formal
+  separation-of-duties evidence.
+- Application Gateway for Containers consumes its frontend certificate from a
+  Kubernetes TLS Secret. Azure's documented automated path is cert-manager with
+  Let's Encrypt; direct Key Vault CSI mounting is not supported for an AGC
+  listener. The approved PoC uses the free IP-encoded `sslip.io` DNS service and
+  ACME contact `arikamir1+poc@gmail.com`; the hostname is finalized after AGC
+  exposes its frontend IP. The formal paid/custom-issuer path is unchanged.
+- An ignored local `infra/azure/terraform.tfstate` tracks the Israel stack. It
+  must not be imported, migrated, modified, or used for UAE. A clean-state plan
+  excluding that file contains 136 creates, zero updates, zero deletes, and
+  zero replacements, targeting only `rg-devopscareeruae-nonprod` plus the
+  declared tenant objects. The UAE apply requires a new remote backend/key.
+- The isolated remote backend is now available at resource group
+  `rg-devopscareeruae-tfstate`, account `stdevcareeruaetfstate`, container
+  `tfstate`, key `feature-003/uaenorth-nonprod.tfstate`. It uses Entra data
+  access, shared keys disabled, TLS 1.2+, versioning, and seven-day blob/container
+  soft delete. It contains no imported Israel state.
+- Azure requires a new account-level WORM policy to start `Unlocked`; formal
+  Platform Operations locks it in a reviewed second apply. The technical PoC
+  remains explicitly `Unlocked` and cannot publish protected-release evidence.
+- `terraform fmt -check -recursive infra/azure` passed on 2026-07-18.
+- `terraform -chdir=infra/azure init -backend=false -input=false` and
+  `terraform -chdir=infra/azure validate` passed with AzureRM `4.81.0` and
+  AzureAD `3.9.0`.
+- Both `kubectl kustomize deploy/k8s/overlays/aks-nonprod` and the isolated
+  `deploy/k8s/overlays/aks-poc` rendered successfully. Sixty focused Terraform,
+  AGC, Kubernetes, evidence-retention, and PoC contract tests passed. Functional
+  verification remains pending until provisioning and rollout.
 
 ## 8. Security, authorization, and destructive-change gates
 
@@ -206,20 +253,23 @@ pipeline without human Azure credentials in its agents.
 
 ### Preparation and validation
 
-- [ ] Populate protected bootstrap inputs without committing secrets or real local tfvars
-- [ ] Initialize the locked backend and generate the new UAE Terraform state
-- [ ] Generate and review a non-destructive Terraform plan
-- [ ] Run Terraform formatting/init/validate and Kubernetes rendering checks
-- [ ] Set this plan to `Ready for Validation`
-- [ ] Invoke `azure-validate` and populate Validation Proof
+- [x] Supply a free `sslip.io` hostname strategy and ACME contact email
+- [x] Add the isolated PoC cert-manager/Let's Encrypt listener path without changing the formal Key Vault issuer path
+- [x] Populate ignored UAE PoC inputs without committing secrets or real local tfvars
+- [x] Initialize the isolated Entra-only backend for the new UAE Terraform state
+- [x] Generate and review a clean-state non-destructive Terraform plan (136 create, 0 update/delete/replace)
+- [x] Run Terraform formatting/init/validate and Kubernetes rendering checks
+- [x] Set this plan to `Ready for Validation`
+- [x] Invoke `azure-validate` and populate Validation Proof
 
 ### Deployment
 
-- [ ] Invoke `azure-deploy` only after validation status is `Validated`
-- [ ] Execute the non-release PoC bootstrap without emitting a T194 manifest
-- [ ] Build, publish, and deploy digest-pinned core, BFF, then UI from the approved interactive session
-- [ ] Verify HTTPS `/health`, public UI/BFF routing, private core, identities, rollback, and evidence
-- [ ] Report the authoritative AGC `https://` URL
+- [x] Invoke `azure-deploy` only after validation status is `Validated`
+- [x] Execute the non-release PoC bootstrap without emitting a T194 manifest
+- [x] Build, publish, and deploy digest-pinned core, BFF, then UI from the approved interactive session
+- [x] Verify trusted HTTPS, public UI/BFF routing, private Core readiness, workload identities, and Key Vault CSI mounts
+- [ ] Execute formal rollback and immutable delivery-evidence gates (deferred to the protected Jenkins release)
+- [x] Report the authoritative AGC `https://` URL
 
 ### Deferred formal release
 
@@ -230,13 +280,131 @@ pipeline without human Azure credentials in its agents.
 
 ## 10. Validation Proof
 
-Not yet eligible. Preparation must first encode and validate the isolated UAE
-inputs and prove that the PoC path cannot emit T194 evidence or enable Jenkins
-protected delivery.
+### All validation checks pass
 
-## 11. Next required decision
+- [x] Terraform installation: `terraform version` → `1.15.5` (`darwin_arm64`)
+- [x] Azure CLI installation: `az version` → `2.88.0`
+- [x] Authentication: `Pay-As-You-Go`
+  (`a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a`) is enabled in tenant
+  `06d91dc0-b055-4647-82ab-191086577280`
+- [x] Initialize: clean temporary workspace successfully configured the new
+  `azurerm` backend; the ignored Israel state was excluded
+- [x] Format: `terraform fmt -check -recursive infra/azure`
+- [x] Syntax: `terraform -chdir=infra/azure validate`
+- [x] Plan preview: remote-state plan contains 136 creates, 0 updates,
+  0 deletes, and 0 replacements
+- [x] State backend: Entra-authenticated backend initialization and locked plan
+  completed against the new empty UAE key
+- [x] Azure Policy: only the Security Center built-in assignment is active;
+  no location, naming, SKU, or networking conflict was found
+- [x] Template resolution: no unresolved `{{ .Env.* }}` values exist
+- [x] Build verification: BFF TypeScript build, UI TypeScript/Vite production
+  build, both Kustomize overlays, and Python contract collection passed
+- [x] Focused validation: 112 AGC, Terraform, Entra, RBAC, Key Vault, evidence,
+  Jenkins-identity, and technical-PoC contract tests passed
 
-Collect the remaining environment-specific inputs (public DNS/certificate
-issuer, protected backend coordinates, and non-secret group/object references),
-then run local Terraform/Kustomize validation and produce the exact no-delete
-UAE plan for final mutation approval.
+### Role Assignment Verification
+
+- **Status:** Verified statically
+- **Identities checked:** AKS kubelet; BFF; core; lifecycle; retention;
+  lab-revalidation; migration; evidence-hold reconciler; ALB Controller;
+  gateway certificate/DNS; Jenkins publisher and deployer; four PoC groups
+- **Roles confirmed:** exact-ACR `AcrPull`/`AcrPush`; Redis Data Contributor;
+  named Key Vault crypto/secret/certificate roles; exact evidence-container
+  custom roles and readers; AGC Configuration Manager plus delegated-subnet
+  Network Contributor; exact-AKS RBAC Writer; target-resource-group Reader
+- **Scope result:** data roles are resource/container/key/certificate scoped.
+  Resource-group scope is limited to custom-role definition boundaries, AGC
+  configuration, and the deployer's declared read-only inventory requirement.
+- **PoC exception:** the four governance groups have the same human owner/member
+  and are not separation-of-duties or T194 evidence.
+
+Validation completed on 2026-07-18. The PoC path remains unable to emit T194
+evidence or enable Jenkins protected delivery.
+
+### Jenkins protected-template readiness
+
+- The local Jenkins controller is healthy on `http://localhost:8080` and runs
+  Azure Container Agents plugin `372.v073266fff4a_7`.
+- Its `azure` cloud now targets `rg-devopscareeruae-nonprod` and has one pinned,
+  identityless `azure-aci-validator` template. Publisher/deployer replacement
+  stopped before mutation because the installed plugin has no per-template ACI
+  managed-identity API.
+- The UAE publisher has exact ACR `AcrPush` plus delivery-evidence writer, and
+  the UAE deployer has target-resource-group `Reader`, exact-AKS RBAC Writer,
+  plus delivery-evidence writer. The `jenkins-azure-agents` provisioning
+  principal now has the custom UAE `Jenkins ACI Provisioner` role and Managed
+  Identity Operator only on those two delivery identities.
+- Template configuration now takes the ACI resource group from the reviewed
+  bootstrap manifest and rejects cross-subscription/resource-group delivery
+  identities and target resources. The focused static suite passes 58 tests.
+- The approved PoC-only `poc-reviewed` manifest is digest-valid and records
+  `formalT194: false`; it configures no protected pipeline bypass. The formal
+  T194 manifest remains deliberately absent.
+- Live publisher/deployer configuration is blocked by upstream
+  `azure-container-agents` `372.v073266fff4a_7`: its template builder exposes no
+  system-assigned or user-assigned identity field. The official immutable
+  inbound-agent digest was resolved, but no delivery template was created
+  because an identityless delivery agent would violate the contract.
+
+## 11. Deployment result
+
+Deployment completed on 2026-07-18 in `uaenorth`:
+
+- URL: `https://career-agent.4.150.171.72.sslip.io/`
+- resource group: `rg-devopscareeruae-nonprod`
+- AKS: `aks-devopscareeruae-nonprod`
+- ACR: `acrdevopscareeruaenonprod.azurecr.io`
+- public edge: Application Gateway for Containers with Gateway API
+- public certificate: Let's Encrypt production certificate, contact
+  `arikamir1+poc@gmail.com`, Ready in cert-manager
+- UI digest: `sha256:ab4b83fc714e9145e6b87e270c9b52602f0f0ed48680c9e02cac6b9b9d718c4d`
+- BFF digest: `sha256:6963df190b4c68dc511f73f0a3cca7b510ec9fce7fb3cd2fa2d49391468f6b38`
+- Core digest: `sha256:88bbe6dcb19c526f37b081e92650c53d4d265759c54c5407906e5fb1b54da316`
+
+External smoke tests returned `200` for `/`, `/runtime-config.json`, and
+`/bff/v1/capabilities` with normal TLS verification enabled. UI, BFF, and Core
+each report one Ready replica; the public certificate and both Gateway
+listeners are Ready/Programmed.
+
+### Technical-PoC runtime limits
+
+- The single `Standard_B2s` node uses one replica per service and `Recreate`
+  rollout semantics; this is not highly available.
+- Core currently uses an ephemeral SQLite database and the BFF's implemented
+  Redis/session integrations are not registered in the current application
+  factory. Azure PostgreSQL and Managed Redis are provisioned privately but are
+  not the active PoC runtime stores.
+- Lifecycle, retention, certificate-rotation, and lab-revalidation CronJobs are
+  suspended for the PoC.
+- Key Vault retains deny-by-default networking with temporary public access
+  restricted to the approved operator `/32`; workloads use the private
+  endpoint and workload identity.
+- Port 80 remains available only to support ACME HTTP-01 renewal; application
+  traffic is served over trusted HTTPS.
+- Provisioning and this first rollout used the explicitly approved interactive
+  administrator exception. Jenkins protected publication/deployment remains
+  disabled until the formal T194 identity and independent-consent gates exist.
+
+### Israel Central teardown verification
+
+- Confirmation: `DESTROY-nonprod-rg-devopscareer-nonprod`
+- Subscription: `Pay-As-You-Go`
+  (`a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a`)
+- Result: five original managed objects plus the recovered AKS-created
+  Container Insights child destroyed; recovered state contains zero resources
+- Resource-group checks: `rg-devopscareer-nonprod` and
+  `MC_rg-devopscareer-nonprod_aks-devopscareer-nonprod_israelcentral` both absent
+- Preserved: `rg-devopscareeruae-nonprod` in `uaenorth` and the unrelated shared
+  `NetworkWatcherRG`
+- Post-teardown smoke test: UAE site returned HTTPS `200` with successful TLS
+  verification
+
+## 12. Next required decision
+
+Before calling this a pilot or protected release, wire Core to Entra-authenticated
+PostgreSQL, register the BFF Redis/session and delegated-token integrations,
+restore production replica/rollout settings and scheduled workers, replace the
+single-admin exception with independent approval, and execute the protected
+Jenkins pipeline with rollback and immutable evidence gates. The formal Key
+Vault issuer/T194 path remains unchanged.

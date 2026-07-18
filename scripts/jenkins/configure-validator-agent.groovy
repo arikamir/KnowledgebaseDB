@@ -3,7 +3,10 @@ import com.microsoft.jenkins.containeragents.builders.AciCloudBuilder
 import com.microsoft.jenkins.containeragents.builders.AciContainerTemplateBuilder
 import jenkins.model.Jenkins
 
-def image = System.getenv("VALIDATOR_IMAGE")
+def setting = { String name ->
+    System.getenv(name) ?: System.getProperty("knowledgebasedb.${name}")
+}
+def image = setting("VALIDATOR_IMAGE")
 if (image == null || !(image ==~ /[^\s@]+@sha256:[0-9a-f]{64}/)) {
     throw new IllegalArgumentException(
         "VALIDATOR_IMAGE must be an immutable repository@sha256:<64 lowercase hex> reference"

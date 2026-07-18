@@ -7,8 +7,14 @@ resource "azurerm_key_vault" "app" {
   rbac_authorization_enabled    = true
   purge_protection_enabled      = true
   soft_delete_retention_days    = 90
-  public_network_access_enabled = false
+  public_network_access_enabled = var.technical_poc_mode
   tags                          = local.tags
+
+  network_acls {
+    bypass         = "AzureServices"
+    default_action = "Deny"
+    ip_rules       = var.technical_poc_mode ? var.poc_operator_source_cidrs : []
+  }
 }
 
 resource "azurerm_private_endpoint" "key_vault" {
