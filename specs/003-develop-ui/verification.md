@@ -8,6 +8,12 @@ Only an authorized Platform Operations operator may change the status after the
 complete sequence below succeeds. Secret values, tokens, connection strings,
 Terraform state, and raw credentials are prohibited here.
 
+The approved technical-PoC exception does not purchase or rely on Entra ID P2 or
+Entra ID Governance. A manually coordinated Graph-consent action may use the
+accepted `arikamir3` guest with MFA, but any active Privileged Role Administrator
+assignment must be removed immediately afterward. This exception is not PIM
+eligibility, does not establish T194, and does not enable protected delivery.
+
 ## Authorization and prerequisite register
 
 - Platform Operations operator: not recorded

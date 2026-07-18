@@ -208,6 +208,12 @@ release evidence. The exception has these hard boundaries:
 - Jenkins may run the identityless validation/build checks, but PoC provisioning,
   image publication, and rollout occur from the explicitly approved interactive
   administrator session outside Jenkins;
+- No Entra ID P2/Governance license is purchased for this PoC. The accepted
+  no-cost path permits one manually coordinated Graph-consent action using the
+  invited `arikamir3` guest, with MFA and an explicit non-release audit record;
+  the guest's active Privileged Role Administrator assignment MUST be removed
+  immediately after consent. This is not PIM eligibility and cannot satisfy
+  T194 or protected delivery.
 - secrets, tokens, kubeconfigs, Terraform state, and real variable files remain
   outside Git and Jenkins;
 - the exact Terraform plan must contain no deletion or replacement before apply;
@@ -275,7 +281,7 @@ pipeline without human Azure credentials in its agents.
 
 - [ ] Establish scoped PIM eligibility and a distinct Graph-consent approver
 - [ ] Run the authorized T194 bootstrap/data-principal/controller/finalization sequence
-- [ ] Configure and verify Jenkins publisher/deployer protected-delivery templates
+- [x] Configure and verify Jenkins publisher/deployer protected-delivery templates
 - [ ] Execute the protected Jenkins delivery and retain immutable T194 evidence
 
 ## 10. Validation Proof
@@ -346,6 +352,22 @@ evidence or enable Jenkins protected delivery.
   system-assigned or user-assigned identity field. The official immutable
   inbound-agent digest was resolved, but no delivery template was created
   because an identityless delivery agent would violate the contract.
+- The pinned replacement HPI is present at
+  `vendor/jenkins/azure-container-agents-uami/dist/`; an authenticated Jenkins
+  administrator must run `scripts/jenkins/install-azure-container-agents-uami.groovy`
+  and restart the controller before the protected templates can be configured.
+- Live Jenkins verification on 2026-07-18 found the pinned
+  `372.v073266fff4a_7-uami.2` plugin already installed. The controller exposes
+  both identity setters, and `azure-aci-validator`, `azure-aci-publisher`, and
+  `azure-aci-deployer` are configured with the expected identityless/Publisher/
+  Deployer bindings and the pinned inbound-agent digest.
+- The publisher probe provisioned successfully in UAE North, but the agent
+  could not connect because Jenkins advertises `http://localhost:8080/`, which
+  is unreachable from Azure. The repository-backed `knowledgebasedb-cicd` job
+  is configured, but its live runs also require a Git remote reachable by ACI
+  agents; this checkout currently has no remote. A reachable HTTPS Jenkins URL
+  and an ACI-accessible Git source are required before protected delivery can
+  execute.
 
 ## 11. Deployment result
 

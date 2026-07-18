@@ -103,3 +103,23 @@ block. Its tests prove that the default template remains identityless and that
 an exact UAMI renders as `UserAssigned` without a system identity. Install the
 built HPI and verify the live plugin methods before enabling protected-delivery
 templates.
+
+To install it through the authenticated, localhost-only Jenkins Script Console,
+set the HPI path and digest from the reproducible build, then evaluate
+`scripts/jenkins/install-azure-container-agents-uami.groovy`:
+
+```sh
+export AZURE_CONTAINER_AGENTS_UAMI_HPI="$PWD/vendor/jenkins/azure-container-agents-uami/dist/azure-container-agents-372.v073266fff4a_7-exact-uami.hpi"
+export AZURE_CONTAINER_AGENTS_UAMI_SHA256="$(sha256sum "$AZURE_CONTAINER_AGENTS_UAMI_HPI" | cut -d' ' -f1)"
+```
+
+The installer rejects a different filename, digest, plugin short name, or
+version, and refuses to replace an existing unreviewed plugin. Restart Jenkins
+after installation, then rerun `configure-publisher-deployer-agents.groovy`.
+
+The Jenkins global URL must be reachable from Azure Container Instances. A
+local-lab URL such as `http://localhost:8080/` causes inbound agents to retry
+forever because `localhost` resolves inside the ACI container. The Pipeline
+SCM URL must likewise be a Git endpoint reachable from the ACI subnet; a
+controller-local `file://` checkout is suitable only for loading the Jenkinsfile
+and cannot supply source to an ephemeral Azure agent.
