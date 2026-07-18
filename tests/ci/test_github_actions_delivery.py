@@ -17,6 +17,7 @@ def test_validation_workflow_runs_on_all_refs_without_azure_credentials() -> Non
 
 def test_delivery_workflow_uses_oidc_and_protected_environments() -> None:
     source = (WORKFLOWS / "delivery.yml").read_text()
+    assert "actions: read" in source
     assert "id-token: write" in source
     assert "azure/login@v2" in source
     assert "AZURE_PUBLISHER_CLIENT_ID" in source
