@@ -8,7 +8,7 @@ describe("App", () => {
 
   it("renders the accessible application heading", () => {
     render(<MemoryRouter><App /></MemoryRouter>);
-    expect(screen.getByRole("heading", { level: 1, name: "DevOps Career Agent" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: "Roadmap progress" })).toBeInTheDocument();
   });
 
   it("loads browser session expiry and refreshes it when continuing", async () => {

@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { CORE_CONTRACT_DIGEST } from "../contracts/core-api.js";
 import { generatedRouteSchema } from "../plugins/generated-validation.js";
 import { registerFoundationRoute } from "./registry.js";
-import { toBrowserRoadmapResult, toCoreRoadmapRequest, type BrowserRoadmapCreateRequest } from "../contracts/roadmap.js";
+import { toBrowserRoadmap, toBrowserRoadmapList, toBrowserRoadmapResult, toCoreRoadmapRequest, type BrowserRoadmapCreateRequest } from "../contracts/roadmap.js";
 
 export interface RoadmapRouteServices {
   core: (path: string, init: RequestInit) => Promise<Response>;
@@ -22,11 +22,13 @@ export const roadmapRoutes: FastifyPluginAsync = async (app) => {
   });
   app.get("/bff/v1/roadmaps", { schema: generatedRouteSchema("listBrowserRoadmaps") }, async (_request, reply) => {
     const response = await services().core("/api/v1/roadmaps", { method: "GET", headers: { "X-BFF-Contract-Version": "1.0.0" } });
-    return reply.code(response.status).send(await response.json());
+    const body = await response.json();
+    return reply.code(response.status).send(response.ok ? toBrowserRoadmapList(body) : body);
   });
   app.get<{ Params: { id: string } }>("/bff/v1/roadmaps/:id", { schema: generatedRouteSchema("getBrowserRoadmap") }, async (request, reply) => {
     const response = await services().core(`/api/v1/roadmaps/${encodeURIComponent(request.params.id)}`, { method: "GET", headers: { "X-BFF-Contract-Version": "1.0.0" } });
-    return reply.code(response.status).send(await response.json());
+    const body = await response.json();
+    return reply.code(response.status).send(response.ok ? toBrowserRoadmap(body) : body);
   });
 };
 
