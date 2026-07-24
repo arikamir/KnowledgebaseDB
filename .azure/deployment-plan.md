@@ -4,7 +4,7 @@
 > authoritative delivery path. Jenkins references below are retained as
 > historical migration evidence and are not required for CI/CD execution.
 
-> **Status:** Deployed — single-admin technical PoC; not T194 or a protected release
+> **Status:** Validated — redeployment after drift; single-admin technical PoC; not T194 or a protected release
 
 Generated: 2026-07-17
 
@@ -302,10 +302,11 @@ protected pipeline without human Azure credentials in its runners.
   `azurerm` backend; the ignored Israel state was excluded
 - [x] Format: `terraform fmt -check -recursive infra/azure`
 - [x] Syntax: `terraform -chdir=infra/azure validate`
-- [x] Plan preview: remote-state plan contains 136 creates, 0 updates,
-  0 deletes, and 0 replacements
+- [x] Plan preview: refreshed remote-state plan contains 135 creates, 4 no-ops,
+  0 updates, 0 deletes, and 0 replacements
 - [x] State backend: Entra-authenticated backend initialization and locked plan
-  completed against the new empty UAE key
+  completed against the isolated UAE key; only the retained evidence-hold
+  resources are in state
 - [x] Azure Policy: only the Security Center built-in assignment is active;
   no location, naming, SKU, or networking conflict was found
 - [x] Template resolution: no unresolved `{{ .Env.* }}` values exist
@@ -330,7 +331,10 @@ protected pipeline without human Azure credentials in its runners.
 - **PoC exception:** the four governance groups have the same human owner/member
   and are not separation-of-duties or T194 evidence.
 
-Validation completed on 2026-07-18. The PoC path remains unable to emit T194
+Validation completed on 2026-07-24. The refreshed UAE state contains only the
+resource group and evidence-hold storage resources; the application stack will
+be recreated by the reviewed non-destructive plan (135 creates, 4 no-ops, zero
+updates/deletes/replacements). The PoC path remains unable to emit T194
 evidence or enable Jenkins protected delivery.
 
 ### Jenkins protected-template readiness
