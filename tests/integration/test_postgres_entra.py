@@ -1,0 +1,56 @@
+import pytest
+
+from datetime import datetime, timedelta, timezone
+from storage.database import EntraAccessToken, PersistenceUnavailable, PostgresEntraConnectionFactory, ProactiveEntraTokenProvider
+
+
+def test_entra_connection_retries_at_exact_intervals_and_refreshes_token():
+    tokens = iter(["token-1", "token-2", "token-3"])
+    attempts = []
+    sleeps = []
+
+    def connect(token):
+        attempts.append(token)
+        if len(attempts) < 3:
+            raise ConnectionError("postgres unavailable")
+        return "connected"
+
+    factory = PostgresEntraConnectionFactory(lambda: next(tokens), connect, sleeps.append)
+    assert factory() == "connected"
+    assert attempts == ["token-1", "token-2", "token-3"]
+    assert sleeps == [0.25, 1.0]
+
+
+def test_persistent_failure_maps_to_stable_code_and_never_returns_partial_connection():
+    factory = PostgresEntraConnectionFactory(lambda: "fresh-token", lambda _: (_ for _ in ()).throw(ConnectionError()), lambda _: None)
+    with pytest.raises(PersistenceUnavailable, match="PERSISTENCE_UNAVAILABLE"):
+        factory()
+
+
+def test_token_acquisition_failure_uses_same_retry_budget():
+    calls = []
+
+    def acquire():
+        calls.append(True)
+        raise RuntimeError("identity unavailable")
+
+    factory = PostgresEntraConnectionFactory(acquire, lambda _: None, lambda _: None)
+    with pytest.raises(PersistenceUnavailable):
+        factory()
+    assert len(calls) == 3
+
+
+def test_token_provider_refreshes_proactively_and_can_be_invalidated():
+    now = [datetime(2026, 7, 16, tzinfo=timezone.utc)]
+    issued = []
+    def acquire():
+        token = EntraAccessToken(f"token-{len(issued) + 1}", now[0] + timedelta(minutes=10))
+        issued.append(token)
+        return token
+    provider = ProactiveEntraTokenProvider(acquire, now=lambda: now[0])
+    assert provider() == "token-1"
+    assert provider() == "token-1"
+    now[0] += timedelta(minutes=6)
+    assert provider() == "token-2"
+    provider.invalidate()
+    assert provider() == "token-3"

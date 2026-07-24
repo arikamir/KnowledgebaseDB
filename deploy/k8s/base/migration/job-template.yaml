@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: core-migration-${BUILD_ID}
+  namespace: career-migrations
+  labels:
+    app.kubernetes.io/name: core-migration
+    app.kubernetes.io/component: schema-migration
+spec:
+  activeDeadlineSeconds: 900
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core-migration
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: core-migrator
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: core-migration
+          image: ${CORE_MIGRATION_IMAGE}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /app/scripts/run-migration.sh
+          args:
+            - upgrade
+            - $(MIGRATION_TARGET)
+          env:
+            - name: MIGRATION_TARGET
+              value: ${MIGRATION_TARGET}
+            - name: DATABASE_URL
+              value: ${MIGRATION_DATABASE_URL}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes: []

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "cloud": "azure",
+  "template": "azure-aci-validator",
+  "label": "azure-aci-validator",
+  "allRefs": true,
+  "unprotectedRefDisposition": "stop_after_non_azure_validation",
+  "controllerOrLocalFallback": false,
+  "suiteScript": "scripts/ci/validate-non-azure.sh",
+  "managedIdentity": {
+    "systemAssigned": false,
+    "userAssigned": []
+  },
+  "prohibitedEnvironmentPrefixes": [
+    "AZURE_",
+    "ARM_",
+    "KUBECONFIG",
+    "DOCKER_CONFIG"
+  ],
+  "allowedStages": [
+    "checkout",
+    "change-plan",
+    "contract-drift",
+    "lint",
+    "typecheck",
+    "unit-test",
+    "contract-test",
+    "non-azure-integration-test"
+  ],
+  "forbiddenStages": [
+    "azure-login",
+    "acr-push",
+    "evidence-upload",
+    "migration",
+    "promotion",
+    "deployment",
+    "verification",
+    "rollback"
+  ]
+}

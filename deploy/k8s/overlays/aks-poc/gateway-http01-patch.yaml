@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public-gateway
+spec:
+  listeners:
+    - name: http-acme
+      protocol: HTTP
+      port: 80
+      hostname: "${PUBLIC_GATEWAY_HOSTNAME}"
+      allowedRoutes:
+        namespaces: {from: Same}
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "${PUBLIC_GATEWAY_HOSTNAME}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - {group: "", kind: Secret, name: public-gateway-tls}
+      allowedRoutes:
+        namespaces: {from: Same}

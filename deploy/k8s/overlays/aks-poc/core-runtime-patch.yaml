@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-runtime-config
+data:
+  DATABASE_URL: sqlite:////tmp/devops-career-agent.db
+  TOPIC_CATALOG_PATH: /app/config/supported-guidance-topics-v1.yaml
+  READINESS_REQUIRED_DEPENDENCIES: "postgresql,key-material,tls-functional"

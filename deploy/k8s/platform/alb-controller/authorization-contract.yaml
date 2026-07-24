@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alb-controller-authorization-contract
+  namespace: azure-alb-system
+data:
+  serviceAccountSubject: system:serviceaccount:azure-alb-system:alb-controller-sa
+  allowed: exact-agc-resource-group:AppGw-for-Containers-Configuration-Manager,exact-association-subnet:Network-Contributor
+  denied: subscription,Owner,Contributor,role-assignment,other-vnet,other-subnet,other-gateway,identity-mutation,federation-mutation,key-vault,acr,storage,redis,postgresql,unrelated-kubernetes-secret,alternate-service-account
+  bindingCardinality: "one-workload-identity-to-one-service-account"

@@ -1,0 +1,87 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: application-default-deny}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ui-from-public-gateway}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: ui}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: azure-alb-system}}
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: bff-browser-and-lifecycle}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: bff}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: azure-alb-system}}
+      ports: [{protocol: TCP, port: 3000}]
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: lifecycle-revocation-dispatcher}}
+      ports: [{protocol: TCP, port: 3000}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: core-private-callers}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: core}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: bff}}
+      ports: [{protocol: TCP, port: 8443}]
+    - from:
+        - ipBlock: {cidr: "${PRIVATE_MACHINE_SOURCE_CIDR}"}
+      ports: [{protocol: TCP, port: 8443}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: application-dns-egress}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: bff-required-egress}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: bff}}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector: {matchLabels: {app.kubernetes.io/name: core}}
+      ports: [{protocol: TCP, port: 8443}]
+    - to:
+        - ipBlock: {cidr: "${AZURE_PRIVATE_SERVICE_CIDR}"}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 10000}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: core-required-egress}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: core}}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: {cidr: "${AZURE_PRIVATE_SERVICE_CIDR}"}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 5432}

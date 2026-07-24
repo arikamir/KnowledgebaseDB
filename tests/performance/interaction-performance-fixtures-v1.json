@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "fixtureSetId": "interaction-performance-fixtures-v1",
+  "status": "approved",
+  "approvedOn": "2026-07-16",
+  "approvalAuthority": "Feature specification owner",
+  "testDataPolicy": "Synthetic non-production values only; no real credential, token, cookie, authorization code, or personal identifier is permitted.",
+  "derivation": {
+    "uuidAlgorithm": "UUIDv5 using RFC 4122 SHA-1 name generation",
+    "uuidNamespace": "2e6e81d4-bc7d-5ad6-9d4c-1cb40b993756",
+    "uuidNameTemplate": "interaction-performance-profile-v1:{scenario}:{phase}:{workerIndex}:{requestOrdinal}:{field}",
+    "tokenAlgorithm": "lowercase hexadecimal SHA-256 of the same name template, prefixed with sc050-{field}- and truncated to 64 total characters",
+    "placeholderGrammar": {
+      "${constant:name}": "Replace with the exact constants[name] native JSON value; when embedded in a larger string the value MUST be a string.",
+      "${uuidv5:field}": "Replace with UUIDv5(uuidNamespace, uuidNameTemplate with field substituted).",
+      "${token:field}": "Replace with the tokenAlgorithm result for field.",
+      "${time:field}": "Replace with the timestampRule result for issuedAt, idleExpiresAt, or absoluteExpiresAt.",
+      "${template:path}": "Deep-copy the exact already-defined JSON value at path before applying this scenario's derived placeholders."
+    },
+    "resolutionOrder": "Reject cycles; resolve template and constant references first, then UUIDv5, token, and time placeholders; reject every unknown or unresolved placeholder before state setup or request validation.",
+    "fixtureInheritanceRule": "seedStateRef deep-copies the named fixture's seedState after placeholder resolution; seedOverrides then replaces only the exact dotted/indexed path shown and rejects an absent or multiply matched path.",
+    "phaseValues": [
+      "warmup",
+      "measured"
+    ],
+    "workerIndexRange": [
+      0,
+      9
+    ],
+    "warmupRequestOrdinalRange": [
+      0,
+      1
+    ],
+    "measuredRequestOrdinalRange": [
+      0,
+      9
+    ],
+    "clockEpoch": "2026-07-16T09:00:00Z",
+    "timestampRule": "issuedAt equals clockEpoch plus workerIndex minutes plus requestOrdinal seconds; idleExpiresAt is issuedAt plus 30 minutes; absoluteExpiresAt is issuedAt plus 8 hours."
+  },
+  "constants": {
+    "tenantId": "11111111-1111-4111-8111-111111111111",
+    "bffClientId": "22222222-2222-4222-8222-222222222222",
+    "uiOrigin": "https://career-agent.test.invalid",
+    "uiContractVersion": "1.0.0",
+    "bffContractVersion": "1.0.0",
+    "milestoneKey": "containers.basics",
+    "stepOrdinal": 0,
+    "reviewPassingAnswers": [
+      {
+        "questionOrdinal": 0,
+        "answerKey": "b"
+      },
+      {
+        "questionOrdinal": 1,
+        "answerKey": "a"
+      },
+      {
+        "questionOrdinal": 2,
+        "answerKey": "c"
+      }
+    ]
+  },
+  "fixtures": {
+    "focused_learning_read": {
+      "caseId": "sc050-focused-learning-read-001",
+      "operationId": "getBrowserLearningSession",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "GET",
+      "pathTemplate": "/bff/v1/learning-sessions/${uuidv5:learningSessionId}",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}"
+      },
+      "body": null,
+      "seedState": {
+        "employeeIdentity": {
+          "tenantId": "${constant:tenantId}",
+          "objectId": "${uuidv5:employeeObjectId}",
+          "status": "active"
+        },
+        "redisSession": {
+          "sessionId": "${token:sessionId}",
+          "employeeObjectId": "${uuidv5:employeeObjectId}",
+          "issuedAt": "${time:issuedAt}",
+          "idleExpiresAt": "${time:idleExpiresAt}",
+          "absoluteExpiresAt": "${time:absoluteExpiresAt}"
+        },
+        "learningSession": {
+          "id": "${uuidv5:learningSessionId}",
+          "roadmapId": "${uuidv5:roadmapId}",
+          "title": "Container fundamentals",
+          "objective": "Complete a container fundamentals exercise",
+          "estimatedMinutes": 25,
+          "status": "in_progress",
+          "currentStepOrdinal": 0,
+          "steps": [
+            {
+              "id": "${uuidv5:learningStepId}",
+              "ordinal": 0,
+              "stepType": "activity",
+              "title": "Complete the container fundamentals exercise",
+              "status": "pending"
+            }
+          ]
+        }
+      }
+    },
+    "focused_learning_mutation": {
+      "caseId": "sc050-focused-learning-mutation-001",
+      "operationId": "completeBrowserLearningStep",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "PUT",
+      "pathTemplate": "/bff/v1/learning-sessions/${uuidv5:learningSessionId}/steps/${uuidv5:learningStepId}/completion",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}",
+        "Origin": "${constant:uiOrigin}",
+        "X-CSRF-Token": "${token:csrfToken}",
+        "X-UI-Contract-Version": "${constant:uiContractVersion}",
+        "Idempotency-Key": "${token:idempotencyKey}"
+      },
+      "body": null,
+      "seedStateRef": "focused_learning_read",
+      "seedOverrides": {
+        "learningSession.steps[0].status": "pending"
+      }
+    },
+    "review_submission": {
+      "caseId": "sc050-review-submission-001",
+      "operationId": "submitBrowserReviewAttempt",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "POST",
+      "pathTemplate": "/bff/v1/review-attempts/${uuidv5:reviewAttemptId}/submit",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}",
+        "Origin": "${constant:uiOrigin}",
+        "X-CSRF-Token": "${token:csrfToken}",
+        "X-UI-Contract-Version": "${constant:uiContractVersion}",
+        "Idempotency-Key": "${token:idempotencyKey}"
+      },
+      "body": null,
+      "seedState": {
+        "learningSessionId": "${uuidv5:learningSessionId}",
+        "reviewAttempt": {
+          "id": "${uuidv5:reviewAttemptId}",
+          "status": "in_progress",
+          "attemptNumber": 1,
+          "answers": "${constant:reviewPassingAnswers}"
+        },
+        "redisSessionRef": "${template:focused_learning_read.seedState.redisSession}"
+      }
+    },
+    "progress_persistence": {
+      "caseId": "sc050-progress-persistence-001",
+      "operationId": "createBrowserProgressCheckIn",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "POST",
+      "pathTemplate": "/bff/v1/progress/check-ins",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}",
+        "Origin": "${constant:uiOrigin}",
+        "X-CSRF-Token": "${token:csrfToken}",
+        "X-UI-Contract-Version": "${constant:uiContractVersion}",
+        "Idempotency-Key": "${token:idempotencyKey}"
+      },
+      "body": {
+        "roadmapId": "${uuidv5:roadmapId}",
+        "notes": "Completed the deterministic container fundamentals exercise.",
+        "completedMilestoneKeys": [
+          "${constant:milestoneKey}"
+        ],
+        "newGoals": [
+          "Practice Kubernetes deployment troubleshooting"
+        ]
+      },
+      "seedState": {
+        "roadmap": {
+          "id": "${uuidv5:roadmapId}",
+          "ownerObjectId": "${uuidv5:employeeObjectId}",
+          "status": "active",
+          "milestones": [
+            {
+              "milestoneKey": "${constant:milestoneKey}",
+              "ordinal": 0,
+              "completionState": "in_progress"
+            }
+          ]
+        },
+        "redisSessionRef": "${template:focused_learning_read.seedState.redisSession}"
+      }
+    },
+    "bff_session_bootstrap": {
+      "caseId": "sc050-bff-session-bootstrap-001",
+      "operationId": "bootstrapEmployeeSession",
+      "contractPath": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
+      "method": "POST",
+      "pathTemplate": "/api/v1/identity/session-bootstrap",
+      "headers": {
+        "Authorization": "Bearer ${token:delegatedAccessTokenFixtureHandle}",
+        "X-BFF-Contract-Version": "${constant:bffContractVersion}"
+      },
+      "body": null,
+      "validatedClaimsFixture": {
+        "tenantId": "${constant:tenantId}",
+        "subject": "${uuidv5:employeeObjectId}",
+        "audience": "api://career-agent-core-test",
+        "authorizedParty": "${constant:bffClientId}",
+        "scope": "CareerAgent.Access",
+        "issuedAt": "${time:issuedAt}",
+        "expiresAt": "${time:absoluteExpiresAt}"
+      },
+      "seedState": {
+        "employeeIdentity": null,
+        "redisSession": null
+      }
+    },
+    "bff_session_refresh": {
+      "caseId": "sc050-bff-session-refresh-001",
+      "operationId": "getBrowserSession",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "GET",
+      "pathTemplate": "/bff/v1/session",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}"
+      },
+      "body": null,
+      "seedStateRef": "focused_learning_read"
+    },
+    "bff_logout": {
+      "caseId": "sc050-bff-logout-001",
+      "operationId": "logout",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "POST",
+      "pathTemplate": "/bff/v1/auth/logout",
+      "headers": {
+        "Cookie": "__Host-learning_session=${token:sessionCookie}",
+        "Origin": "${constant:uiOrigin}",
+        "X-CSRF-Token": "${token:csrfToken}"
+      },
+      "body": null,
+      "seedStateRef": "focused_learning_read"
+    },
+    "authentication_callback": {
+      "caseId": "sc050-authentication-callback-001",
+      "operationId": "completeLogin",
+      "contractPath": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "method": "GET",
+      "pathTemplate": "/bff/v1/auth/callback?code=${token:authorizationCodeHandle}&state=${token:authorizationState}",
+      "headers": {},
+      "body": null,
+      "providerMode": "approved_deterministic_in_process_fixture",
+      "providerResult": {
+        "tenantId": "${constant:tenantId}",
+        "subject": "${uuidv5:employeeObjectId}",
+        "audience": "${constant:bffClientId}",
+        "issuedAt": "${time:issuedAt}",
+        "expiresAt": "${time:absoluteExpiresAt}",
+        "tokenVersion": "test-v1"
+      },
+      "seedState": {
+        "authorizationState": "${token:authorizationState}",
+        "returnTo": "/roadmap",
+        "employeeLifecycle": "active",
+        "redisSession": null
+      }
+    }
+  },
+  "knownAnswerVectors": [
+    {
+      "vectorId": "focused-learning-read-measured-w0-r0",
+      "derivedInputObject": {
+        "profileId": "interaction-performance-profile-v1",
+        "fixtureSetId": "interaction-performance-fixtures-v1",
+        "caseId": "sc050-focused-learning-read-001",
+        "scenario": "focused_learning_read",
+        "phase": "measured",
+        "workerIndex": 0,
+        "requestOrdinal": 0,
+        "operationId": "getBrowserLearningSession",
+        "materializedState": {
+          "employeeIdentity": {
+            "tenantId": "11111111-1111-4111-8111-111111111111",
+            "objectId": "63a0fa83-9893-5ea7-84de-839d4f026387",
+            "status": "active"
+          },
+          "redisSession": {
+            "sessionId": "sc050-sessionId-4516145ed5d0b3b0f276f7fc9a7f74c67f2fac111b737355",
+            "employeeObjectId": "63a0fa83-9893-5ea7-84de-839d4f026387",
+            "issuedAt": "2026-07-16T09:00:00Z",
+            "idleExpiresAt": "2026-07-16T09:30:00Z",
+            "absoluteExpiresAt": "2026-07-16T17:00:00Z"
+          },
+          "learningSession": {
+            "id": "bf5bbf28-fe77-52a7-bb69-fad58a3611bb",
+            "roadmapId": "13c9a86d-d736-5766-b874-fe38905902c3",
+            "title": "Container fundamentals",
+            "objective": "Complete a container fundamentals exercise",
+            "estimatedMinutes": 25,
+            "status": "in_progress",
+            "currentStepOrdinal": 0,
+            "steps": [
+              {
+                "id": "09fd212b-40e5-53da-8e0a-1010f326f1f6",
+                "ordinal": 0,
+                "stepType": "activity",
+                "title": "Complete the container fundamentals exercise",
+                "status": "pending"
+              }
+            ]
+          }
+        },
+        "materializedRequest": {
+          "method": "GET",
+          "pathAndQuery": "/bff/v1/learning-sessions/bf5bbf28-fe77-52a7-bb69-fad58a3611bb",
+          "headers": {
+            "Cookie": "__Host-learning_session=sc050-sessionCookie-21a06b2f092ad15b55c65ea52237f3c23e616b9ac092"
+          },
+          "body": null
+        },
+        "providerResult": null
+      },
+      "expectedSha256": "b0553e4aa190e9530aa2d7d36696021525d0a880f3f3e6e77d152b057c49b1f2"
+    },
+    {
+      "vectorId": "authentication-callback-measured-w0-r0",
+      "derivedInputObject": {
+        "profileId": "interaction-performance-profile-v1",
+        "fixtureSetId": "interaction-performance-fixtures-v1",
+        "caseId": "sc050-authentication-callback-001",
+        "scenario": "authentication_callback",
+        "phase": "measured",
+        "workerIndex": 0,
+        "requestOrdinal": 0,
+        "operationId": "completeLogin",
+        "materializedState": {
+          "authorizationState": "sc050-authorizationState-2514768de38c1a3ef300ca2bfccd2a22729fe52",
+          "returnTo": "/roadmap",
+          "employeeLifecycle": "active",
+          "redisSession": null
+        },
+        "materializedRequest": {
+          "method": "GET",
+          "pathAndQuery": "/bff/v1/auth/callback?code=sc050-authorizationCodeHandle-89242d6507f0a4b84a0a290245261f2ba9&state=sc050-authorizationState-2514768de38c1a3ef300ca2bfccd2a22729fe52",
+          "headers": {},
+          "body": null
+        },
+        "providerResult": {
+          "tenantId": "11111111-1111-4111-8111-111111111111",
+          "subject": "56a2ea0b-5fe6-5bc7-a6a1-f3a51f03dadc",
+          "audience": "22222222-2222-4222-8222-222222222222",
+          "issuedAt": "2026-07-16T09:00:00Z",
+          "expiresAt": "2026-07-16T17:00:00Z",
+          "tokenVersion": "test-v1"
+        }
+      },
+      "expectedSha256": "cce77d3b35f588445f9462dba9962a42d62ffafca34e3b5bd658a4c4a21a6ce2"
+    }
+  ]
+}

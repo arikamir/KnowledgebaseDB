@@ -15,11 +15,26 @@ venv/
 env/
 .env
 .env.*
+!.env.example
 
 # Build artifacts
 build/
 dist/
 site/
+
+# Node.js
+node_modules/
+*.log
+test-results/
+playwright-report/
+blob-report/
+
+# Terraform
+.terraform/
+*.tfstate*
+*.tfvars
+!.terraform.tfvars.example
+.terraform.lock.hcl
 
 # SQLite / local databases
 *.db
@@ -33,4 +48,3 @@ Thumbs.db
 .vscode/
 *.swp
 *.tmp
-

@@ -35,3 +35,13 @@ variable "node_count" {
   type    = number
   default = 1
 }
+
+variable "delivery_operators_group_object_id" {
+  description = "Object ID of the separately configured Delivery Operators Microsoft Entra group."
+  type        = string
+}
+
+variable "security_reviewers_group_object_id" {
+  description = "Object ID of the separately configured Security Reviewers Microsoft Entra group."
+  type        = string
+}

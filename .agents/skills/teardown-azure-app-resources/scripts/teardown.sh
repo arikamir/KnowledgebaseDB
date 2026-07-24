@@ -26,6 +26,33 @@ done
 
 terraform -chdir="$infra" init
 
+state_inventory="$(terraform -chdir="$infra" state list)"
+required_workloads=(bff core lifecycle retention lab-revalidation migration evidence-hold-reconciler alb-controller gateway-certificate-dns)
+for identity in "${required_workloads[@]}"; do
+  grep -Fq "azurerm_user_assigned_identity.workload[\"$identity\"]" <<<"$state_inventory" || {
+    echo "[teardown] State parity failure: missing workload identity $identity; recover/import state before destroy" >&2
+    exit 1
+  }
+  grep -Fq "azurerm_federated_identity_credential.workload[\"$identity\"]" <<<"$state_inventory" || {
+    echo "[teardown] State parity failure: missing federation $identity; recover/import state before destroy" >&2
+    exit 1
+  }
+done
+for address in \
+  azurerm_user_assigned_identity.jenkins_publisher \
+  azurerm_user_assigned_identity.jenkins_deployer \
+  azurerm_role_assignment.publisher_exact_acr_push \
+  azurerm_role_assignment.deployer_exact_aks_writer \
+  azurerm_role_assignment.deployer_target_rg_reader \
+  azurerm_role_assignment.kubelet_exact_acr_pull \
+  azurerm_role_assignment.publisher_evidence_prefix \
+  azurerm_role_assignment.deployer_evidence_prefix; do
+  grep -Fq "$address" <<<"$state_inventory" || {
+    echo "[teardown] State parity failure: missing $address; recover/import state before destroy" >&2
+    exit 1
+  }
+done
+
 environment="$(terraform -chdir="$infra" console -var-file=terraform.tfvars <<< 'var.environment' | tr -d '"[:space:]')"
 case "$environment" in
   nonprod|dev|test|stage) ;;
@@ -59,7 +86,8 @@ expected="DESTROY-$environment-$resource_group"
 }
 
 terraform -chdir="$infra" apply "$plan"
-terraform -chdir="$infra" state list
+remaining="$(terraform -chdir="$infra" state list)"
+[[ -z "$remaining" ]] || { echo "[teardown] Managed resources remain after destroy" >&2; printf '%s\n' "$remaining" >&2; exit 1; }
 
 if az group show --name "$resource_group" >/dev/null 2>&1; then
   echo "[teardown] Warning: resource group still exists: $resource_group" >&2

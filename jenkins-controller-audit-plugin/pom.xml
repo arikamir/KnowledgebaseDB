@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId><artifactId>plugin</artifactId><version>4.80</version><relativePath/>
+  </parent>
+  <groupId>io.knowledgebasedb.jenkins</groupId><artifactId>controller-audit</artifactId><version>1.0.0</version><packaging>hpi</packaging>
+  <name>KnowledgebaseDB Controller Audit</name>
+  <properties><jenkins.version>2.479.3</jenkins.version><java.level>17</java.level><gitHubRepo>knowledgebasedb/controller-audit</gitHubRepo></properties>
+  <repositories><repository><id>repo.jenkins-ci.org</id><url>https://repo.jenkins-ci.org/public/</url></repository></repositories>
+  <pluginRepositories><pluginRepository><id>repo.jenkins-ci.org</id><url>https://repo.jenkins-ci.org/public/</url></pluginRepository></pluginRepositories>
+  <build><plugins>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-antrun-plugin</artifactId><version>3.1.0</version><executions><execution><id>protected-revision-only</id><phase>validate</phase><goals><goal>run</goal></goals><configuration><target>
+      <condition property="protected.revision.matches"><and><matches string="${env.GIT_COMMIT}" pattern="^[0-9a-f]{40}$"/><equals arg1="${env.GIT_COMMIT}" arg2="${env.CONTROLLER_AUDIT_PROTECTED_REVISION}"/></and></condition>
+      <fail unless="protected.revision.matches" message="controller-audit HPI may only be built from the exact protected revision"/>
+    </target></configuration></execution></executions></plugin>
+    <plugin><groupId>org.jenkins-ci.tools</groupId><artifactId>maven-hpi-plugin</artifactId><configuration><archive><manifestEntries><Implementation-Build>${env.GIT_COMMIT}</Implementation-Build></manifestEntries></archive></configuration></plugin>
+  </plugins></build>
+</project>

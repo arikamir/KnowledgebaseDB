@@ -158,6 +158,8 @@ class RoadmapStep(BaseModel):
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     id: str = Field(default_factory=make_id)
+    milestone_key: str | None = None
+    ordinal: int | None = Field(default=None, ge=0)
     title: str
     skill_area: str
     experience_level_fit: str
@@ -198,6 +200,7 @@ class CareerRoadmap(BaseModel):
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     id: str = Field(default_factory=make_id)
+    owner_type: str | None = None
     employee_profile_id: str
     previous_roadmap_id: str | None = None
     goal_summary: str
@@ -245,10 +248,12 @@ class ProgressCheckIn(BaseModel):
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     id: str = Field(default_factory=make_id)
+    owner_type: str | None = None
     employee_profile_id: str
     roadmap_id: str
     notes: str = ""
     completed_steps: list[str] = Field(default_factory=list)
+    normalized_milestone_keys: list[str] = Field(default_factory=list)
     new_goals: list[str] = Field(default_factory=list)
     updated_recommendations: list[RoadmapStep] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utcnow)

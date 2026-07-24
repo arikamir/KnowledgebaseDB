@@ -37,10 +37,12 @@ Stop when state is missing or inconsistent. Never infer that an Azure resource g
 
 Before apply, call out that teardown deletes:
 
-- the AKS cluster and its workloads;
+- the AKS cluster, AGC/private-core/data/evidence resources, and its workloads;
 - images stored only in the application ACR;
 - the Log Analytics workspace and retained logs;
-- role assignments and the application resource group managed by state.
+- all nine workload identities/federated credentials, the two Jenkins delivery identities, kubelet exact-ACR pull, their exact role assignments, and the application resource group managed by state.
+
+The destroy plan must include all identities declared in `infra/azure/jenkins-agent-identities.tf`. Missing identity state is an import/state-recovery blocker, not permission to leave an orphan. UI and validator must remain absent because they are intentionally identityless.
 
 Check the plan for resources outside the expected application resource group and stop if any appear. Ask whether ACR images, Kubernetes manifests/state, logs, or diagnostic data require export. Do not create backups unless requested.
 
@@ -57,4 +59,3 @@ Do not remove local Terraform state, lock files, IaC source, Kubernetes manifest
 ## Handoff
 
 Report the subscription, environment, resource group, plan path, destroy result, verification result, retained local artifacts, and any remaining billable resources.
-

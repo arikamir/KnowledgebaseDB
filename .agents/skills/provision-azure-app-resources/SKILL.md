@@ -5,7 +5,7 @@ description: Automatically create, validate, and optionally provision the Azure 
 
 # Provision Azure Application Resources
 
-Create a repeatable, least-privilege Azure foundation for the containerized application described in `specs/002-dockerize-deploy/`.
+Create a repeatable, least-privilege Azure foundation for the three-service application described in `specs/003-develop-ui/`.
 
 ## Trigger and fast path
 
@@ -26,7 +26,7 @@ Do not spend a separate reasoning phase reconsidering the standard topology unle
 ## Read project context
 
 1. Read `references/project-profile.md`.
-2. Read `specs/002-dockerize-deploy/plan.md`, `quickstart.md`, and `contracts/deployment-contract.md` when present.
+2. Read `specs/003-develop-ui/plan.md`, `quickstart.md`, `contracts/jenkins-delivery-contract.md`, and `contracts/implementation-readiness-contract.md` when present.
 3. Inspect existing infrastructure files before generating anything. Extend the established IaC tool and layout when one exists.
 4. Inspect `deploy/k8s/` to keep infrastructure outputs compatible with the Kubernetes manifests.
 
@@ -49,18 +49,22 @@ Never guess a subscription, tenant, globally unique resource name, production to
 
 Prefer the repository's existing IaC tool. If none exists, use the bundled Terraform template through `bash scripts/bootstrap.sh <repository-root>`. Place files under `infra/azure/` and separate reusable configuration from environment values.
 
-Create the smallest foundation that satisfies the deployment contract:
+Create the complete reviewed feature-003 foundation; partial identity topology is a validation failure:
 
 - resource group;
 - Azure Container Registry with admin credentials disabled;
-- AKS using managed identity and Azure RBAC-compatible access;
-- `AcrPull` assignment from the kubelet identity to ACR;
+- AKS with OIDC and Workload Identity, Azure RBAC-compatible access, and no managed application-routing/legacy Ingress;
+- one-to-one federated identities for BFF, core, lifecycle, retention, lab revalidation, migration, evidence-hold reconciliation, ALB Controller, and gateway certificate/DNS rotation;
+- non-federatable kubelet identity with only exact-ACR `AcrPull`;
+- identityless UI and `azure-aci-validator`;
+- distinct Jenkins publisher/deployer user-assigned identities: publisher receives exact-ACR push plus prefix-scoped evidence creation/verification; deployer receives exact-AKS mutation, target-resource-group Reader, and prefix-scoped evidence creation/verification;
+- explicit denial validation for Terraform state, Key Vault secrets, Redis/PostgreSQL data, cross-identity use, ACR administration, evidence list/delete/overwrite, and any system-assigned/additional ACI identity;
 - Log Analytics/Container Insights when required by the selected AKS configuration;
-- managed AKS application routing with an external NGINX ingress controller;
+- Application Gateway for Containers/Gateway API public UI+BFF routing and a separately governed private core endpoint;
 - configurable node size/count, tags, region, Kubernetes version, and naming inputs;
 - outputs for resource group, cluster name, ACR login server/resource ID, credential-fetch commands, and browser URL lookup.
 
-Do not add a database, public ingress, DNS, Key Vault, production high availability, or advanced networking unless requirements call for it. The current application keeps `DATABASE_URL` external and the initial target is non-production.
+Preserve the specified AGC, internal core, Redis, PostgreSQL, and Key Vault topology. Never recreate managed application routing, NGINX, or a legacy Kubernetes `Ingress`.
 
 ## Generate safe infrastructure
 
@@ -104,7 +108,7 @@ Run deployment only when the user explicitly asks to provision/deploy/apply the 
 3. Request approval for the exact mutating command when the execution environment requires it.
 4. Never auto-approve destructive replacements without calling them out.
 
-After deployment, verify ACR reachability, AKS provisioning state, node readiness, and the kubelet identity's `AcrPull` assignment. After application rollout, run `bash .agents/skills/provision-azure-app-resources/scripts/get-application-url.sh` and report its URL as the browser-accessible application endpoint. Do not claim the application is accessible until that URL responds successfully on `/health`.
+After deployment, verify every positive and negative identity boundary, ACR reachability, AKS provisioning state, node readiness, and the kubelet identity's exact-ACR-only `AcrPull` assignment. After application rollout, run `bash .agents/skills/provision-azure-app-resources/scripts/get-application-url.sh` and report the AGC HTTPS URL. Do not claim accessibility until its `/health` response succeeds.
 
 ## Handoff
 

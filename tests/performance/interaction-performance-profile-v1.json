@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "profileId": "interaction-performance-profile-v1",
+  "status": "approved",
+  "approvedOn": "2026-07-16",
+  "approvalAuthority": "Feature specification owner",
+  "fixtureDigestAlgorithm": "sha256",
+  "fixtureDigestScope": "Exact UTF-8 bytes of tests/performance/interaction-performance-fixtures-v1.json as committed, including LF line endings and the final newline",
+  "fixtureDigest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
+  "profileDigestAlgorithm": "sha256",
+  "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
+  "profileDigest": "a1ad3b69f3f790b8461b87187ce599e9d41b0d7f4e48778b127b7140bb56ea61",
+  "contractBindings": {
+    "digestAlgorithm": "sha256",
+    "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
+    "bffContract": {
+      "path": "specs/003-develop-ui/contracts/bff-api-v1.openapi.yaml",
+      "digest": "faa3e1303bc6b4e0b3e84ecbe9ef5e08bf9608121dbdcc9c9a0e2a081a20ff02"
+    },
+    "coreContract": {
+      "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
+      "digest": "74eb81eed70e24183862bd187ab9f9bfa778d2992efeae54b397e2d36df19497"
+    }
+  },
+  "execution": {
+    "workersPerScenario": 10,
+    "warmupRequestsPerWorker": 2,
+    "measuredRequestsPerWorker": 10,
+    "measuredAttemptsPerScenario": 100,
+    "hardTimeoutMs": 5000,
+    "thresholdMs": 5000,
+    "requiredThresholdPassesPerScenario": 95,
+    "concurrencyRule": "All ten workers wait at a barrier before each request ordinal, then each issues exactly one request and waits for it to finish before the next barrier.",
+    "fixtureAssignment": "Load only the digest-matched fixtureSet.path. Select the fixture whose key exactly equals the scenario. Resolve every placeholder with the fixture set's fixed RFC 4122 UUIDv5, SHA-256 token, phase, workerIndex, requestOrdinal, and timestamp rules; warm-up ordinals are 0-1 and measured ordinals reset to 0-9. Reject any missing, extra, unresolved, non-schema-valid, or nondeterministically derived value before warm-up.",
+    "warmupFailurePolicy": "Both warm-up requests per worker must succeed within 5000 milliseconds. Any failure aborts the profile as failed and cannot be replaced or excluded.",
+    "timeoutPolicy": "Cancel at 5000 milliseconds. A timeout or non-success response remains one of the 100 measured attempts, is a threshold failure, retains its raw outcome, and contributes 5000 milliseconds to nearest-rank p95.",
+    "percentile": "nearest-rank p95 over all 100 measured values; rank=ceil(0.95*100)=95 after ascending sort",
+    "clock": "A monotonic clock in the process that owns each scenario boundary; wall-clock timestamps may be retained only as supplemental evidence.",
+    "evidenceApplicability": "providerMode is approved_deterministic_in_process_fixture for authentication_callback and the literal not_applicable for every other scenario; all other required evidence fields are mandatory for every measured observation.",
+    "derivedInputDigestAlgorithm": "sha256",
+    "derivedInputDigestScope": "UTF-8 bytes of the derivedInputDigestObject serialized as recursively key-sorted compact JSON with array order preserved, no insignificant whitespace, and no trailing newline.",
+    "derivedInputDigestObject": {
+      "requiredFieldsInOrderForReviewOnly": [
+        "profileId",
+        "fixtureSetId",
+        "caseId",
+        "scenario",
+        "phase",
+        "workerIndex",
+        "requestOrdinal",
+        "operationId",
+        "materializedState",
+        "materializedRequest",
+        "providerResult"
+      ],
+      "materializedRequestRequiredFields": [
+        "method",
+        "pathAndQuery",
+        "headers",
+        "body"
+      ],
+      "materializationPolicy": "Resolve fixture inheritance, overrides, constants, templates, UUIDv5 values, tokens, and timestamps before constructing this object. Reject missing, extra, unknown, or unresolved fields/placeholders. Object-key order does not affect the canonical bytes; array order is preserved.",
+      "providerResultPolicy": "Use the exact materialized providerResult for authentication_callback and JSON null for every other scenario. An absent request body is JSON null.",
+      "bindingPolicy": "profileId and fixtureSetId bind the derived input to the approved artifact identities. profileDigest and fixtureDigest remain mandatory adjacent evidence but are excluded from this object to prevent circular known-answer dependencies.",
+      "sensitiveDataPolicy": "Only approved synthetic fixture values may be included. Real credentials, tokens, cookies, authorization codes, or personal identifiers are prohibited."
+    },
+    "knownAnswerVectorPolicy": "Before any warm-up, independently recalculate both knownAnswerVectors in the bound fixture set using derivedInputDigestAlgorithm and derivedInputDigestScope; any missing vector, field mismatch, or digest mismatch fails the profile.",
+    "scenarios": {
+      "focused_learning_read": {
+        "operationId": "getBrowserLearningSession",
+        "route": "GET /bff/v1/learning-sessions/{id}",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Completion of the validated BFF response serialization."
+      },
+      "focused_learning_mutation": {
+        "operationId": "completeBrowserLearningStep",
+        "route": "PUT /bff/v1/learning-sessions/{id}/steps/{stepId}/completion",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Completion of the validated BFF response serialization after authoritative persistence."
+      },
+      "review_submission": {
+        "operationId": "submitBrowserReviewAttempt",
+        "route": "POST /bff/v1/review-attempts/{id}/submit",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Completion of the validated BFF response serialization after atomic scoring."
+      },
+      "progress_persistence": {
+        "operationId": "createBrowserProgressCheckIn",
+        "route": "POST /bff/v1/progress/check-ins",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Completion of the validated BFF response serialization after authoritative persistence."
+      },
+      "bff_session_bootstrap": {
+        "operationId": "bootstrapEmployeeSession",
+        "route": "POST /api/v1/identity/session-bootstrap via the BFF lifecycle gate",
+        "timingStart": "BFF lifecycle-gate dispatch immediately before the core bootstrap call.",
+        "timingStop": "Validated active core response plus committed Redis session activation acknowledgement."
+      },
+      "bff_session_refresh": {
+        "operationId": "getBrowserSession",
+        "route": "GET /bff/v1/session",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Completion of the validated session response serialization after idle-touch commit when applicable."
+      },
+      "bff_logout": {
+        "operationId": "logout",
+        "route": "POST /bff/v1/auth/logout",
+        "timingStart": "BFF Fastify request-handler entry after route matching.",
+        "timingStop": "Emission of the cookie-clearing 303 response after authoritative local revocation."
+      },
+      "authentication_callback": {
+        "operationId": "completeLogin",
+        "route": "GET /bff/v1/auth/callback",
+        "providerMode": "approved_deterministic_in_process_fixture",
+        "timingStart": "First callback-handler instruction after the approved provider fixture returns its validated token result.",
+        "timingStop": "Emission of the post-bootstrap 303 redirect after session activation.",
+        "excludedTime": "Employee interaction, live Entra authorization/code exchange, and every external provider network interval."
+      }
+    }
+  },
+  "fixtureSet": {
+    "path": "tests/performance/interaction-performance-fixtures-v1.json",
+    "digestAlgorithm": "sha256",
+    "digest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
+    "requiredFixtureKeys": [
+      "focused_learning_read",
+      "focused_learning_mutation",
+      "review_submission",
+      "progress_persistence",
+      "bff_session_bootstrap",
+      "bff_session_refresh",
+      "bff_logout",
+      "authentication_callback"
+    ]
+  },
+  "requiredEvidenceFields": [
+    "profileId",
+    "profileDigest",
+    "fixtureDigest",
+    "fixtureSetPath",
+    "fixtureKey",
+    "derivedInputDigest",
+    "bffContractDigest",
+    "coreContractDigest",
+    "caseId",
+    "scenario",
+    "operationId",
+    "providerMode",
+    "workerIndex",
+    "requestOrdinal",
+    "environment",
+    "bffImageDigest",
+    "coreImageDigest",
+    "timingStartBoundary",
+    "timingStopBoundary",
+    "monotonicDurationMs",
+    "rawOutcome",
+    "timeoutApplied",
+    "thresholdPassed",
+    "percentileValueMs",
+    "calculatedNearestRankP95Ms"
+  ]
+}

@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public-gateway
+  annotations:
+    alb.networking.azure.io/alb-id: "${APPLICATION_GATEWAY_FOR_CONTAINERS_ID}"
+spec:
+  gatewayClassName: azure-alb-external
+  addresses:
+    - type: alb.networking.azure.io/alb-frontend
+      value: "${APPLICATION_GATEWAY_FOR_CONTAINERS_FRONTEND_NAME}"
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "${PUBLIC_GATEWAY_HOSTNAME}"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - {group: "", kind: Secret, name: public-gateway-tls}
+      allowedRoutes:
+        namespaces: {from: Same}

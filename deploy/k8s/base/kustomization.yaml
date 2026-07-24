@@ -1,4 +1,9 @@
 resources:
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
+  - ui
+  - bff
+  - core
+  - lifecycle
+  - retention
+  - lab-revalidation
+  - gateway-certificate-rotation
+  - network-policies.yaml

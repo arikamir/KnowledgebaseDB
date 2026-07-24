@@ -1,0 +1,47 @@
+name: Reusable validation
+
+on:
+  workflow_call:
+    secrets: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e '.[test]'
+          npm install --prefix bff --ignore-scripts
+          npm install --prefix ui --ignore-scripts
+          npx --prefix ui playwright install --with-deps chromium
+      - name: Build change plan
+        run: |
+          args=(--source "$GITHUB_SHA" --output artifacts/change-plan.json)
+          if [[ -n "${{ github.event.before }}" && "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            args+=(--baseline "${{ github.event.before }}")
+          else
+            args+=(--missing-baseline)
+          fi
+          scripts/ci/detect-changes.sh "${args[@]}"
+      - name: Run canonical non-Azure validation
+        run: scripts/ci/validate-non-azure.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: change-plan-${{ github.run_id }}
+          path: artifacts/change-plan.json
+          if-no-files-found: error
+          retention-days: 90

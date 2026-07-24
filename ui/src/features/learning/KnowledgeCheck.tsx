@@ -1,0 +1,2 @@
+export interface KnowledgeCheckProps { question: string; answer: string; onAnswer: (answer: string) => void; feedback?: string | null; }
+export function KnowledgeCheck({ question, answer, onAnswer, feedback }: KnowledgeCheckProps) { return <fieldset className="learning-check"><legend>Quick knowledge check</legend><label htmlFor="knowledge-check-answer">{question}</label><textarea id="knowledge-check-answer" value={answer} onChange={(event) => onAnswer(event.target.value)} rows={2} />{feedback && <p role="status">{feedback}</p>}</fieldset>; }

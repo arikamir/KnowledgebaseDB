@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff
+  labels: {app.kubernetes.io/name: bff, app.kubernetes.io/component: composition}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: bff}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bff
+        app.kubernetes.io/component: composition
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: bff
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: bff}
+      containers:
+        - name: bff
+          image: "${BFF_IMAGE_REPOSITORY}@${BFF_IMAGE_DIGEST}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 3000}
+          envFrom:
+            - configMapRef: {name: bff-runtime-config}
+          env:
+            - {name: BFF_CLIENT_CERTIFICATE_PATH, value: /var/run/secrets/career-agent/bff-client.pem}
+            - {name: BFF_CLIENT_CERTIFICATE_VERSION, value: "${BFF_CLIENT_CERTIFICATE_VERSION}"}
+            - {name: CORE_CA_BUNDLE_PATH, value: /var/run/secrets/career-agent/core-ca.pem}
+            - {name: CORE_CA_CERTIFICATE_VERSION, value: "${PRIVATE_CORE_CERTIFICATE_VERSION}"}
+            - {name: KEY_MATERIAL_FAILURE_CODE, value: KEY_MATERIAL_UNAVAILABLE}
+            - {name: KEY_MATERIAL_FALLBACK, value: disabled}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: key-vault-material, mountPath: /var/run/secrets/career-agent, readOnly: true}
+          livenessProbe:
+            httpGet: {path: /health/live, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /health/ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            readOnlyRootFilesystem: true
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - name: key-vault-material
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes: {secretProviderClass: bff-key-vault-material}

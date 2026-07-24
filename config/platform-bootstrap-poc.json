@@ -1,0 +1,87 @@
+{
+  "attestations": {
+    "albController": {
+      "capturedAt": "2026-07-18T16:03:54Z",
+      "ready": true,
+      "replicas": 2,
+      "uid": "8e220d84-a60c-40e6-9e35-c1aba74ff83b",
+      "version": "1.11.1"
+    },
+    "identityDenials": {
+      "capturedAt": "2026-07-18T16:03:54Z",
+      "formalT194": false,
+      "status": "poc-scoped-role-inventory-verified"
+    },
+    "jitPermissions": {
+      "capturedAt": "2026-07-18T16:03:54Z",
+      "formalT194": false,
+      "status": "approved-single-administrator-technical-poc-exception"
+    },
+    "migrationPolicy": {
+      "bindingUid": "2620b286-8a4c-47e2-9c54-f4e4e0790ae0",
+      "capturedAt": "2026-07-18T16:03:54Z",
+      "ready": true,
+      "uid": "3988247c-7404-48c1-972c-6e892ba6ba6b"
+    },
+    "providerQuotaCapacity": {
+      "capturedAt": "2026-07-18T16:03:54Z",
+      "region": "uaenorth",
+      "status": "verified-during-technical-poc-deployment"
+    }
+  },
+  "configuration": {
+    "algorithm": "sha256-canonical-path-mode-length-content-v1",
+    "digest": "sha256:a7d1fe6d2bcba58216abf34ab25841b1959e85e608c0e3d0e87e9af631a4421f",
+    "policy": "config/platform-configuration-digest-v1.yaml",
+    "recordCount": 175
+  },
+  "environment": "nonprod",
+  "identities": {
+    "deployer": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-jenkins-deployer",
+    "kubelet": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourcegroups/MC_rg-devopscareeruae-nonprod_aks-devopscareeruae-nonprod_uaenorth/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-devopscareeruae-nonprod-agentpool",
+    "publisher": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-jenkins-publisher",
+    "ui": null,
+    "validator": null,
+    "workloads": {
+      "alb-controller": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-alb-controller",
+      "bff": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-bff",
+      "core": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-core",
+      "evidence-hold-reconciler": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-evidence-hold-reconciler",
+      "gateway-certificate-dns": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-gateway-certificate-dns",
+      "lab-revalidation": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-lab-revalidation",
+      "lifecycle": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-lifecycle",
+      "migration": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-migration",
+      "retention": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-devopscareeruae-nonprod-retention"
+    }
+  },
+  "manifestStatus": "poc-reviewed",
+  "origins": {
+    "privateCore": "https://core.career-agent.internal/",
+    "public": "https://career-agent.4.150.171.72.sslip.io/"
+  },
+  "resourceGroup": "rg-devopscareeruae-nonprod",
+  "resources": {
+    "acrId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ContainerRegistry/registries/acrdevopscareeruaenonprod",
+    "agcId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ServiceNetworking/trafficControllers/agc-devopscareeruae-nonprod",
+    "aksId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.ContainerService/managedClusters/aks-devopscareeruae-nonprod",
+    "evidenceStorageId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.Storage/storageAccounts/stdevopsca8ec753995762",
+    "keyVaultId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.KeyVault/vaults/kvdevopscareeruaenonprod",
+    "postgresqlId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-devopscareeruae-nonprod",
+    "redisId": "/subscriptions/a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a/resourceGroups/rg-devopscareeruae-nonprod/providers/Microsoft.Cache/redisEnterprise/redis-devopscareeruae-nonprod"
+  },
+  "review": {
+    "expiresAt": "2026-07-25T16:43:25Z",
+    "generatedAt": "2026-07-18T16:43:25Z",
+    "platformOperationsObjectId": "237b2b0a-1815-4794-a044-dd2fd5fabec6",
+    "securityApproverObjectId": "63c5a53b-d77a-420c-ae8e-3fa22e7a58c5"
+  },
+  "schemaVersion": 1,
+  "state": {
+    "backendContainer": "tfstate",
+    "lineage": "5fb6efc9-a0ca-a342-8131-eb2977ff3607",
+    "locked": true,
+    "serial": 25
+  },
+  "subscriptionId": "a6e1647d-3f1f-4ba6-b8a3-a2ad74ec5d7a",
+  "tenantId": "06d91dc0-b055-4647-82ab-191086577280"
+}

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: evidence-hold-reconciler
+  namespace: evidence-hold-system
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: evidence-hold-reconciler
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: evidence-hold-reconciler
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          containers:
+            - name: reconciler
+              image: ${DELIVERY_TOOLS_IMAGE_REPOSITORY}@${DELIVERY_TOOLS_IMAGE_DIGEST}
+              command: ["/workspace/scripts/ci/manage-evidence-hold.sh", "reconcile-all"]
+              env:
+                - name: EVIDENCE_HOLD_ROLE
+                  value: reconciler
+                - name: HOLD_STATE_DIR
+                  value: /hold-control/inventory
+                - name: HOLD_AUDIT_DIR
+                  value: /hold-control/audit
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: {drop: ["ALL"]}
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+              volumeMounts:
+                - name: hold-control
+                  mountPath: /hold-control
+          volumes:
+            - name: hold-control
+              persistentVolumeClaim:
+                claimName: evidence-hold-control

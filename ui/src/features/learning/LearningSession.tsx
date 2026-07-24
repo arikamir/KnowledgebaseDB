@@ -1,0 +1,7 @@
+import { useLayoutEffect } from "react";
+import type { LearningSessionValue } from "./useLearningSession";
+
+export function LearningSession({ session, onComplete }: { session: LearningSessionValue; onComplete: (id: string) => Promise<void> }) {
+  useLayoutEffect(() => { performance.mark("learning.required-step.accessible-commit"); }, [session.currentStepOrdinal]);
+  return <section aria-labelledby="session-title"><h2 id="session-title">{session.title}</h2><p>{session.objective}</p><p>Estimated time: {session.estimatedMinutes} minutes</p><p>Content version: {session.contentVersion}</p><p role="status">Step {Math.min(session.currentStepOrdinal + 1, session.steps.length)} of {session.steps.length}</p>{session.retirement.status === "retired" && <p role="alert">{session.retirement.securityCritical ? "This content was retired for security reasons and cannot continue." : "This version is retired. You may resume during its grace period."}{session.retirement.replacementContentId && ` Replacement available: ${session.retirement.replacementContentId}.`}</p>}<ol>{session.steps.map((step) => <li key={step.id} aria-current={step.ordinal === session.currentStepOrdinal ? "step" : undefined}><h3>{step.title}</h3><p>{step.status === "completed" ? "Completed" : "Not completed"}</p>{step.status !== "completed" && step.stepType !== "lab" && step.stepType !== "review" && <button onClick={() => void onComplete(step.id)}>Mark step complete</button>}</li>)}</ol></section>;
+}

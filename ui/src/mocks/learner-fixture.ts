@@ -1,0 +1,7 @@
+import type { MilestoneSnapshot } from "../contracts/learner-state";
+
+const definitions = [
+  ["linux", "Linux and networking foundations", "completed", 95], ["git", "Version control workflows", "completed", 85], ["containers", "Container delivery fluency", "completed", 72], ["ci", "Continuous integration", "completed", 88], ["cloud", "Cloud infrastructure basics", "completed", 97], ["observability", "Observability and incident response", "completed", 79], ["deployment", "Safe production deployment", "in_progress", null], ["security", "DevSecOps practices", "pending", null], ["platform", "Platform engineering patterns", "pending", null], ["capstone", "End-to-end capstone", "pending", null],
+] as const;
+export const learnerMilestones: MilestoneSnapshot[] = definitions.map(([milestoneKey, title, completionState, scorePercent], index) => ({ milestoneKey, ordinal: index + 1, title, completionState, scorePercent, passed: scorePercent == null ? null : scorePercent >= 80, achievementTier: scorePercent == null || scorePercent < 80 ? null : scorePercent >= 95 ? "gold" : scorePercent >= 90 ? "silver" : "bronze", evidence: [], concreteNextAction: completionState === "in_progress" ? "Complete the next practical exercise" : undefined }));
+export const learnerFixture = { id: "mock-roadmap", goalSummary: "Become confident shipping production-ready DevOps systems", milestones: learnerMilestones };

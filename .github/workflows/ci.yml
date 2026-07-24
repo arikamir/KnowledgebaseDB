@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Identityless validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Python test dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install -e '.[test]'
+
+      - name: Install JavaScript dependencies
+        run: |
+          npm install --prefix bff --ignore-scripts
+          npm install --prefix ui --ignore-scripts
+          npx --prefix ui playwright install --with-deps chromium
+
+      - name: Build change plan
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+          BASE_REVISION: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          args=(--source "$SOURCE_REVISION" --output artifacts/change-plan.json)
+          if [[ -n "$BASE_REVISION" && "$BASE_REVISION" != "0000000000000000000000000000000000000000" ]]; then
+            args+=(--baseline "$BASE_REVISION")
+          else
+            args+=(--missing-baseline)
+          fi
+          scripts/ci/detect-changes.sh "${args[@]}"
+
+      - name: Run canonical non-Azure validation
+        run: scripts/ci/validate-non-azure.sh
+
+      - name: Upload validation plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: change-plan-${{ github.run_id }}
+          path: artifacts/change-plan.json
+          if-no-files-found: error
+          retention-days: 90

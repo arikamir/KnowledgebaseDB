@@ -1,0 +1,6 @@
+schemaVersion: 1
+policyVersion: lab-provider-policy-v1
+groups:
+  learningContentOwnersObjectId: "${LEARNING_CONTENT_OWNERS_GROUP_OBJECT_ID}"
+  applicationSecurityReviewersObjectId: "${APPLICATION_SECURITY_REVIEWERS_GROUP_OBJECT_ID}"
+providers: []

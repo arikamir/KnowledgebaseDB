@@ -1,6 +1,38 @@
 subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+postgresql_bootstrap_admin_object_id = "00000000-0000-0000-0000-000000000000"
+delivery_operators_group_object_id   = "00000000-0000-0000-0000-000000000000"
+security_reviewers_group_object_id   = "00000000-0000-0000-0000-000000000000"
+evidence_hold_managers_group_object_id = "00000000-0000-0000-0000-000000000000"
+pilot_public_url = "https://career-agent.example.invalid"
+browser_dns_zone_name = "example.invalid"
+browser_gateway_source_cidrs = ["0.0.0.0/0"] # Replace with reviewed pilot source ranges.
+public_certificate_issuer_name = "ConfiguredPublicIssuer"
+private_core_certificate_issuer_name = "ConfiguredPrivateCaIssuer"
+approved_machine_consumers = {
+  existing-machine-client = {
+    display_name = "Existing Career Agent machine client"
+    roles = [
+      "CareerAgent.Roadmap.Generate",
+      "CareerAgent.Guidance.Read",
+      "CareerAgent.Progress.Write",
+    ]
+  }
+}
 # location     = "israelcentral"
 # prefix       = "devopscareer"
 # environment  = "nonprod"
 # node_vm_size = "Standard_B2s"
 # node_count   = 1
+# application_gateway_for_containers_subnet_cidr = "10.42.18.0/24"
+# delivery_evidence_policy_state = "Unlocked" # Required on creation; use Locked only in the reviewed formal second apply.
+
+# Explicitly non-release, single-admin technical PoC alternative:
+# technical_poc_mode                 = true
+# location                           = "uaenorth"
+# prefix                             = "devopscareeruae"
+# poc_public_hostname                = "pending.invalid" # Phase 1; replace with career-agent.<AGC-IP>.sslip.io after AGC provisioning.
+# poc_acme_contact_email             = "operator@example.invalid"
+# private_core_certificate_issuer_name = "Self"
+# In PoC mode browser_dns_zone_name, public_certificate_issuer_name, and
+# pilot_public_url are omitted. The formal custom-domain/T194 path is unchanged.

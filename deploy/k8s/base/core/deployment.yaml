@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+  labels: {app.kubernetes.io/name: core, app.kubernetes.io/component: domain-api}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: core}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core
+        app.kubernetes.io/component: domain-api
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: core
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: core}
+      containers:
+        - name: core
+          image: "${CORE_IMAGE_REPOSITORY}@${CORE_IMAGE_DIGEST}"
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn"]
+          args:
+            - api.app:app
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8443"
+            - --ssl-certfile
+            - /var/run/secrets/career-agent/core-tls.pem
+            - --ssl-keyfile
+            - /var/run/secrets/career-agent/core-tls.pem
+          ports:
+            - {name: https, containerPort: 8443}
+          envFrom:
+            - configMapRef: {name: core-runtime-config}
+          env:
+            - {name: CORE_TLS_PEM_PATH, value: /var/run/secrets/career-agent/core-tls.pem}
+            - {name: CORE_TLS_CHAIN_PATH, value: /var/run/secrets/career-agent/core-chain.pem}
+            - {name: CORE_TLS_CERTIFICATE_VERSION, value: "${PRIVATE_CORE_CERTIFICATE_VERSION}"}
+            - {name: CORE_TLS_EXPECTED_SANS, value: "core.${PRIVATE_CORE_DNS_ZONE_NAME},core.career-agent.svc,core.career-agent.svc.cluster.local"}
+            - {name: CORE_TLS_EXPECTED_ISSUER, value: "${PRIVATE_CORE_CERTIFICATE_ISSUER_NAME}"}
+            - {name: KEY_MATERIAL_FAILURE_CODE, value: KEY_MATERIAL_UNAVAILABLE}
+            - {name: KEY_MATERIAL_FALLBACK, value: disabled}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: key-vault-material, mountPath: /var/run/secrets/career-agent, readOnly: true}
+          livenessProbe:
+            httpGet: {path: /health/live, port: https, scheme: HTTPS}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /health/ready, port: https, scheme: HTTPS}
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            readOnlyRootFilesystem: true
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: 1000m, memory: 1Gi}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - name: key-vault-material
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes: {secretProviderClass: core-key-vault-material}

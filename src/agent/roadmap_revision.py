@@ -15,7 +15,7 @@ class RoadmapRevision(BaseModel):
     prior_roadmap: CareerRoadmap
     updated_roadmap: CareerRoadmap
     completed_steps: list[str] = Field(default_factory=list)
+    normalized_milestone_keys: list[str] = Field(default_factory=list)
     new_goals: list[str] = Field(default_factory=list)
     summary: str
     created_at: datetime = Field(default_factory=utcnow)
-

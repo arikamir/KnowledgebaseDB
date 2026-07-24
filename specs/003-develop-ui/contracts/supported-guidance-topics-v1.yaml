@@ -1,0 +1,121 @@
+schema_version: 1
+catalog_version: 1.0.0
+source_snapshot: src/knowledge/topics/topics.json
+normalization:
+  trim_whitespace: true
+  case_sensitive: false
+  match_fields:
+    - id
+    - name
+    - aliases
+topics:
+  - id: jenkins
+    name: Jenkins
+    category: CI/CD orchestration
+    aliases: [jenkins pipeline, jenkins ci]
+    status: active
+  - id: azure-devops
+    name: Azure DevOps
+    category: CI/CD orchestration
+    aliases: [azure devops pipelines, ado]
+    status: active
+  - id: gitlab-ci
+    name: GitLab CI
+    category: CI/CD orchestration
+    aliases: [gitlab ci cd, gitlab pipeline]
+    status: active
+  - id: kubernetes
+    name: Kubernetes
+    category: Containers and orchestration
+    aliases: [k8s, kubernetes cluster]
+    status: active
+  - id: argo-cd
+    name: Argo CD
+    category: GitOps
+    aliases: [argocd, argo cd]
+    status: active
+  - id: helm
+    name: Helm
+    category: Containers and orchestration
+    aliases: [helm charts]
+    status: active
+  - id: dotnet
+    name: .NET
+    category: Application platform
+    aliases: [dotnet, dot net, microsoft dotnet]
+    status: active
+  - id: msi
+    name: MSI
+    category: Packaging and deployment
+    aliases: [windows installer, msi packaging]
+    status: active
+  - id: advanced-installer
+    name: Advanced Installer
+    category: Packaging and deployment
+    aliases: [advancedinstaller]
+    status: active
+  - id: windows-administration
+    name: Windows Administration
+    category: Operating systems
+    aliases: [windows admin, windows]
+    status: active
+  - id: openshift
+    name: OpenShift
+    category: Containers and orchestration
+    aliases: [opeshift, openshift]
+    status: active
+  - id: linux
+    name: Linux
+    category: Operating systems
+    aliases: [linux administration, linux ops]
+    status: active
+  - id: docker
+    name: Docker
+    category: Containers and orchestration
+    aliases: [docker container]
+    status: active
+  - id: docker-compose
+    name: Docker Compose
+    category: Containers and orchestration
+    aliases: [docker-compose, docker compose]
+    status: active
+  - id: certificates
+    name: Certificates
+    category: Secrets and identity
+    aliases: [tls certificates, ssl certificates]
+    status: active
+  - id: hashicorp-vault
+    name: HashiCorp Vault
+    category: Secrets and identity
+    aliases: [vault, hashicorp vault]
+    status: active
+  - id: ansible
+    name: Ansible
+    category: Automation
+    aliases: [ansible automation]
+    status: active
+  - id: terraform
+    name: Terraform
+    category: Infrastructure as code
+    aliases: [terraform iac, tofu]
+    status: active
+  - id: vmware
+    name: VMware
+    category: Infrastructure
+    aliases: [vmware vsphere, vmware infrastructure]
+    status: active
+  - id: aws
+    name: AWS
+    category: Cloud platforms
+    aliases: [amazon web services]
+    status: active
+  - id: mlops
+    name: MLOps
+    category: Operational excellence
+    aliases: [ml ops]
+    status: active
+  - id: secops
+    name: SecOps
+    category: Operational excellence
+    aliases: [security operations, devsecops]
+    status: active

@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: career-migrations
+  labels:
+    knowledgebase.io/migration-guardrails: enforced

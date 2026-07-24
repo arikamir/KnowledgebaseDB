@@ -1,8 +1,14 @@
-namespace: devops-career-agent-nonprod
+namespace: career-agent
 resources:
   - namespace.yaml
   - ../../base
   - configmap.yaml
+  - gateway.yaml
+  - httproute.yaml
+  - private-machine-service.yaml
+  - platform-digests.yaml
+patches:
+  - path: machine-tls-secret-provider-class.yaml
 images:
   - name: devops-career-agent
     newName: acrdevopscareernonprod.azurecr.io/devops-career-agent

@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-certificate-rotation-default-deny
+  namespace: career-agent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-certificate-rotation
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
+    - to:
+        - ipBlock: {cidr: "${KEY_VAULT_PRIVATE_ENDPOINT_CIDR}"}
+      ports:
+        - {port: 443, protocol: TCP}
+    - to:
+        - ipBlock: {cidr: "${AZURE_MANAGEMENT_ENDPOINT_CIDR}"}
+      ports:
+        - {port: 443, protocol: TCP}
+    - to:
+        - ipBlock: {cidr: 169.254.169.254/32}
+      ports:
+        - {port: 80, protocol: TCP}

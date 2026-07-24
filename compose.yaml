@@ -1,10 +1,69 @@
 services:
-  app:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: career_agent
+      POSTGRES_USER: career_agent
+      POSTGRES_PASSWORD: local-development-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U career_agent -d career_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis-data:/data
+
+  core:
     build:
       context: .
       dockerfile: Dockerfile
-    image: devops-career-agent:local
+    image: devops-career-agent-core:local
     env_file:
       - .env.example
+    environment:
+      DATABASE_URL: postgresql+psycopg://career_agent:local-development-only@postgres:5432/career_agent
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bff:
+    build:
+      context: ./bff
+      dockerfile: Dockerfile
+    image: devops-career-agent-bff:local
+    env_file:
+      - ./bff/.env.example
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      core:
+        condition: service_started
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    image: devops-career-agent-ui:local
+    ports:
+      - "5173:8080"
+    depends_on:
+      - bff
+
+volumes:
+  postgres-data:
+  redis-data:
