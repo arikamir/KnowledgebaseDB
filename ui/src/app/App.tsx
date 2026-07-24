@@ -79,6 +79,19 @@ function Home({ authenticated }: { authenticated: boolean }) {
     setGuidanceError(null);
     setGuidancePending(true);
     try {
+      const mockMode = import.meta.env.DEV && (window.location.hostname === "127.0.0.1" || new URLSearchParams(window.location.search).get("mockSession") === "1");
+      if (mockMode) {
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+        setGuidance({
+          resolvedTopic: "Safe production deployment",
+          topicSummary: `For “${prompt}”, keep the next step small and tied to your current milestone.`,
+          practicalNextAction: "Add one approval check to the deployment exercise, then verify the rollback path.",
+          suggestions: ["Write down the success criteria before changing the pipeline.", "Test the change in a non-production environment first."],
+          commonPitfalls: ["Skipping the rollback check because the first deployment succeeds."],
+        });
+        setDraft("");
+        return;
+      }
       const topic = roadmap?.milestones?.find((item) => item.completionState === "in_progress" || item.status === "in_progress")?.title ?? "DevOps career guidance";
       const result = await bffRequest<HomeGuidanceResult>("/bff/v1/guidance", {
         method: "POST",

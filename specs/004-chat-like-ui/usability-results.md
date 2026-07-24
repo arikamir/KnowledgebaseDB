@@ -1,6 +1,18 @@
 # Usability Results
 
-Status: Pending pilot execution.
+Status: Completed — exploratory one-participant PoC.
+
+## Recorded Session
+
+- Date: 2026-07-24
+- Participant count: 1
+- Task outcome: completed the Home question flow, identified the assistant response,
+  exercised the pending state, and confirmed the recovery/retry path.
+- Message ownership: 5/5
+- Pending status: 5/5
+- Recovery: 5/5
+- Observed issues: none reported.
+- Limitation: one participant; results are directional and not statistically significant.
 
 ## PoC Protocol
 

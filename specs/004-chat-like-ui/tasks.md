@@ -100,7 +100,7 @@ horizontal scrolling and no blocked keyboard interaction.
 - [X] T037 [P] Audit safe rendering and ensure assistant content cannot execute active markup in `ui/src/components/chat/ChatConversation.tsx` and `ui/tests/unit/chat-conversation.test.tsx`
 - [X] T038 Update feature quickstart and acceptance evidence instructions in `specs/004-chat-like-ui/quickstart.md`
 - [X] T039 Run `npm --prefix ui run typecheck`, `npm --prefix ui test -- --run`, and `npm --prefix ui run test:e2e`; record results in `specs/004-chat-like-ui/verification.md`
-- [ ] T040 [P] Run the one-participant PoC usability protocol for SC-001 and SC-006: submit a question, identify the assistant response, retry a failed request, and rate ownership/pending/recovery from 1-5; record participant count, task outcomes, ratings, and limitations in `specs/004-chat-like-ui/usability-results.md`
+- [X] T040 [P] Run the one-participant PoC usability protocol for SC-001 and SC-006: submit a question, identify the assistant response, retry a failed request, and rate ownership/pending/recovery from 1-5; record participant count, task outcomes, ratings, and limitations in `specs/004-chat-like-ui/usability-results.md`
 
 ## Dependencies and Execution Order
 
