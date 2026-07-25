@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "environment": "nonprod",
+  "releaseVersion": "1.2.3",
+  "sourceTag": "v1.2.3",
+  "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+  "ciRun": {"id": "run", "repository": "arikamir/KnowledgebaseDB", "workflow": "delivery.yml"},
+  "services": {
+    "ui": {"image": "acrdevopscareeruaenonprod.azurecr.io/ui@sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+    "bff": {"image": "acrdevopscareeruaenonprod.azurecr.io/bff@sha256:1111111111111111111111111111111111111111111111111111111111111111"},
+    "core": {"image": "acrdevopscareeruaenonprod.azurecr.io/core@sha256:2222222222222222222222222222222222222222222222222222222222222222"}
+  },
+  "validationEvidence": {"contract": "artifact://contract", "scan": "artifact://scan", "compatibility": "artifact://compatibility"}
+}

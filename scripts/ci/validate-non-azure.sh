@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 scripts/ci/validate-api-contracts.sh
+scripts/ci/validate-gitops-release.sh
 .venv/bin/python scripts/ci/generate_contracts.py --check
 .venv/bin/pytest -q
 

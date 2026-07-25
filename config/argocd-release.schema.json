@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledgebasedb.example/schemas/argocd-release-v1.json",
+  "title": "Career Agent Argo CD release declaration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "releaseVersion",
+    "sourceTag",
+    "sourceRevision",
+    "ciRun",
+    "services",
+    "validationEvidence"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "environment": {"const": "nonprod"},
+    "releaseVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sourceTag": {
+      "type": "string",
+      "pattern": "^v?(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sourceRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "ciRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "workflow"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "repository": {"type": "string", "minLength": 1},
+        "workflow": {"type": "string", "minLength": 1}
+      }
+    },
+    "validationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "scan", "compatibility"],
+      "properties": {
+        "contract": {"type": "string", "minLength": 1},
+        "scan": {"type": "string", "minLength": 1},
+        "compatibility": {"type": "string", "minLength": 1}
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ui", "bff", "core"],
+      "properties": {
+        "ui": {"$ref": "#/$defs/service"},
+        "bff": {"$ref": "#/$defs/service"},
+        "core": {"$ref": "#/$defs/service"}
+      }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+\\.azurecr\\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

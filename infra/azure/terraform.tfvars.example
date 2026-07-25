@@ -23,7 +23,8 @@ approved_machine_consumers = {
 # prefix       = "devopscareer"
 # environment  = "nonprod"
 # node_vm_size = "Standard_B2s"
-# node_count   = 1
+# node_count   = 2
+# aks_api_server_authorized_ip_ranges = ["203.0.113.10/32"] # Replace with reviewed operator/VPN egress CIDRs.
 # application_gateway_for_containers_subnet_cidr = "10.42.18.0/24"
 # delivery_evidence_policy_state = "Unlocked" # Required on creation; use Locked only in the reviewed formal second apply.
 

@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read
-`specs/004-chat-like-ui/plan.md`
+`specs/006-argocd-gitops-delivery/plan.md`
 <!-- SPECKIT END -->

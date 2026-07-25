@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: career-agent
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: career-agent-delivery
+    gitops.knowledgebase.io/managed-by: platform-operations
+spec:
+  description: Application-only delivery for the DevOps Career Agent non-production services.
+  sourceRepos:
+    - https://github.com/arikamir/KnowledgebaseDB.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: career-agent
+  # The ApplicationSet must not be able to mutate cluster-scoped platform
+  # resources. The career-agent namespace is provisioned by infrastructure
+  # delivery before this project is installed.
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: secrets-store.csi.x-k8s.io
+      kind: SecretProviderClass
+  orphanedResources:
+    warn: true

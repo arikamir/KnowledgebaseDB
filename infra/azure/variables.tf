@@ -9,7 +9,7 @@ variable "tenant_id" {
 }
 
 variable "poc_operator_source_cidrs" {
-  description = "Temporary operator CIDRs allowed to reach the Key Vault public endpoint only in technical PoC mode."
+  description = "Temporary operator CIDRs allowed to reach the Key Vault and AKS API public endpoints in technical PoC mode."
   type        = list(string)
   default     = []
   validation {
@@ -18,6 +18,20 @@ variable "poc_operator_source_cidrs" {
       alltrue([for cidr in var.poc_operator_source_cidrs : can(cidrnetmask(cidr))])
     )
     error_message = "poc_operator_source_cidrs must contain at least one valid CIDR in technical PoC mode."
+  }
+}
+
+variable "aks_api_server_authorized_ip_ranges" {
+  description = "Reviewed source CIDRs allowed to reach the public AKS API server. Null preserves the formal platform default; technical PoC mode falls back to poc_operator_source_cidrs."
+  type        = list(string)
+  default     = null
+  nullable    = true
+  validation {
+    condition = var.aks_api_server_authorized_ip_ranges == null || (
+      length(var.aks_api_server_authorized_ip_ranges) > 0 &&
+      alltrue([for cidr in var.aks_api_server_authorized_ip_ranges : can(cidrnetmask(cidr))])
+    )
+    error_message = "aks_api_server_authorized_ip_ranges must be null or contain at least one valid CIDR."
   }
 }
 
@@ -258,8 +272,13 @@ variable "node_vm_size" {
 }
 
 variable "node_count" {
-  type    = number
-  default = 1
+  description = "Number of system nodes. Two Standard_B2s nodes are the non-production baseline so the application and Argo CD control plane fit within the AKS pod and CPU capacity."
+  type        = number
+  default     = 2
+  validation {
+    condition     = var.node_count >= 2
+    error_message = "node_count must be at least 2 for the application plus Argo CD control plane."
+  }
 }
 
 variable "pilot_public_url" {

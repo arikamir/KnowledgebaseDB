@@ -9,6 +9,7 @@ rebuild_all=false
 recovery=false
 recovery_operator=""
 platform_approver=""
+dry_run=false
 
 fail() {
   printf 'detect-changes: %s\n' "$1" >&2
@@ -25,6 +26,7 @@ while (($#)); do
     --recovery) recovery=true; shift ;;
     --recovery-operator) recovery_operator="${2:-}"; shift 2 ;;
     --platform-approver) platform_approver="${2:-}"; shift 2 ;;
+    --dry-run) dry_run=true; shift ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
@@ -153,6 +155,7 @@ jq -n \
   --argjson readiness "$readiness_scenarios" \
   --argjson performance "$performance_profile" \
   --argjson infrastructure "$infrastructure" \
+  --argjson dryRun "$dry_run" \
   --argjson reason "$reasons" \
   '{
     sourceRevision: $source,
@@ -164,6 +167,7 @@ jq -n \
       performanceProfile: $performance,
       infrastructure: $infrastructure
     },
+    dryRun: $dryRun,
     reason: $reason
   }' > "$temporary_output"
 

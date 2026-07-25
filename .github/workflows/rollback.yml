@@ -1,0 +1,68 @@
+name: Reviewed GitOps rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_revision:
+        description: "Git revision containing the last-known-good release declaration"
+        required: true
+        type: string
+      reason:
+        description: "Audited rollback reason"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: Prepare reviewed declaration reversion
+    runs-on: ubuntu-24.04
+    environment: nonprod-recovery
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore the target declaration from Git history
+        env:
+          TARGET_REVISION: ${{ inputs.target_revision }}
+        run: |
+          git cat-file -e "$TARGET_REVISION^{commit}"
+          git show "$TARGET_REVISION:deploy/argocd/environments/nonprod/release.json" > /tmp/last-known-good-release.json
+          cp /tmp/last-known-good-release.json deploy/argocd/environments/nonprod/release.json
+      - name: Record rollback intent
+        run: |
+          mkdir -p artifacts
+          git show HEAD:deploy/argocd/environments/nonprod/release.json > /tmp/current-release.json
+          scripts/ci/prepare-gitops-rollback.sh \
+            --from /tmp/current-release.json \
+            --to /tmp/last-known-good-release.json \
+            --reason "${{ inputs.reason }}" \
+            --actor "${GITHUB_ACTOR}" \
+            --output artifacts/rollback.json
+      - name: Create the rollback pull request
+        id: rollback-pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/gitops-rollback-${{ github.run_id }}
+          delete-branch: true
+          title: "chore(rollback): restore last-known-good application declaration"
+          commit-message: "chore(rollback): restore last-known-good application declaration"
+          body: |
+            This is a reviewed Git declaration reversion. Direct Argo CD rollback is not authoritative.
+            Copilot review and protected `main` are required before reconciliation.
+      - name: Verify Copilot review before merge
+        env:
+          PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          COPILOT_REVIEW_CHECK_NAME: copilot/review
+        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollback-evidence-${{ github.run_id }}
+          path: artifacts/rollback.json
+          if-no-files-found: warn

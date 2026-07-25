@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run GitOps Tests"
+  short_description: "Run workstation-based Argo CD and GitOps validation checks"
+  default_prompt: "Run the GitOps release, readiness, reconciliation, rollback, and Entra checks from this workstation without mutating Azure."

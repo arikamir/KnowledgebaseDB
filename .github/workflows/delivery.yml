@@ -1,53 +1,23 @@
-name: Protected delivery
+name: Protected application delivery
 
 on:
   push:
-    branches:
-      - main
-      - 'release/**'
-  workflow_dispatch:
-    inputs:
-      delivery_action:
-        description: 'normal publishes and promotes; rebuild-all requires two-person approval'
-        required: true
-        default: normal
-        type: choice
-        options: [normal, rebuild-all, recovery]
-      recovery_reference:
-        description: 'Quarantined attempt ID for recovery'
-        required: false
-        type: string
-      recovery_run_id:
-        description: 'GitHub Actions run ID containing quarantined delivery state'
-        required: false
-        type: string
-      action_reason:
-        description: 'Audited reason for rebuild or recovery'
-        required: false
-        type: string
+    tags:
+      - 'v*'
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   id-token: write
+  pull-requests: write
 
 concurrency:
-  group: delivery-nonprod
+  group: application-release-nonprod
   cancel-in-progress: false
 
 env:
   DELIVERY_ENVIRONMENT: nonprod
-  DELIVERY_NAMESPACE: career-agent
-  PLATFORM_MANIFEST: config/platform-bootstrap-nonprod.json
   ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
-  EVIDENCE_STORAGE_ACCOUNT: ${{ vars.EVIDENCE_STORAGE_ACCOUNT }}
-  CORE_SMOKE_URL: ${{ vars.CORE_SMOKE_URL }}
-  BFF_SMOKE_URL: ${{ vars.BFF_SMOKE_URL }}
-  UI_SMOKE_URL: ${{ vars.UI_SMOKE_URL }}
-  ACTION_REASON: ${{ inputs.action_reason || '' }}
-  RECOVERY_REFERENCE: ${{ inputs.recovery_reference || '' }}
-  RECOVERY_RUN_ID: ${{ inputs.recovery_run_id || '' }}
-  DELIVERY_ACTION: ${{ inputs.delivery_action || 'normal' }}
 
 jobs:
   validate:
@@ -55,10 +25,25 @@ jobs:
     uses: ./.github/workflows/reusable-validate.yml
     secrets: inherit
 
-  publish:
-    name: Build, scan, and publish
+  verify-release-source:
+    name: Verify protected SemVer source
     needs: validate
-    if: github.event_name != 'workflow_dispatch' || inputs.delivery_action != 'recovery'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a protected tag matching the source commit
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REF_PROTECTED: ${{ github.ref_protected }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: scripts/ci/derive-release-version.sh "$GITHUB_REF_NAME" "$GITHUB_SHA"
+
+  publish:
+    name: Build, scan, and publish immutable images
+    needs: [validate, verify-release-source]
     runs-on: ubuntu-24.04
     environment: nonprod-publisher
     steps:
@@ -72,7 +57,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Azure OIDC login (publisher)
+      - name: Azure OIDC login (publisher only)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_PUBLISHER_CLIENT_ID }}
@@ -87,7 +72,7 @@ jobs:
           sudo apt-get install -y jq
           curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.59.1/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.59.1
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/v1.18.1/install.sh | sudo sh -s -- -b /usr/local/bin v1.18.1
-      - name: Build, scan, and publish immutable digests
+      - name: Build, scan, and publish digest-pinned images
         env:
           RELEASE_DIR: artifacts/release
           DELIVERY_STATE: artifacts/delivery-state
@@ -100,116 +85,85 @@ jobs:
             --registry "$ACR_LOGIN_SERVER" \
             --output-dir "$RELEASE_DIR" \
             --state-dir "$DELIVERY_STATE/unpromoted"
-      - name: Upload release evidence
-        uses: actions/upload-artifact@v4
+      - name: Write and validate the release bundle
+        env:
+          GITHUB_REF_PROTECTED: ${{ github.ref_protected }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+        run: |
+          scripts/ci/write-gitops-release.sh \
+            --manifest artifacts/release/release-manifest.json \
+            --tag "$GITHUB_REF_NAME" \
+            --source-revision "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --output-bundle artifacts/release/release-bundle.json \
+            --output-declaration artifacts/release/nonprod-release.json
+      - name: Check platform readiness without mutation
+        run: scripts/ci/check-gitops-platform-ready.sh --mode static --output artifacts/release/readiness.json
+      - name: Write application workflow scope evidence
+        run: |
+          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
+            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"bundle-ready", evidenceLinks:["artifact://published-release/"]}' \
+            > artifacts/release/workflow-scope.json
+      - uses: actions/upload-artifact@v4
         with:
           name: published-release-${{ github.run_id }}
           path: artifacts
           if-no-files-found: error
           retention-days: 90
 
-  deploy:
-    name: Promote and verify
-    needs: [validate, publish]
-    if: github.event_name != 'workflow_dispatch' || inputs.delivery_action != 'recovery'
+  open-release-pr:
+    name: Open reviewed desired-state pull request
+    needs: [verify-release-source, publish]
     runs-on: ubuntu-24.04
-    environment: nonprod
+    environment: nonprod-release
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
-        with:
-          name: change-plan-${{ github.run_id }}
-          path: artifacts
       - uses: actions/download-artifact@v4
         with:
           name: published-release-${{ github.run_id }}
           path: artifacts
-      - name: Azure OIDC login (deployer)
-        uses: azure/login@v2
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Install the sole desired-state declaration
+        run: |
+          cp artifacts/release/nonprod-release.json deploy/argocd/environments/nonprod/release.json
+          scripts/ci/validate-gitops-release.sh
+      - name: Create or update the bot release branch and pull request
+        id: release-pr
+        uses: peter-evans/create-pull-request@v7
         with:
-          client-id: ${{ secrets.AZURE_DEPLOYER_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: false
-      - name: Configure AKS context
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/gitops-release-${{ github.ref_name }}
+          delete-branch: true
+          title: "chore(release): reconcile ${{ github.ref_name }} in nonprod"
+          commit-message: "chore(release): reconcile ${{ github.ref_name }} in nonprod"
+          body: |
+            This bot-authored pull request is the reviewed desired-state hand-off.
+            It contains only the immutable UI/BFF/Core release declaration.
+            GitHub Copilot review and protected `main` are required before merge.
+          labels: gitops-release
+      - name: Verify the required Copilot review status
+        env:
+          PULL_REQUEST_NUMBER: ${{ steps.release-pr.outputs.pull-request-number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          COPILOT_REVIEW_CHECK_NAME: copilot/review
+        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+      - name: Publish release PR scope evidence
         run: |
-          az aks get-credentials \
-            --resource-group "${{ vars.AKS_RESOURCE_GROUP }}" \
-            --name "${{ vars.AKS_CLUSTER_NAME }}" \
-            --overwrite-existing
-      - name: Run live preflight
-        run: |
-          test -f "$PLATFORM_MANIFEST"
-          scripts/azure/preflight-ui-platform.sh live --repo-root "$GITHUB_WORKSPACE" --manifest "$PLATFORM_MANIFEST"
-          scripts/azure/validate-delivery-identities.sh --mode live --manifest "$PLATFORM_MANIFEST" --report artifacts/delivery-identities.json
-      - name: Acquire environment lock
-        run: |
-          mkdir -p artifacts/delivery-state/locks
-          scripts/ci/environment-lock.sh acquire \
-            --state-dir artifacts/delivery-state/locks \
-            --environment "$DELIVERY_ENVIRONMENT" \
-            --attempt "github-${GITHUB_RUN_ID}" \
-            --revision "$GITHUB_SHA" \
-            --expected-revision "$GITHUB_SHA"
-      - name: Promote, migrate, and verify
-        run: |
-          trap 'scripts/ci/environment-lock.sh release --state-dir artifacts/delivery-state/locks --environment "$DELIVERY_ENVIRONMENT" --attempt "github-${GITHUB_RUN_ID}"' EXIT
-          scripts/ci/promote.sh \
-            --manifest artifacts/release/release-manifest.json \
-            --journal-dir artifacts/delivery-state \
-            --attempt "github-${GITHUB_RUN_ID}" \
-            --environment "$DELIVERY_ENVIRONMENT" \
-            --snapshot-out "artifacts/delivery-state/github-${GITHUB_RUN_ID}.snapshot.json"
-      - name: Upload deployment evidence
+          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
+            --arg pr "${{ steps.release-pr.outputs.pull-request-number }}" \
+            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"copilot-review-required", evidenceLinks:["artifact://published-release/"]}' \
+            > release-workflow-scope.json
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: delivery-evidence-${{ github.run_id }}
-          path: artifacts
+          name: application-release-scope-${{ github.run_id }}
+          path: release-workflow-scope.json
           if-no-files-found: warn
           retention-days: 90
-
-  recovery:
-    name: Two-person recovery
-    needs: validate
-    if: github.event_name == 'workflow_dispatch' && inputs.delivery_action == 'recovery'
-    runs-on: ubuntu-24.04
-    environment: nonprod-recovery
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Download quarantined delivery state
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.recovery_run_id }}
-          pattern: delivery-evidence-*
-          merge-multiple: true
-          path: artifacts
-      - name: Azure OIDC login (deployer)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_DEPLOYER_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Configure AKS context
-        run: az aks get-credentials --resource-group "${{ vars.AKS_RESOURCE_GROUP }}" --name "${{ vars.AKS_CLUSTER_NAME }}" --overwrite-existing
-      - name: Require distinct recovery identities
-        env:
-          RECOVERY_OPERATOR: ${{ github.actor }}
-          PLATFORM_APPROVER: ${{ vars.PLATFORM_APPROVER }}
-        run: |
-          test -n "$RECOVERY_REFERENCE" -a -n "$ACTION_REASON"
-          test -n "$PLATFORM_APPROVER" -a "$RECOVERY_OPERATOR" != "$PLATFORM_APPROVER"
-          scripts/ci/rollback.sh recover \
-            --journal-dir artifacts/delivery-state \
-            --attempt "$RECOVERY_REFERENCE" \
-            --namespace "$DELIVERY_ENVIRONMENT" \
-            --operator "$RECOVERY_OPERATOR" \
-            --operator-role delivery-recovery-operator \
-            --approver "$PLATFORM_APPROVER" \
-            --approver-role platform-operations

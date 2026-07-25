@@ -59,6 +59,21 @@ def test_managed_dependencies_are_private_entra_only_and_monitored() -> None:
     assert "category_group = enabled_log.value" in monitoring
 
 
+def test_aks_control_plane_access_is_terraform_managed() -> None:
+    main = source("main.tf")
+    variables = source("variables.tf")
+    outputs = source("outputs.tf")
+
+    assert "api_server_authorized_ip_ranges" in main
+    assert "var.aks_api_server_authorized_ip_ranges" in main
+    assert "var.poc_operator_source_cidrs" in main
+    assert "Formal environments must provide at least one reviewed AKS API authorized CIDR." in main
+    assert 'variable "aks_api_server_authorized_ip_ranges"' in variables
+    assert "can(cidrnetmask(cidr))" in variables
+    assert "aks_api_server_fqdn" in outputs
+    assert "aks_api_server_authorized_ip_ranges" in outputs
+
+
 def test_bff_key_ring_is_versioned_and_contains_no_key_material() -> None:
     encryption = source("bff-session-encryption.tf")
     assert 'name         = "bff-session-encryption"' in encryption
