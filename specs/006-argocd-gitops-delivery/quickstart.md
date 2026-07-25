@@ -50,6 +50,21 @@ The namespace must already exist because the generated Application sets
 `CreateNamespace=false`. The pull Secret is platform-owned and is not created by
 the ApplicationSet.
 
+Before the first application sync, render and apply the platform-owned runtime
+identifiers and Key Vault references from the approved Terraform outputs. The
+renderer is dry-run by default and requires an explicit opt-in:
+
+```bash
+scripts/azure/apply-career-agent-platform-runtime.sh
+APPLY=true scripts/azure/apply-career-agent-platform-runtime.sh
+```
+
+Set the script's required environment variables from the platform inventory
+(workload identity client IDs, Key Vault and certificate versions, private
+data-service hostnames, tenant, origin, and contract range). Do not commit the
+rendered files or any credential material. This step is platform bootstrap,
+not application release delivery.
+
 Use `.github/workflows/infrastructure.yml` for the separately approved
 Terraform/platform lifecycle and `.github/workflows/delivery.yml` for ACR
 publication plus the reviewed release PR. The application workflow never

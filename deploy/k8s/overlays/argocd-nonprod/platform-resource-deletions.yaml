@@ -1,0 +1,50 @@
+# The service bases also support the infrastructure-owned AKS overlay. Remove
+# those platform resources from the Argo CD application render so the release
+# controller can only reconcile application workloads.
+$patch: delete
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ui
+---
+$patch: delete
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-runtime-config
+---
+$patch: delete
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bff
+---
+$patch: delete
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: bff-key-vault-material
+---
+$patch: delete
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bff-runtime-config
+---
+$patch: delete
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: core
+---
+$patch: delete
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: core-key-vault-material
+---
+$patch: delete
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-runtime-config

@@ -54,6 +54,20 @@ non-secret runtime identifiers and Key Vault references consumed by the
 workload templates. ApplicationSet only selects the validated release images;
 it does not synthesize platform configuration or copy credentials into Git.
 
+The repository includes a dry-run-by-default renderer for that bootstrap
+boundary. Supply the non-secret values from Terraform outputs and the approved
+platform inventory, then explicitly opt in to the cluster write:
+
+```bash
+scripts/azure/apply-career-agent-platform-runtime.sh
+APPLY=true scripts/azure/apply-career-agent-platform-runtime.sh
+```
+
+The script owns only the workload service accounts, Key Vault CSI provider
+classes, and runtime ConfigMaps. It never creates the ACR pull Secret or
+stores private key material. The Argo CD overlay references these resources
+but does not manage them.
+
 This first ApplicationSet is intentionally pinned to the `nonprod` declaration
 and the existing UAE North application overlay. Adding another environment
 requires a new reviewed ApplicationSet and AppProject destination rather than

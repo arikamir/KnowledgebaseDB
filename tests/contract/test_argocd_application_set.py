@@ -64,8 +64,8 @@ def test_application_project_is_restricted_to_career_agent_application_resources
     assert project["spec"]["sourceRepos"] == ["https://github.com/arikamir/KnowledgebaseDB.git"]
     assert project["spec"]["destinations"] == [{"server": "https://kubernetes.default.svc", "namespace": "career-agent"}]
     assert project["spec"]["clusterResourceWhitelist"] == []
-    assert {entry["kind"] for entry in project["spec"]["namespaceResourceWhitelist"]} >= {
-        "Deployment", "Service", "ServiceAccount", "ConfigMap",
+    assert {entry["kind"] for entry in project["spec"]["namespaceResourceWhitelist"]} == {
+        "Deployment", "Service", "HorizontalPodAutoscaler", "PodDisruptionBudget",
     }
 
 
@@ -84,12 +84,12 @@ def test_release_declaration_is_semver_and_digest_pinned():
 def test_argocd_overlay_is_application_only_and_excludes_platform_resources():
     overlay = load("deploy/k8s/overlays/argocd-nonprod/kustomization.yaml")
     assert overlay["namespace"] == "career-agent"
-    assert set(overlay["resources"]) == {
-        "../../base/ui",
-        "../../base/bff",
-        "../../base/core",
-    }
+    assert set(overlay["resources"]) == {"../../base/ui", "../../base/bff", "../../base/core"}
     assert not any("gateway" in resource or "namespace.yaml" in resource for resource in overlay["resources"])
+    assert {entry["path"] for entry in overlay["patches"]} >= {"application-images.yaml", "platform-resource-deletions.yaml"}
+    deletion_text = (ROOT / "deploy/k8s/overlays/argocd-nonprod/platform-resource-deletions.yaml").read_text()
+    for name in ("ui", "bff", "core", "ui-runtime-config", "bff-runtime-config", "core-runtime-config", "bff-key-vault-material", "core-key-vault-material"):
+        assert f"name: {name}" in deletion_text
 
     patch_text = (ROOT / "deploy/k8s/overlays/argocd-nonprod/application-images.yaml").read_text()
     assert patch_text.count("name: career-agent-acr-pull") == 3
