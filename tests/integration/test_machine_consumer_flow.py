@@ -81,13 +81,14 @@ def test_private_route_tls_source_and_network_controls_have_no_public_core_path(
     private = (ROOT / "deploy/k8s/overlays/aks-nonprod/private-machine-service.yaml").read_text()
     route = (ROOT / "deploy/k8s/overlays/aks-nonprod/httproute.yaml").read_text()
     core = (ROOT / "deploy/k8s/base/core/deployment.yaml").read_text()
+    core_runtime = (ROOT / "deploy/k8s/base/core/configmap.yaml").read_text()
     network = (ROOT / "deploy/k8s/base/network-policies.yaml").read_text()
     agc = (ROOT / "infra/azure/application-gateway-for-containers.tf").read_text()
     assert 'azure-load-balancer-internal: "true"' in private
     assert "PRIVATE_CORE_DNS_ZONE_NAME" in private and "PRIVATE_MACHINE_SOURCE_CIDR" in private
     assert "name: core" not in route and "core-private-machine" not in route
     assert "--ssl-certfile" in core and "scheme: HTTPS" in core
-    assert "CORE_TLS_EXPECTED_SANS" in core and "CORE_TLS_EXPECTED_ISSUER" in core
+    assert "CORE_TLS_EXPECTED_SANS" in core_runtime and "CORE_TLS_EXPECTED_ISSUER" in core_runtime
     assert "core-private-callers" in network
     assert "browser_gateway_source_cidrs" in agc and "security_rule" in agc
 

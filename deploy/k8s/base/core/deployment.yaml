@@ -47,9 +47,6 @@ spec:
           env:
             - {name: CORE_TLS_PEM_PATH, value: /var/run/secrets/career-agent/core-tls.pem}
             - {name: CORE_TLS_CHAIN_PATH, value: /var/run/secrets/career-agent/core-chain.pem}
-            - {name: CORE_TLS_CERTIFICATE_VERSION, value: "${PRIVATE_CORE_CERTIFICATE_VERSION}"}
-            - {name: CORE_TLS_EXPECTED_SANS, value: "core.${PRIVATE_CORE_DNS_ZONE_NAME},core.career-agent.svc,core.career-agent.svc.cluster.local"}
-            - {name: CORE_TLS_EXPECTED_ISSUER, value: "${PRIVATE_CORE_CERTIFICATE_ISSUER_NAME}"}
             - {name: KEY_MATERIAL_FAILURE_CODE, value: KEY_MATERIAL_UNAVAILABLE}
             - {name: KEY_MATERIAL_FALLBACK, value: disabled}
           volumeMounts:

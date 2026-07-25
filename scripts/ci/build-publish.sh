@@ -39,7 +39,13 @@ publish_manifest() {
 case "$ACTION" in
   publish)
     [[ -f "$PLAN" && "$BUILD_ID" =~ ^[A-Za-z0-9._-]+$ && "$REVISION" =~ ^[0-9a-f]{40}$ && -n "$OUTPUT_DIR" ]] || exit 2
-    jq -e --arg revision "$REVISION" 'keys == ["baselineRevision","reason","services","sourceRevision","validationLanes"] and .sourceRevision==$revision and (.services|keys==["bff","core","ui"]) and all(.services[]; type=="boolean")' "$PLAN" >/dev/null || exit 1
+    jq -e --arg revision "$REVISION" '
+      (keys | sort) as $keys |
+      (($keys == ["baselineRevision","reason","services","sourceRevision","validationLanes"] or
+        $keys == ["baselineRevision","dryRun","reason","services","sourceRevision","validationLanes"]) and
+      (.dryRun == null or (.dryRun | type == "boolean")) and
+      .sourceRevision==$revision and (.services|keys==["bff","core","ui"]) and all(.services[]; type=="boolean"))
+    ' "$PLAN" >/dev/null || exit 1
     entries='{}'
     for service in ui bff core; do
       [[ "$(jq -r --arg service "$service" '.services[$service]' "$PLAN")" == true ]] || continue

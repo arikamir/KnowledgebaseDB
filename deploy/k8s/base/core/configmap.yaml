@@ -7,3 +7,6 @@ data:
   DATABASE_URL: "postgresql+psycopg://${POSTGRESQL_HOST}/career_agent?sslmode=require"
   ENTRA_TENANT_ID: "${ENTRA_TENANT_ID}"
   READINESS_REQUIRED_DEPENDENCIES: "postgresql,tenant-jwks,key-material,tls-functional"
+  CORE_TLS_CERTIFICATE_VERSION: "${PRIVATE_CORE_CERTIFICATE_VERSION}"
+  CORE_TLS_EXPECTED_SANS: "core.${PRIVATE_CORE_DNS_ZONE_NAME},core.career-agent.svc,core.career-agent.svc.cluster.local"
+  CORE_TLS_EXPECTED_ISSUER: "${PRIVATE_CORE_CERTIFICATE_ISSUER_NAME}"

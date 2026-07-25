@@ -8,4 +8,6 @@ data:
   CORE_BASE_URL: "https://core.career-agent.svc:8443/api/v1"
   PUBLIC_ORIGIN: "${PUBLIC_ORIGIN}"
   REDIS_URL: "rediss://${MANAGED_REDIS_HOST}:10000"
+  BFF_CLIENT_CERTIFICATE_VERSION: "${BFF_CLIENT_CERTIFICATE_VERSION}"
+  CORE_CA_CERTIFICATE_VERSION: "${PRIVATE_CORE_CERTIFICATE_VERSION}"
   READINESS_REQUIRED_DEPENDENCIES: "redis,tenant-jwks,session-key,bff-client-certificate,core-tls,delegated-core-token,health-app-token"

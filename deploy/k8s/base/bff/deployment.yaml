@@ -35,9 +35,7 @@ spec:
             - configMapRef: {name: bff-runtime-config}
           env:
             - {name: BFF_CLIENT_CERTIFICATE_PATH, value: /var/run/secrets/career-agent/bff-client.pem}
-            - {name: BFF_CLIENT_CERTIFICATE_VERSION, value: "${BFF_CLIENT_CERTIFICATE_VERSION}"}
             - {name: CORE_CA_BUNDLE_PATH, value: /var/run/secrets/career-agent/core-ca.pem}
-            - {name: CORE_CA_CERTIFICATE_VERSION, value: "${PRIVATE_CORE_CERTIFICATE_VERSION}"}
             - {name: KEY_MATERIAL_FAILURE_CODE, value: KEY_MATERIAL_UNAVAILABLE}
             - {name: KEY_MATERIAL_FALLBACK, value: disabled}
           volumeMounts:

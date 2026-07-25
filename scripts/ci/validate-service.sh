@@ -26,7 +26,10 @@ done
 command -v jq >/dev/null || fail "jq is required"
 
 jq -e '
-  (keys | sort) == ["baselineRevision", "reason", "services", "sourceRevision", "validationLanes"] and
+  (keys | sort) as $keys |
+  (($keys == ["baselineRevision", "reason", "services", "sourceRevision", "validationLanes"] or
+    $keys == ["baselineRevision", "dryRun", "reason", "services", "sourceRevision", "validationLanes"]) and
+  (.dryRun == null or (.dryRun | type == "boolean")) and
   (.sourceRevision | type == "string" and test("^[0-9a-f]{40}$")) and
   (.baselineRevision == null or (.baselineRevision | type == "string" and test("^[0-9a-f]{40}$"))) and
   (.services | keys | sort) == ["bff", "core", "ui"] and
@@ -34,7 +37,7 @@ jq -e '
   (.validationLanes | keys | sort) == ["contractIntegrity", "infrastructure", "performanceProfile", "readinessScenarios"] and
   ([.validationLanes[] | type] | all(. == "boolean")) and
   (.validationLanes.contractIntegrity == true) and
-  (.reason | type == "array" and all(.[]; type == "string"))
+  (.reason | type == "array" and all(.[]; type == "string")))
 ' "$plan" >/dev/null || fail "change plan schema is invalid"
 
 case "$selection_type:$selection" in

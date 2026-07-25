@@ -33,15 +33,15 @@ def test_bff_mounts_exact_versioned_client_certificate_and_public_core_trust() -
 def test_core_mounts_exact_versioned_private_tls_pair_and_public_chain() -> None:
     provider = (BASE / "core/secret-provider-class.yaml").read_text()
     deployment = load("core/deployment.yaml")
+    config = load("core/configmap.yaml")["data"]
     assert "${CORE_WORKLOAD_CLIENT_ID}" in provider
     assert provider.count("objectName: private-core-server") == 2
     assert "objectType: secret" in provider and "objectAlias: core-tls.pem" in provider
     assert "objectType: cert" in provider and "objectAlias: core-chain.pem" in provider
     assert provider.count('objectVersion: "${PRIVATE_CORE_CERTIFICATE_VERSION}"') == 2
-    env = {item["name"]: item["value"] for item in deployment["spec"]["template"]["spec"]["containers"][0]["env"]}
-    assert env["CORE_TLS_CERTIFICATE_VERSION"] == "${PRIVATE_CORE_CERTIFICATE_VERSION}"
-    assert env["CORE_TLS_EXPECTED_SANS"] == "core.${PRIVATE_CORE_DNS_ZONE_NAME},core.career-agent.svc,core.career-agent.svc.cluster.local"
-    assert env["CORE_TLS_EXPECTED_ISSUER"] == "${PRIVATE_CORE_CERTIFICATE_ISSUER_NAME}"
+    assert config["CORE_TLS_CERTIFICATE_VERSION"] == "${PRIVATE_CORE_CERTIFICATE_VERSION}"
+    assert config["CORE_TLS_EXPECTED_SANS"] == "core.${PRIVATE_CORE_DNS_ZONE_NAME},core.career-agent.svc,core.career-agent.svc.cluster.local"
+    assert config["CORE_TLS_EXPECTED_ISSUER"] == "${PRIVATE_CORE_CERTIFICATE_ISSUER_NAME}"
 
 
 def test_readiness_fails_closed_without_plaintext_environment_or_kubernetes_secret_fallback() -> None:

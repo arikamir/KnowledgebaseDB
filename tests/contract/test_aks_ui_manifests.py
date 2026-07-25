@@ -48,7 +48,9 @@ def test_public_gateway_exposes_only_ui_and_bff_while_core_is_private_tls() -> N
     assert private_service["spec"]["ports"] == [{"name": "https", "port": 8443, "targetPort": "https"}]
     core = read(BASE / "core/deployment.yaml")
     assert "--ssl-certfile" in core and "--ssl-keyfile" in core
-    assert "scheme: HTTPS" in core and "CORE_TLS_EXPECTED_SANS" in core
+    assert "scheme: HTTPS" in core
+    core_runtime = document(BASE / "core/configmap.yaml")["data"]
+    assert "CORE_TLS_EXPECTED_SANS" in core_runtime
 
 
 def test_every_replica_has_dependency_complete_readiness_and_csi_fail_closed() -> None:
@@ -67,6 +69,11 @@ def test_every_replica_has_dependency_complete_readiness_and_csi_fail_closed() -
         assert "readinessProbe:" in deployment
         assert "secrets-store.csi.k8s.io" in deployment
         assert "KEY_MATERIAL_FALLBACK, value: disabled" in deployment
+    bff_config = document(BASE / "bff/configmap.yaml")["data"]
+    core_config = document(BASE / "core/configmap.yaml")["data"]
+    assert bff_config["BFF_CLIENT_CERTIFICATE_VERSION"] == "${BFF_CLIENT_CERTIFICATE_VERSION}"
+    assert bff_config["CORE_CA_CERTIFICATE_VERSION"] == "${PRIVATE_CORE_CERTIFICATE_VERSION}"
+    assert core_config["CORE_TLS_CERTIFICATE_VERSION"] == "${PRIVATE_CORE_CERTIFICATE_VERSION}"
     assert "JWKS_STALE_AFTER_SECONDS" in read(BASE / "bff/secret-provider-class.yaml") or "tenant-jwks" in bff_config["READINESS_REQUIRED_DEPENDENCIES"]
 
 
