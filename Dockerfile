@@ -7,8 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system app \
-    && adduser --system --ingroup app --home /app app
+RUN addgroup --system --gid 10001 app \
+    && adduser --system --uid 10001 --ingroup app --home /app app
 
 WORKDIR /app
 
@@ -23,7 +23,9 @@ RUN pip install .
 RUN chmod 0555 /app/scripts/run-migration.sh \
     && chown -R app:app /app
 
-USER app
+# Keep the runtime identity numeric so Kubernetes can enforce runAsNonRoot
+# without relying on image metadata name resolution.
+USER 10001
 
 EXPOSE 8000
 
