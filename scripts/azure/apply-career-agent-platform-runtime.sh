@@ -9,6 +9,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 NAMESPACE=${NAMESPACE:-career-agent}
 APPLY=${APPLY:-false}
+FORCE_CONFLICTS=${FORCE_CONFLICTS:-false}
 WORK_DIR=$(mktemp -d)
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -34,7 +35,7 @@ fi
 
 render() {
   local source=$1
-  local target="$WORK_DIR/$(basename "$source")"
+  local target="$WORK_DIR/$(printf '%s' "$source" | tr '/' '_')"
   envsubst < "$ROOT/$source" > "$target"
   if grep -Eq '\$\{[A-Za-z_][A-Za-z0-9_]*\}' "$target"; then
     printf 'unresolved placeholder in rendered manifest: %s\n' "$source" >&2
@@ -45,6 +46,7 @@ render() {
 
 manifests=(
   deploy/k8s/base/ui/runtime-config.yaml
+  deploy/k8s/base/ui/service-account.yaml
   deploy/k8s/base/bff/service-account.yaml
   deploy/k8s/base/bff/secret-provider-class.yaml
   deploy/k8s/base/bff/configmap.yaml
@@ -62,6 +64,7 @@ if [[ "$APPLY" == "true" ]]; then
   for path in "${rendered[@]}"; do
     apply_args+=("-f" "$path")
   done
+  [[ "$FORCE_CONFLICTS" == true ]] && apply_args+=(--force-conflicts)
   kubectl -n "$NAMESPACE" apply --server-side --field-manager=platform-bootstrap "${apply_args[@]}"
   printf 'applied platform runtime resources to namespace %s\n' "$NAMESPACE"
 else

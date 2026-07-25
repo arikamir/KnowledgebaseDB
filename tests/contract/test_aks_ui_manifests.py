@@ -93,6 +93,17 @@ def test_ui_is_identityless_and_all_services_have_health_pdb_topology_hpa_and_di
         assert "maxUnavailable: 1" in read(BASE / f"{service}/pdb.yaml")
 
 
+def test_runtime_images_expose_numeric_non_root_users() -> None:
+    assert "USER 10001" in read(ROOT / "Dockerfile")
+    assert "USER 1000" in read(ROOT / "bff/Dockerfile")
+    assert "USER 101" in read(ROOT / "ui/Dockerfile")
+
+
+def test_platform_bootstrap_restores_the_identityless_ui_service_account() -> None:
+    bootstrap = read(ROOT / "scripts/azure/apply-career-agent-platform-runtime.sh")
+    assert "deploy/k8s/base/ui/service-account.yaml" in bootstrap
+
+
 def test_gateway_and_lab_jobs_have_exact_cadence_identity_and_network_confinement() -> None:
     gateway = read(BASE / "gateway-certificate-rotation/cronjob.yaml")
     lab = read(BASE / "lab-revalidation/cronjob.yaml")
