@@ -40,11 +40,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/bff/v1/session", { schema: generatedRouteSchema("getBrowserSession") }, async (request, reply) => {
     const sessionId = request.cookies[SESSION_COOKIE];
-    if (!sessionId) return { authenticated: false };
+    if (!sessionId) return { authenticated: false, reason: "missing" as const };
     try {
       const session = await services().sessions.load(sessionId);
       const outcome = evaluateSession(session);
-      if (outcome.status !== "active") { clearSessionCookie(reply); return { authenticated: false }; }
+      if (outcome.status !== "active") { clearSessionCookie(reply); return { authenticated: false, reason: "missing" as const }; }
       const active = outcome.shouldTouch ? touchSession(outcome.session) : outcome.session;
       if (outcome.shouldTouch) await services().sessions.save(active);
       return { authenticated: true, csrfToken: active.csrfToken, idleExpiresAt: active.idleExpiresAt, absoluteExpiresAt: active.absoluteExpiresAt };

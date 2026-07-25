@@ -70,7 +70,7 @@ test("announces rolling retry rate limits while preserving the session", async (
 
 test("a delayed response cannot update a route after interruption", async ({ page }) => {
   await page.route("**/bff/v1/learning-sessions/content-1", async (route) => { await new Promise((resolve) => setTimeout(resolve, 200)); await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(session) }); });
-  await page.goto("/learning/content-1"); await page.goto("/"); await page.waitForTimeout(250); await expect(page.getByRole("heading", { name: "DevOps Career Agent" })).toBeVisible(); await expect(page.getByText("Kubernetes practice")).toHaveCount(0);
+  await page.goto("/learning/content-1"); await page.goto("/"); await page.waitForTimeout(250); await expect(page.getByRole("link", { name: "DevOps Career Agent" }).first()).toBeVisible(); await expect(page.getByText("Kubernetes practice")).toHaveCount(0);
 });
 
 test("failed review leads to missed-concept study and a fresh no-copy attempt", async ({ page }) => {

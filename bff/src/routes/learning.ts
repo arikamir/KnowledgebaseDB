@@ -9,11 +9,11 @@ interface LearningServices { core: (path: string, init: RequestInit) => Promise<
 const headers = (request: any, json = false) => ({ ...(json ? { "Content-Type": "application/json" } : {}), "X-BFF-Contract-Version": "1.0.0", "X-Core-Contract-Digest": CORE_CONTRACT_DIGEST, ...(request.headers["idempotency-key"] ? { "Idempotency-Key": String(request.headers["idempotency-key"]) } : {}) });
 
 export const learningRoutes: FastifyPluginAsync = async (app) => {
-  const core = () => (app as unknown as { learningServices: LearningServices }).learningServices.core;
+  const core = () => (app as unknown as { learningServices?: LearningServices }).learningServices?.core;
   const relay = async (request: any, reply: any, path: string, init: RequestInit, map: (value: any) => any) => {
     const startedAt = performance.now();
     const operation = request.routeOptions.url;
-    try { const response = await core()(path, init); const body = response.status === 204 ? {} : await response.json(); request.log.info({ operation, outcome: response.ok ? "success" : "failure", statusCode: response.status, durationMs: Math.round(performance.now() - startedAt) }, "learning request completed"); return reply.code(response.status).send(response.ok ? map(body) : toBrowserProblem(body)); }
+    try { const service = core(); if (!service) throw new Error("CORE_SERVICE_NOT_CONFIGURED"); const response = await service(path, init); const body = response.status === 204 ? {} : await response.json(); request.log.info({ operation, outcome: response.ok ? "success" : "failure", statusCode: response.status, durationMs: Math.round(performance.now() - startedAt) }, "learning request completed"); return reply.code(response.status).send(response.ok ? map(body) : toBrowserProblem(body)); }
     catch { request.log.error({ operation, outcome: "core_unavailable", durationMs: Math.round(performance.now() - startedAt) }, "learning dependency failed"); return reply.code(503).send({ type: "about:blank", title: "Core is unavailable", status: 503, code: "CORE_UNAVAILABLE", traceId: request.id, retryable: true, fieldErrors: [] }); }
   };
   app.get("/bff/v1/learning-sessions", { schema: generatedRouteSchema("listBrowserLearningSessions") }, (req: any, rep) => relay(req, rep, `/api/v1/learning-sessions?roadmap_id=${encodeURIComponent(req.query.roadmapId)}`, { headers: headers(req) }, (items) => items.map(toBrowserLearningSession)));

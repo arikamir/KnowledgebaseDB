@@ -380,23 +380,45 @@ evidence or enable Jenkins protected delivery.
 
 ## 11. Deployment result
 
-Deployment completed on 2026-07-18 in `uaenorth`:
+Deployment completed on 2026-07-24 in `uaenorth` after refreshing the drifted
+Terraform state and correcting the AGC frontend address:
 
-- URL: `https://career-agent.4.150.171.72.sslip.io/`
+- URL: `https://career-agent.20.6.18.82.sslip.io/`
 - resource group: `rg-devopscareeruae-nonprod`
 - AKS: `aks-devopscareeruae-nonprod`
 - ACR: `acrdevopscareeruaenonprod.azurecr.io`
 - public edge: Application Gateway for Containers with Gateway API
 - public certificate: Let's Encrypt production certificate, contact
   `arikamir1+poc@gmail.com`, Ready in cert-manager
-- UI digest: `sha256:ab4b83fc714e9145e6b87e270c9b52602f0f0ed48680c9e02cac6b9b9d718c4d`
-- BFF digest: `sha256:6963df190b4c68dc511f73f0a3cca7b510ec9fce7fb3cd2fa2d49391468f6b38`
-- Core digest: `sha256:88bbe6dcb19c526f37b081e92650c53d4d265759c54c5407906e5fb1b54da316`
+- UI digest: `sha256:286abe2d173a29c2f69759452d035e17d5fcd8a7e11370b6771ba9afe5a448f6`
+- BFF digest: `sha256:831168bb45f29feb31610a86afb4b7e88661c5fe6301c9c0a3dab6393643569b`
+- Core digest: `sha256:ccb76a509c2da96819a5639d2cf75dfe55cd051243d6110ffc3a8d0175ed9d6f`
 
 External smoke tests returned `200` for `/`, `/runtime-config.json`, and
-`/bff/v1/capabilities` with normal TLS verification enabled. UI, BFF, and Core
-each report one Ready replica; the public certificate and both Gateway
-listeners are Ready/Programmed.
+`/bff/v1/capabilities`, and `/bff/v1/session` returns the contract-compliant
+unauthenticated state. UI, BFF, and Core each report one Ready replica; an
+in-cluster BFF-to-Core readiness probe returned `200 {"status":"ready"}`.
+The public Let's Encrypt certificate and both Gateway listeners are
+Ready/Programmed. The BFF session response was corrected during deployment to
+include the required `reason: "missing"` field.
+
+The end-to-end verification on 2026-07-24 covered the deployed HTTPS UI,
+runtime configuration, session, capabilities, and BFF foundation routes. The
+supported Playwright Chromium learning journey passed all 16 tests after
+correcting a stale assertion that expected the brand link to be an `h1`. The
+full matrix completed 716 tests; Edge lanes were unavailable because Microsoft
+Edge is not installed in the runner, and WebKit focus checks remain runner
+timing-sensitive. Foundation routes now return a structured retryable `503
+CORE_UNAVAILABLE` when their runtime service wiring is absent instead of
+leaking a `500` TypeError.
+
+The authenticated browser-to-Core journey is not yet available in this PoC
+deployment: the BFF server factory does not register the Redis encrypted
+session store, Entra authorization-code client, or delegated Core token
+client. Core therefore correctly rejects unauthenticated requests with
+`401`, while the browser sees the safe retryable BFF response. This remains an
+implementation blocker for a complete signed-in end-to-end test and is not
+masked with a mock or authentication bypass.
 
 ### Technical-PoC runtime limits
 

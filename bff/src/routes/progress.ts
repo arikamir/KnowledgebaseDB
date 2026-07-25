@@ -87,7 +87,7 @@ async function relay(
 
 export const progressRoutes: FastifyPluginAsync = async (app) => {
   const services = () =>
-    (app as unknown as { progressServices: ProgressRouteServices }).progressServices;
+    (app as unknown as { progressServices?: ProgressRouteServices }).progressServices;
 
   app.setErrorHandler((error, request, reply) => {
     const issues = (error as typeof error & { validation?: ValidationIssue[] }).validation;
@@ -126,7 +126,7 @@ export const progressRoutes: FastifyPluginAsync = async (app) => {
     (request, reply) => relay(
       request,
       reply,
-      services().core,
+      services()?.core ?? (() => Promise.reject(new Error("CORE_SERVICE_NOT_CONFIGURED"))),
       "/api/v1/progress/check-ins",
       {
         method: "POST",
@@ -143,7 +143,7 @@ export const progressRoutes: FastifyPluginAsync = async (app) => {
     (request, reply) => relay(
       request,
       reply,
-      services().core,
+      services()?.core ?? (() => Promise.reject(new Error("CORE_SERVICE_NOT_CONFIGURED"))),
       `/api/v1/progress/reviews?roadmap_id=${encodeURIComponent(request.query.roadmapId)}`,
       { method: "GET", headers: coreHeaders(request) },
       "progress_review",
