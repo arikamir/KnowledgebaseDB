@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-entra-rbac-contract
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: career-agent-delivery
+    gitops.knowledgebase.io/managed-by: platform-operations
+data:
+  # The platform bootstrap substitutes the tenant identifier and injects the
+  # client secret through a cluster secret/workload identity. No credential is
+  # stored in this contract or in deploy/argocd desired state.
+  oidcIssuer: https://login.microsoftonline.com/${ENTRA_TENANT_ID}/v2.0
+  oidcClientIdRef: argocd-entra-client-id
+  oidcClientSecretRef: argocd-entra-client-secret
+  scopes: '[groups, roles]'
+  defaultRole: role:readonly
+  applicationReleaseGroup: career-agent-application-release
+  infrastructureAdminGroup: career-agent-infrastructure-admin
+  observabilityReadonlyGroup: career-agent-observability-readonly
+  requiredClaims: groups,roles,tid,oid,sub
+  sessionPolicy: reject-expired-or-revoked
+  credentialPolicy: never-persist-token-or-client-secret

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-entra-rbac-policy
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: career-agent-delivery
+    gitops.knowledgebase.io/managed-by: platform-operations
+data:
+  policy.default: role:readonly
+  scopes: '[groups, roles]'
+  policy.csv: |
+    p, role:application-release, applications, get, career-agent/*, allow
+    p, role:application-release, applications, sync, career-agent/*, allow
+    p, role:application-release, applicationsets, get, career-agent-services, allow
+    p, role:observability-readonly, applications, get, career-agent/*, allow
+    p, role:observability-readonly, applicationsets, get, career-agent-services, allow
+    p, role:infrastructure-admin, applications, get, career-agent/*, allow
+    g, career-agent-application-release, role:application-release
+    g, career-agent-infrastructure-admin, role:infrastructure-admin
+    g, career-agent-observability-readonly, role:observability-readonly
+  requiredClaims: tid,oid,sub,groups,roles
+  sessionPolicy: reject-expired-or-revoked
+  credentialPolicy: never-persist-token-or-client-secret

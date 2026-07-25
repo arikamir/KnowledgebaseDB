@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledgebasedb.example/schemas/gitops-readiness-v1.json",
+  "title": "Career Agent GitOps readiness result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "environment", "checks", "observedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "status": {"enum": ["ready", "blocked"]},
+    "environment": {"const": "nonprod"},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "argocdProject", "registryPullSecret", "registry", "workloadPrerequisites"],
+      "properties": {
+        "namespace": {"$ref": "#/$defs/check"},
+        "argocdProject": {"$ref": "#/$defs/check"},
+        "registryPullSecret": {
+          "allOf": [
+            {"$ref": "#/$defs/check"},
+            {"type": "object", "required": ["name"], "properties": {"name": {"const": "career-agent-acr-pull"}}}
+          ]
+        },
+        "registry": {"$ref": "#/$defs/check"},
+        "workloadPrerequisites": {"$ref": "#/$defs/check"}
+      }
+    },
+    "observedAt": {"type": "string", "format": "date-time"},
+    "failureReason": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "blocked"}}}, "then": {"required": ["failureReason"]}},
+    {"if": {"properties": {"status": {"const": "ready"}}}, "then": {"not": {"required": ["failureReason"]}}}
+  ],
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {"status": {"enum": ["pass", "fail"]}, "reason": {"type": "string"}, "name": {"type": "string"}}
+    }
+  }
+}

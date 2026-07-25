@@ -1,0 +1,104 @@
+name: Infrastructure plan and apply
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infrastructure.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infrastructure.yml'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: platform-infrastructure
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: 'true'
+  TF_INPUT: 'false'
+  TF_WORKING_DIR: infra/azure
+
+jobs:
+  plan:
+    name: Terraform platform plan
+    runs-on: ubuntu-24.04
+    environment: infrastructure-plan
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate Terraform only
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false
+          terraform validate
+      - name: Create platform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -out=platform.tfplan
+      - name: Record platform scope evidence
+        run: |
+          mkdir -p artifacts
+          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
+            '{workflow:"infrastructure.yml", actor:$actor, sourceRevision:$revision, environment:"infrastructure", changedResourceSet:["infra/azure"], result:"plan-created", evidenceLinks:["artifact://infrastructure-plan/"]}' \
+            > artifacts/infrastructure-scope.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-plan-${{ github.run_id }}
+          path: |
+            infra/azure/platform.tfplan
+            artifacts/infrastructure-scope.json
+          if-no-files-found: error
+          retention-days: 90
+
+  apply:
+    name: Approved Terraform platform apply
+    needs: plan
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+    runs-on: ubuntu-24.04
+    environment: infrastructure-apply
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: hashicorp/setup-terraform@v3
+      - name: Azure OIDC login (infrastructure identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_INFRASTRUCTURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Apply the approved platform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init
+          terraform plan -out=platform.tfplan
+          terraform apply -auto-approve platform.tfplan
+      - name: Record platform apply evidence
+        run: |
+          mkdir -p artifacts
+          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
+            '{workflow:"infrastructure.yml", actor:$actor, sourceRevision:$revision, environment:"infrastructure", changedResourceSet:["infra/azure"], result:"apply-completed", evidenceLinks:["artifact://infrastructure-apply/"]}' \
+            > artifacts/infrastructure-apply-scope.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: infrastructure-apply-${{ github.run_id }}
+          path: artifacts/infrastructure-apply-scope.json
+          if-no-files-found: warn
+          retention-days: 90

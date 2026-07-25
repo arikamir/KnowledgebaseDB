@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: career-agent-acr-pull
+      containers:
+        - name: ui
+          # Stable logical names are transformed by the ApplicationSet to the
+          # immutable registry@sha256 release reference.
+          image: career-agent/ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: career-agent-acr-pull
+      containers:
+        - name: bff
+          image: career-agent/bff
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: career-agent-acr-pull
+      containers:
+        - name: core
+          image: career-agent/core

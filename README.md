@@ -101,6 +101,18 @@ Protected delivery builds immutable UI/BFF/core digests once, runs the combined 
 `009_merge_learning_progress`, and promotes `core -> BFF -> UI` with evidence
 and reverse recovery gates.
 
+The application-release hand-off is GitOps-ready: Argo CD's
+[ApplicationSet](docs/argocd-gitops.md) watches the protected GitHub `main`
+branch and reconciles the SemVer/digest-pinned release declaration for the
+three application services. Terraform and platform bootstrap remain separate
+from this application release path.
+
+Use `.github/workflows/infrastructure.yml` for the separately approved
+Terraform/platform lifecycle, `.github/workflows/delivery.yml` for a protected
+SemVer-tagged image release and Copilot-reviewed desired-state PR, and
+`.github/workflows/rollback.yml` for a reviewed declaration reversion. The
+application workflow has no AKS or Terraform credentials.
+
 For local pipeline-equivalent verification run the Python suite, BFF/UI lint,
 typecheck and tests, API contract gate, and both Kustomize renders described in
 the feature quickstart. Local development uses SQLite/HTTP; deployed core uses

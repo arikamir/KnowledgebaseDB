@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v1.json",
+  "title": "Career Agent GitOps release evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "ciRunId",
+    "sourceTag",
+    "releaseVersion",
+    "sourceRevision",
+    "desiredStateRevision",
+    "applicationName",
+    "repository",
+    "branch",
+    "actorType",
+    "eventType",
+    "imageDigests",
+    "copilotReview",
+    "validationEvidence",
+    "readiness",
+    "sync",
+    "timing"
+  ],
+  "allOf": [
+    {
+      "if": {"properties": {"actorType": {"const": "automation"}}},
+      "then": {"required": ["automationIdentity"]}
+    },
+    {
+      "if": {"properties": {"actorType": {"const": "human"}}},
+      "then": {"required": ["humanAction"]}
+    },
+    {
+      "if": {"properties": {"eventType": {"const": "rollback"}}},
+      "then": {"required": ["rollback"]}
+    },
+    {
+      "if": {
+        "required": ["sync"],
+        "properties": {
+          "sync": {
+            "required": ["status"],
+            "properties": {
+              "status": {"enum": ["OutOfSync", "Unknown", "Failed"]}
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sync": {
+            "required": ["affectedService", "reason", "nextAction"]
+          },
+          "timing": {
+            "required": ["failedAt", "diagnosedAt", "nextActionVisibleAt", "failureDiagnosisSeconds"]
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "environment": {"const": "nonprod"},
+    "ciRunId": {"type": "string", "minLength": 1},
+    "sourceTag": {
+      "type": "string",
+      "pattern": "^v?(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "releaseVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "sourceRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "desiredStateRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "applicationName": {"const": "career-agent-nonprod"},
+    "repository": {"type": "string", "minLength": 1},
+    "branch": {"type": "string", "minLength": 1},
+    "actorType": {"enum": ["automation", "human"]},
+    "eventType": {"enum": ["release", "sync", "rollback"]},
+    "automationIdentity": {"type": "string", "minLength": 1},
+    "humanAction": {"$ref": "#/$defs/humanAction"},
+    "rollback": {"$ref": "#/$defs/rollback"},
+    "validationEvidence": {"$ref": "#/$defs/validationEvidence"},
+    "readiness": {"$ref": "#/$defs/readiness"},
+    "imageDigests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ui", "bff", "core"],
+      "properties": {
+        "ui": {"$ref": "#/$defs/image"},
+        "bff": {"$ref": "#/$defs/image"},
+        "core": {"$ref": "#/$defs/image"}
+      }
+    },
+    "copilotReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "statusCheck", "observedAt"],
+      "properties": {
+        "status": {"enum": ["passed", "failed", "missing", "stale"]},
+        "statusCheck": {"type": "string", "minLength": 1},
+        "observedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "health", "observedAt"],
+      "properties": {
+        "status": {"enum": ["Synced", "OutOfSync", "Unknown", "Failed"]},
+        "health": {"type": "string", "minLength": 1},
+        "affectedService": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "nextAction": {"type": "string", "minLength": 1},
+        "observedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mergedAt", "syncStartedAt"],
+      "properties": {
+        "mergedAt": {"type": "string", "format": "date-time"},
+        "syncStartedAt": {"type": "string", "format": "date-time"},
+        "healthyAt": {"type": "string", "format": "date-time"},
+        "failedAt": {"type": "string", "format": "date-time"},
+        "diagnosedAt": {"type": "string", "format": "date-time"},
+        "nextActionVisibleAt": {"type": "string", "format": "date-time"},
+        "driftDetectedAt": {"type": "string", "format": "date-time"},
+        "mergeToSyncSeconds": {"type": "integer", "minimum": 0},
+        "failureDiagnosisSeconds": {"type": "integer", "minimum": 0},
+        "driftDetectionSeconds": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "validationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "scan", "compatibility"],
+      "properties": {
+        "contract": {"type": "string", "minLength": 1},
+        "scan": {"type": "string", "minLength": 1},
+        "compatibility": {"type": "string", "minLength": 1}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observedAt"],
+      "properties": {
+        "status": {"enum": ["ready", "blocked"]},
+        "observedAt": {"type": "string", "format": "date-time"},
+        "failureReason": {"type": "string", "minLength": 1}
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromRevision", "toRevision", "reason", "actor", "approvalResult", "outcome", "recordedAt"],
+      "properties": {
+        "fromRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "toRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "reason": {"type": "string", "minLength": 1},
+        "actor": {"type": "string", "minLength": 1},
+        "approvalResult": {"enum": ["passed", "failed", "missing"]},
+        "outcome": {"enum": ["approved", "rejected", "reconciled"]},
+        "recordedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "humanAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant", "subject", "role", "authentication", "timestamp"],
+      "properties": {
+        "tenant": {"type": "string", "minLength": 1},
+        "subject": {"type": "string", "minLength": 1},
+        "role": {"enum": ["application-release", "infrastructure-admin", "observability-readonly"]},
+        "authentication": {"enum": ["passed", "denied", "expired", "revoked"]},
+        "timestamp": {"type": "string", "format": "date-time"}
+      }
+    },
+    "image": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+\\.azurecr\\.io/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$"
+    }
+  }
+}

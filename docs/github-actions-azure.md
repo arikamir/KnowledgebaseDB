@@ -9,26 +9,46 @@ Jenkins controller or ACI callback.
 - `.github/workflows/ci.yml` runs the full identityless validation suite on pull
   requests, pushes, and manual dispatch.
 - `.github/workflows/delivery.yml` runs validation, digest-pinned image build /
-  scan / publication, protected non-production promotion, migration, rollout,
-  verification, and bounded two-person recovery.
+  scan / publication and produces a validated non-production GitOps release
+  bundle; the application hand-off is a reviewed desired-state pull request.
+- `.github/workflows/infrastructure.yml` is the only workflow with the
+  infrastructure-admin Azure identity. It runs Terraform plan/apply for
+  `infra/azure` and never builds, publishes, or reconciles application images.
+- `.github/workflows/rollback.yml` restores a previous release declaration in
+  a reviewed pull request; it does not call the Argo CD API directly.
+- Application release triggers are protected `v*` tags only. The workflow
+  verifies tag protection, tag/source equality, repository-lifetime SemVer
+  uniqueness, and the required GitHub Copilot review status before `main` can
+  receive the declaration.
 - `.github/workflows/reusable-validate.yml` is shared by delivery and regular
   CI so a protected ref cannot skip the all-ref validation gate.
 
 Protected delivery uses GitHub OIDC and short-lived Azure tokens. Configure
 these repository/environment values before enabling the workflows:
 
-- secrets: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
-  `AZURE_PUBLISHER_CLIENT_ID`, and `AZURE_DEPLOYER_CLIENT_ID`;
+- application-release secrets: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
+  and `AZURE_PUBLISHER_CLIENT_ID`;
+- infrastructure-only secret: `AZURE_INFRASTRUCTURE_CLIENT_ID`;
 - variables: `ACR_LOGIN_SERVER`, `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`,
   `EVIDENCE_STORAGE_ACCOUNT`, and the three service smoke URLs;
-- environments: `nonprod-publisher`, `nonprod`, and `nonprod-recovery`, with
-  required reviewers configured on `nonprod` and `nonprod-recovery`.
+- environments: `nonprod-publisher`, `nonprod-release`,
+  `infrastructure-plan`, `infrastructure-apply`, and `nonprod-recovery`, with
+  required reviewers configured on release/apply/recovery environments.
 
-Terraform creates the publisher and deployer federated credentials bound to the
-repository and protected environment subjects. It deliberately does not grant
-pull requests an Azure token or give the publisher deployment permissions.
-The existing publisher/deployer RBAC scopes are retained; only the orchestration
-trust relationship changes from Jenkins to GitHub Actions.
+Configure the repository branch/tag rules so that `main` requires the Copilot
+review status check and protected `v*` tags cannot be created or moved by an
+untrusted actor. The release bundle must pass
+`scripts/ci/validate-release-bundle.sh` before
+`deploy/argocd/environments/nonprod/release.json` is generated.
+The pull request gate calls `scripts/ci/verify-copilot-review.sh` against the
+head commit and fails closed when the required status check is missing, stale,
+or unsuccessful.
+
+Terraform creates separate publisher and infrastructure federated credentials
+bound to the repository and protected environment subjects. The application
+publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
+permission. Pull requests receive no Azure token. The infrastructure identity
+is gated by `infrastructure-apply` and is never referenced by delivery jobs.
 
 The first Azure apply after creating the GitHub repository must include
 `github_repository = "owner/name"`. Do not place a client secret, kubeconfig,

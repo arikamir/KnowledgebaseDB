@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "environment": "nonprod",
+  "releaseVersion": "0.1.0",
+  "sourceTag": "v0.1.0",
+  "sourceRevision": "23a86189e8e13b9f4c82d7da6486b8a805d039ad",
+  "ciRun": {
+    "id": "legacy-release-0.1.0",
+    "repository": "arikamir/KnowledgebaseDB",
+    "workflow": "delivery.yml"
+  },
+  "services": {
+    "ui": {
+      "image": "acrdevopscareeruaenonprod.azurecr.io/devops-career-agent-ui@sha256:286abe2d173a29c2f69759452d035e17d5fcd8a7e11370b6771ba9afe5a448f6"
+    },
+    "bff": {
+      "image": "acrdevopscareeruaenonprod.azurecr.io/devops-career-agent-bff@sha256:b2fdd1fdf4a9412a47df408b07c5e10eeffc0d7cd949db5aa2416facfb75a1ac"
+    },
+    "core": {
+      "image": "acrdevopscareeruaenonprod.azurecr.io/devops-career-agent-core@sha256:ccb76a509c2da96819a5639d2cf75dfe55cd051243d6110ffc3a8d0175ed9d6f"
+    }
+  },
+  "validationEvidence": {
+    "contract": "artifact://legacy/contract.json",
+    "scan": "artifact://legacy/scan.json",
+    "compatibility": "artifact://legacy/compatibility.json"
+  }
+}
