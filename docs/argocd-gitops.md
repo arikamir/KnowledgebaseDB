@@ -29,6 +29,17 @@ and the bot-branch desired-state pull request. `.github/workflows/rollback.yml`
 only prepares a reviewed Git declaration reversion. This ownership boundary is
 checked by `tests/contract/test_gitops_workflow_boundaries.py`.
 
+## AKS operator connectivity
+
+The AKS API access path is infrastructure-owned. Terraform creates the VNet and
+AKS subnet and configures `api_server_authorized_ip_ranges` from reviewed
+operator or VPN-egress CIDRs. In technical PoC mode it reuses
+`poc_operator_source_cidrs`; formal environments must provide a reviewed
+`aks_api_server_authorized_ip_ranges` value. The Terraform outputs
+`aks_connection` and `aks_api_server_fqdn` provide non-secret connection
+metadata and the kubeconfig refresh command. Do not widen the API to
+`0.0.0.0/0` to work around a local DNS or VPN problem.
+
 The `career-agent-acr-pull` Secret is platform-owned. The application overlay
 references its name, but Argo CD does not create or manage its credential data.
 

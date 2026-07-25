@@ -424,8 +424,14 @@ masked with a mock or authentication bypass.
 
 ### Technical-PoC runtime limits
 
-- The single `Standard_B2s` node uses one replica per service and `Recreate`
-  rollout semantics; this is not highly available.
+- AKS control-plane connectivity is Terraform-owned: technical PoC applies use
+  `poc_operator_source_cidrs` as `api_server_authorized_ip_ranges`; formal
+  applies require reviewed operator/VPN-egress CIDRs. The API must not be
+  opened to `0.0.0.0/0` to compensate for a local DNS or VPN issue.
+- The two `Standard_B2s` nodes use one replica per service and `Recreate`
+  rollout semantics; this is not highly available. Two nodes are required so
+  the application workloads and Argo CD control plane fit within the AKS
+  system-pool pod and CPU capacity.
 - Core currently uses an ephemeral SQLite database and the BFF's implemented
   Redis/session integrations are not registered in the current application
   factory. Azure PostgreSQL and Managed Redis are provisioned privately but are

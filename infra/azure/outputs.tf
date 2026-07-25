@@ -2,6 +2,22 @@ output "resource_group_name" { value = azurerm_resource_group.app.name }
 output "aks_cluster_name" { value = azurerm_kubernetes_cluster.app.name }
 output "acr_login_server" { value = azurerm_container_registry.app.login_server }
 output "acr_id" { value = azurerm_container_registry.app.id }
+output "aks_api_server_fqdn" { value = azurerm_kubernetes_cluster.app.fqdn }
+output "aks_api_server_authorized_ip_ranges" {
+  description = "Non-secret CIDRs Terraform permits to reach the AKS public API server."
+  value       = local.aks_api_server_authorized_ip_ranges
+}
+output "aks_connection" {
+  description = "Non-secret operator connection metadata for the Terraform-managed AKS API path."
+  value = {
+    cluster_name             = azurerm_kubernetes_cluster.app.name
+    resource_group_name      = azurerm_resource_group.app.name
+    api_server_fqdn          = azurerm_kubernetes_cluster.app.fqdn
+    authorized_ip_ranges     = local.aks_api_server_authorized_ip_ranges
+    refresh_kubeconfig       = "az aks get-credentials --resource-group ${azurerm_resource_group.app.name} --name ${azurerm_kubernetes_cluster.app.name} --overwrite-existing"
+    connectivity_expectation = "DNS resolves the public API FQDN and HTTPS returns an authentication challenge before kubectl credentials are presented."
+  }
+}
 output "aks_oidc_issuer_url" { value = azurerm_kubernetes_cluster.app.oidc_issuer_url }
 output "kubelet_identity_object_id" { value = azurerm_kubernetes_cluster.app.kubelet_identity[0].object_id }
 output "key_vault_id" { value = azurerm_key_vault.app.id }
