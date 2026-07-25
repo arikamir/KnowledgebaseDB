@@ -21,13 +21,12 @@ def test_delivery_workflow_uses_oidc_and_protected_environments() -> None:
     assert "id-token: write" in source
     assert "azure/login@v2" in source
     assert "AZURE_PUBLISHER_CLIENT_ID" in source
-    assert "AZURE_DEPLOYER_CLIENT_ID" in source
+    assert "AZURE_DEPLOYER_CLIENT_ID" not in source
     assert "environment: nonprod-publisher" in source
-    assert "environment: nonprod" in source
-    assert "environment: nonprod-recovery" in source
+    assert "environment: nonprod-release" in source
     assert "scripts/ci/build-publish.sh publish" in source
-    assert "scripts/ci/promote.sh" in source
-    assert "scripts/ci/rollback.sh recover" in source
+    assert "scripts/ci/promote.sh" not in source
+    assert "scripts/ci/rollback.sh recover" not in source
     assert "actions/download-artifact@v4" in source
 
 
@@ -46,4 +45,4 @@ def test_actions_delivery_docs_replace_jenkins_as_authority() -> None:
     assert "GitHub Actions is the CI/CD orchestrator" in docs
     assert ".github/workflows/delivery.yml" in docs
     assert "AZURE_PUBLISHER_CLIENT_ID" in docs
-    assert "AZURE_DEPLOYER_CLIENT_ID" in docs
+    assert "AZURE_DEPLOYER_CLIENT_ID" not in docs

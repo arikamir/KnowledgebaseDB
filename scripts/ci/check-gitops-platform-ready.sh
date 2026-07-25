@@ -37,7 +37,11 @@ workload_reason="three-service application overlay and probes are present"
 [[ -f "$ROOT/deploy/argocd/project.yaml" ]] || { project_status=fail; project_reason="AppProject manifest is missing"; }
 [[ -f "$ROOT/deploy/k8s/overlays/argocd-nonprod/kustomization.yaml" ]] || { workload_status=fail; workload_reason="application overlay is missing"; }
 [[ -f "$ROOT/deploy/argocd/environments/nonprod/release.json" ]] || { registry_status=fail; registry_reason="release declaration is missing"; }
-if [[ -f "$ROOT/deploy/k8s/overlays/argocd-nonprod/application-images.yaml" ]] && [[ "$(rg -c 'name: career-agent-acr-pull' "$ROOT/deploy/k8s/overlays/argocd-nonprod/application-images.yaml" || true)" -ne 3 ]]; then
+pull_secret_references=0
+if [[ -f "$ROOT/deploy/k8s/overlays/argocd-nonprod/application-images.yaml" ]]; then
+  pull_secret_references="$(grep -o 'name: career-agent-acr-pull' "$ROOT/deploy/k8s/overlays/argocd-nonprod/application-images.yaml" | wc -l | tr -d ' ')"
+fi
+if [[ "$pull_secret_references" -ne 3 ]]; then
   secret_status=fail
   secret_reason="application overlay does not reference the platform pull secret three times"
 fi
