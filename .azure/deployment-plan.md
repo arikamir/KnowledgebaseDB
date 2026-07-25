@@ -391,7 +391,7 @@ Terraform state and correcting the AGC frontend address:
 - public certificate: Let's Encrypt production certificate, contact
   `arikamir1+poc@gmail.com`, Ready in cert-manager
 - UI digest: `sha256:286abe2d173a29c2f69759452d035e17d5fcd8a7e11370b6771ba9afe5a448f6`
-- BFF digest: `sha256:831168bb45f29feb31610a86afb4b7e88661c5fe6301c9c0a3dab6393643569b`
+- BFF digest: `sha256:b2fdd1fdf4a9412a47df408b07c5e10eeffc0d7cd949db5aa2416facfb75a1ac`
 - Core digest: `sha256:ccb76a509c2da96819a5639d2cf75dfe55cd051243d6110ffc3a8d0175ed9d6f`
 
 External smoke tests returned `200` for `/`, `/runtime-config.json`, and
@@ -416,7 +416,9 @@ The authenticated browser-to-Core journey is not yet available in this PoC
 deployment: the BFF server factory does not register the Redis encrypted
 session store, Entra authorization-code client, or delegated Core token
 client. Core therefore correctly rejects unauthenticated requests with
-`401`, while the browser sees the safe retryable BFF response. This remains an
+`401`, while the browser sees the safe retryable BFF response. The login route
+now returns an explicit retryable `503 AUTH_NOT_CONFIGURED` rather than an
+unhandled `500` when the Entra service is not registered. This remains an
 implementation blocker for a complete signed-in end-to-end test and is not
 masked with a mock or authentication bypass.
 
