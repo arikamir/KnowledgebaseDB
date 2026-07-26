@@ -42,7 +42,9 @@ untrusted actor. The release bundle must pass
 `deploy/argocd/environments/nonprod/release.json` is generated.
 The pull request gate calls `scripts/ci/verify-ai-review.sh` and accepts only a
 review from a repository-approved automated identity whose `commit_id` matches
-the current pull-request head. The initial approved identity is
+the current pull-request head. A no-finding result may instead be proven by the
+approved reviewer's positive reaction to a review-request marker containing the
+exact head SHA. The initial approved identity is
 `chatgpt-codex-connector[bot]`; changing that allowlist requires a reviewed
 repository-policy update. The helper publishes the `ai/review` commit status
 for branch protection and fails closed when the review is missing, stale, or

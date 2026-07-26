@@ -39,6 +39,17 @@ if [[ -n "$request_reviewer" ]]; then
     --input - <<<"$request_payload" >/dev/null || true
 fi
 
+review_marker="<!-- ai-review-head:$head_sha -->"
+review_request_body="@codex review
+
+$review_marker"
+existing_request_id="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/comments?per_page=100" | jq -r \
+  --arg marker "$review_marker" '[.[][] | select(.body | contains($marker)) | .id] | last // empty')"
+if [[ -z "$existing_request_id" ]]; then
+  existing_request_id="$(gh api --method POST "repos/$repository/issues/$pull_request/comments" \
+    -f "body=$review_request_body" --jq '.id')"
+fi
+
 deadline=$((SECONDS + timeout_seconds))
 while ((SECONDS < deadline)); do
   review="$(gh api --paginate --slurp "repos/$repository/pulls/$pull_request/reviews?per_page=100" | jq -c \
@@ -48,6 +59,14 @@ while ((SECONDS < deadline)); do
     reviewer="$(jq -r '.reviewer' <<<"$review")"
     publish_status success "Approved automated reviewer verified current PR head"
     printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
+    exit 0
+  fi
+  reaction_reviewer="$(gh api "repos/$repository/issues/comments/$existing_request_id/reactions" | jq -r \
+    --arg reviewers "$approved_reviewers" \
+    '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+  if [[ -n "$reaction_reviewer" ]]; then
+    publish_status success "Approved automated reviewer found no current-head issues"
+    printf 'automated review: %s passed for PR %s at %s by %s (+1)\n' "$check_name" "$pull_request" "$head_sha" "$reaction_reviewer"
     exit 0
   fi
   sleep "$poll_seconds"

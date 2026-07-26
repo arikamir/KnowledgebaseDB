@@ -23,5 +23,7 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "--paginate --slurp" in script
     assert "per_page=100" in script
     assert '.commit_id == $head' in script
+    assert "ai-review-head:$head_sha" in script
+    assert 'content == "+1"' in script
     assert "statuses/$head_sha" in script
     assert "required automated review is missing or stale" in script
