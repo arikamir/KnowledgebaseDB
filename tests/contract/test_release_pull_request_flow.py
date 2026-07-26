@@ -46,6 +46,9 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "require_unchanged_head" in script
     assert "merge_verified_pull_request" in script
     assert "automated review changed before protected merge" in script
+    assert "trap reset_status_after_error EXIT" in script
+    assert "Post-review verification or protected merge failed" in script
+    assert "success_pending_merge=false" in script
     assert "head changed during automated review" in script
     assert "issues/$pull_request/comments" in script
     assert 'content == "+1"' in script

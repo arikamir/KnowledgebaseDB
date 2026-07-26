@@ -39,6 +39,17 @@ publish_status() {
     -f "target_url=$status_url" >/dev/null
 }
 
+success_pending_merge=false
+reset_status_after_error() {
+  local exit_code=$?
+  if [[ "$exit_code" -ne 0 && "$success_pending_merge" == "true" ]]; then
+    publish_status failure "Post-review verification or protected merge failed" || true
+  fi
+  trap - EXIT
+  exit "$exit_code"
+}
+trap reset_status_after_error EXIT
+
 require_unchanged_head() {
   local current_head
   current_head="$(gh api "repos/$repository/pulls/$pull_request" --jq '.head.sha')" ||
@@ -140,9 +151,13 @@ while ((SECONDS < deadline)); do
     reviewer="$(jq -r '.reviewer' <<<"$review")"
     if [[ "$(jq -r '.state' <<<"$review")" == "APPROVED" ]]; then
       require_unchanged_head
+      if [[ "$merge_after_review" == "true" ]]; then
+        success_pending_merge=true
+      fi
       publish_status success "Approved automated reviewer approved current PR head"
       write_review_evidence "$reviewer" "approved-review"
       merge_verified_pull_request "$reviewer" "approved-review"
+      success_pending_merge=false
       printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
       exit 0
     fi
@@ -154,9 +169,13 @@ while ((SECONDS < deadline)); do
     '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ -n "$reaction_reviewer" ]]; then
     require_unchanged_head
+    if [[ "$merge_after_review" == "true" ]]; then
+      success_pending_merge=true
+    fi
     publish_status success "Approved automated reviewer found no current-head issues"
     write_review_evidence "$reaction_reviewer" "no-findings-reaction"
     merge_verified_pull_request "$reaction_reviewer" "no-findings-reaction"
+    success_pending_merge=false
     printf 'automated review: %s passed for PR %s at %s by %s (+1)\n' "$check_name" "$pull_request" "$head_sha" "$reaction_reviewer"
     exit 0
   fi

@@ -56,7 +56,9 @@ other identity cannot suppress or satisfy it.
 For generated release and rollback PRs, the dedicated least-privilege review
 job re-authenticates the proof and head immediately before merging that exact
 SHA. A failed merge changes `ai/review` back to failure, so a successful status
-is not left on an unmerged delivery PR.
+is not left on an unmerged delivery PR. An exit guard also resets the status
+when any API, receipt, proof-recheck, or merge error occurs after success is
+published and before the merge completes.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
