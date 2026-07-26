@@ -26,7 +26,19 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert workflow["jobs"]["apply"]["environment"] == "infrastructure-apply"
     plan_steps = {step.get("name"): step for step in workflow["jobs"]["plan"]["steps"] if "name" in step}
     assert plan_steps["Create platform plan"]["if"] == "github.event_name != 'pull_request'"
-    assert plan_steps["Azure OIDC login for authenticated platform plan"]["if"] == "github.event_name != 'pull_request'"
+    plan_login = plan_steps["Azure OIDC login for authenticated platform plan"]
+    assert plan_login["if"] == "github.event_name != 'pull_request'"
+    assert "AZURE_INFRASTRUCTURE_PLAN_CLIENT_ID" in plan_login["with"]["client-id"]
+    plan_command = plan_steps["Create platform plan"]["run"]
+    for variable in (
+        "TF_BACKEND_RESOURCE_GROUP",
+        "TF_BACKEND_STORAGE_ACCOUNT",
+        "TF_BACKEND_CONTAINER",
+        "TF_BACKEND_KEY",
+    ):
+        assert f"vars.{variable}" in plan_command
+    assert "terraform plan -lock=false" in plan_command
+    assert workflow["jobs"]["apply"]["if"] == "github.event_name == 'workflow_dispatch' && inputs.action == 'apply'"
     assert "terraform init -backend=false" in plan_steps["Validate Terraform only"]["run"]
     assert "validation-completed" in text
     assert "terraform" in text

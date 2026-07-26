@@ -38,6 +38,10 @@ def test_github_federation_uses_immutable_repository_ids() -> None:
     assert "@${var.github_repository_id}:environment:" in identities
     assert ":environment:infrastructure-plan" in identities
     assert ":environment:infrastructure-apply" in identities
+    assert 'resource "azurerm_user_assigned_identity" "github_actions_plan"' in identities
+    assert "parent_id           = azurerm_user_assigned_identity.github_actions_plan.id" in identities
+    assert "principal_id         = azurerm_user_assigned_identity.github_actions_plan.principal_id" in identities
+    assert "role_definition_name = \"Reader\"" in identities
     assert "sub_claim_prefix" in documentation
     assert "repo:arikamir@10241590/KnowledgebaseDB@1305159236" in documentation
     assert "X-GitHub-Api-Version: 2026-03-10" in documentation

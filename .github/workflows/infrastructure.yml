@@ -52,15 +52,19 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_INFRASTRUCTURE_CLIENT_ID }}
+          client-id: ${{ secrets.AZURE_INFRASTRUCTURE_PLAN_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Create platform plan
         if: github.event_name != 'pull_request'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform init -reconfigure
-          terraform plan -out=platform.tfplan
+          terraform init -reconfigure \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ vars.TF_BACKEND_KEY }}"
+          terraform plan -lock=false -out=platform.tfplan
       - name: Record platform scope evidence
         run: |
           mkdir -p artifacts
@@ -79,7 +83,7 @@ jobs:
   apply:
     name: Approved Terraform platform apply
     needs: plan
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
     runs-on: ubuntu-24.04
     environment: infrastructure-apply
     steps:
@@ -96,7 +100,11 @@ jobs:
       - name: Apply the approved platform plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform init
+          terraform init -reconfigure \
+            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ vars.TF_BACKEND_KEY }}"
           terraform plan -out=platform.tfplan
           terraform apply -auto-approve platform.tfplan
       - name: Record platform apply evidence
