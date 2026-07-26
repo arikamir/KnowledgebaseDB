@@ -48,14 +48,24 @@ jobs:
           terraform fmt -check -recursive
           terraform init -backend=false
           terraform validate
+      - name: Azure OIDC login for authenticated platform plan
+        if: github.event_name != 'pull_request'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_INFRASTRUCTURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Create platform plan
+        if: github.event_name != 'pull_request'
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -out=platform.tfplan
+        run: |
+          terraform init -reconfigure
+          terraform plan -out=platform.tfplan
       - name: Record platform scope evidence
         run: |
           mkdir -p artifacts
-          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
-            '{workflow:"infrastructure.yml", actor:$actor, sourceRevision:$revision, environment:"infrastructure", changedResourceSet:["infra/azure"], result:"plan-created", evidenceLinks:["artifact://infrastructure-plan/"]}' \
+          jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" --arg event "${GITHUB_EVENT_NAME}" \
+            '{workflow:"infrastructure.yml", actor:$actor, sourceRevision:$revision, environment:"infrastructure", changedResourceSet:["infra/azure"], result:(if $event == "pull_request" then "validation-completed" else "plan-created" end), evidenceLinks:["artifact://infrastructure-plan/"]}' \
             > artifacts/infrastructure-scope.json
       - uses: actions/upload-artifact@v4
         with:
@@ -63,7 +73,7 @@ jobs:
           path: |
             infra/azure/platform.tfplan
             artifacts/infrastructure-scope.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90
 
   apply:

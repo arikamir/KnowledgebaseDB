@@ -24,6 +24,11 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     text = workflow_path.read_text().lower()
     assert workflow["jobs"]["plan"]["environment"] == "infrastructure-plan"
     assert workflow["jobs"]["apply"]["environment"] == "infrastructure-apply"
+    plan_steps = {step.get("name"): step for step in workflow["jobs"]["plan"]["steps"] if "name" in step}
+    assert plan_steps["Create platform plan"]["if"] == "github.event_name != 'pull_request'"
+    assert plan_steps["Azure OIDC login for authenticated platform plan"]["if"] == "github.event_name != 'pull_request'"
+    assert "terraform init -backend=false" in plan_steps["Validate Terraform only"]["run"]
+    assert "validation-completed" in text
     assert "terraform" in text
     for forbidden in ("build-publish", "promote.sh", "docker build", "argocd app sync"):
         assert forbidden not in text
