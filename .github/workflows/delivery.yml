@@ -161,7 +161,8 @@ jobs:
         run: |
           jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
             --arg pr "${{ steps.release-pr.outputs.pull-request-number }}" \
-            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"automated-review-required", evidenceLinks:["artifact://published-release/"]}' \
+            --arg reviewHead "${{ steps.release-pr.outputs.pull-request-head-sha }}" \
+            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, reviewedHead:$reviewHead, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"automated-review-required", evidenceLinks:["artifact://published-release/"]}' \
             > release-workflow-scope.json
       - uses: actions/upload-artifact@v4
         if: always()

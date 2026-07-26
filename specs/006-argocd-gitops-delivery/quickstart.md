@@ -113,11 +113,15 @@ CD rollback is not authoritative.
    scripts/ci/collect-argocd-evidence.sh \
      --release deploy/argocd/environments/nonprod/release.json \
      --automated-review-evidence artifacts/automated-review-evidence.json \
+     --review-pull-request "$REVIEW_PULL_REQUEST" \
+     --review-head-revision "$REVIEW_HEAD_REVISION" \
      --output artifacts/argocd-evidence.json
    ```
 
    Use the receipt artifact emitted by the successful current-head review gate;
-   the collector does not accept caller-supplied reviewer or pass-status values.
+   set the expected PR and head from the independently retained release or
+   rollback scope artifact. The collector does not accept caller-supplied
+   reviewer or pass-status values and rejects a receipt for another PR/head.
 
 ## 4. Verify drift and recovery
 

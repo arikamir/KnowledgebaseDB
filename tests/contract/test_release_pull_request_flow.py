@@ -13,6 +13,7 @@ def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> 
     assert "scripts/ci/verify-ai-review.sh" in workflow
     assert "AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json" in workflow
     assert "artifacts/automated-review-evidence.json" in workflow
+    assert "pull-request-head-sha" in workflow
     assert "protected `main`" in workflow
     assert "branch: main" not in workflow
 
@@ -29,6 +30,8 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "review_request_id=" in script
     assert "AI_REVIEW_EVIDENCE_OUTPUT" in script
     assert "write_review_evidence" in script
+    assert "require_unchanged_head" in script
+    assert "head changed during automated review" in script
     assert "issues/$pull_request/comments" in script
     assert "existing_request_id" not in script
     assert 'content == "+1"' in script

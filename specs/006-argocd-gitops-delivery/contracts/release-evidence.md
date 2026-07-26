@@ -37,7 +37,9 @@ It MUST include an `automatedReview` result with the approved reviewer identity,
 required status-check name, and observation time, plus a readiness result and
 validation evidence. The collector MUST consume the successful gate's receipt,
 including its current head, pull request, reviewer, and proof type, and MUST NOT
-accept caller-supplied reviewer or pass-status values. A
+accept caller-supplied reviewer or pass-status values. It MUST compare the
+receipt's pull request and head with the independently retained release or
+rollback scope. A
 rollback event MUST include its source/target revisions, actor, approval
 result, reason, and outcome. A failed rollout MUST include
 `affectedService`, `reason`, and `nextAction`; `diagnosedAt` and

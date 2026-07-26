@@ -33,6 +33,16 @@ publish_status() {
     -f "target_url=$status_url" >/dev/null
 }
 
+require_unchanged_head() {
+  local current_head
+  current_head="$(gh api "repos/$repository/pulls/$pull_request" --jq '.head.sha')" ||
+    fail "unable to recheck pull-request head"
+  if [[ "$current_head" != "$head_sha" ]]; then
+    publish_status error "Pull-request head changed during automated review" || true
+    fail "pull-request head changed during automated review"
+  fi
+}
+
 write_review_evidence() {
   local reviewer="$1"
   local proof="$2"
@@ -75,6 +85,7 @@ while ((SECONDS < deadline)); do
   if [[ -n "$review" ]]; then
     reviewer="$(jq -r '.reviewer' <<<"$review")"
     if [[ "$(jq -r '.state' <<<"$review")" == "APPROVED" ]]; then
+      require_unchanged_head
       publish_status success "Approved automated reviewer approved current PR head"
       write_review_evidence "$reviewer" "approved-review"
       printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
@@ -87,6 +98,7 @@ while ((SECONDS < deadline)); do
     --arg reviewers "$approved_reviewers" \
     '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ -n "$reaction_reviewer" ]]; then
+    require_unchanged_head
     publish_status success "Approved automated reviewer found no current-head issues"
     write_review_evidence "$reaction_reviewer" "no-findings-reaction"
     printf 'automated review: %s passed for PR %s at %s by %s (+1)\n' "$check_name" "$pull_request" "$head_sha" "$reaction_reviewer"

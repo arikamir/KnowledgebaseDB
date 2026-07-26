@@ -40,6 +40,10 @@ def test_collector_consumes_successful_gate_receipt(tmp_path: Path) -> None:
             str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
             "--automated-review-evidence",
             str(ROOT / "tests/contract/fixtures/gitops/valid-automated-review-evidence.json"),
+            "--review-pull-request",
+            "46",
+            "--review-head-revision",
+            "0123456789abcdef0123456789abcdef01234567",
             "--output",
             str(output),
         ],
@@ -76,6 +80,34 @@ def test_collector_rejects_unapproved_reviewer_receipt(tmp_path: Path) -> None:
             str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
             "--automated-review-evidence",
             str(receipt_path),
+            "--review-pull-request",
+            "46",
+            "--review-head-revision",
+            "0123456789abcdef0123456789abcdef01234567",
+            "--output",
+            str(tmp_path / "evidence.json"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "not a valid successful gate receipt" in result.stderr
+
+
+def test_collector_rejects_receipt_for_another_review_head(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [
+            str(ROOT / "scripts/ci/collect-argocd-evidence.sh"),
+            "--release",
+            str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
+            "--automated-review-evidence",
+            str(ROOT / "tests/contract/fixtures/gitops/valid-automated-review-evidence.json"),
+            "--review-pull-request",
+            "46",
+            "--review-head-revision",
+            "abcdef0123456789abcdef0123456789abcdef01",
             "--output",
             str(tmp_path / "evidence.json"),
         ],

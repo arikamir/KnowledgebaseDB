@@ -13,6 +13,8 @@ REPOSITORY="${GITHUB_REPOSITORY:-arikamir/KnowledgebaseDB}"
 BRANCH="${GITHUB_REF_NAME:-main}"
 AUTOMATED_REVIEW_EVIDENCE=""
 APPROVED_REVIEWERS="${AI_REVIEW_APPROVED_LOGINS:-chatgpt-codex-connector[bot]}"
+EXPECTED_REVIEW_PR=""
+EXPECTED_REVIEW_HEAD=""
 READINESS_STATUS="ready"
 OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HUMAN_TENANT=""
@@ -40,6 +42,8 @@ while (($#)); do
     --repository) REPOSITORY="${2:-}"; shift 2 ;;
     --branch) BRANCH="${2:-}"; shift 2 ;;
     --automated-review-evidence) AUTOMATED_REVIEW_EVIDENCE="${2:-}"; shift 2 ;;
+    --review-pull-request) EXPECTED_REVIEW_PR="${2:-}"; shift 2 ;;
+    --review-head-revision) EXPECTED_REVIEW_HEAD="${2:-}"; shift 2 ;;
     --readiness-status) READINESS_STATUS="${2:-}"; shift 2 ;;
     --human-tenant) HUMAN_TENANT="${2:-}"; shift 2 ;;
     --human-subject) HUMAN_SUBJECT="${2:-}"; shift 2 ;;
@@ -56,15 +60,18 @@ while (($#)); do
 done
 [[ -f "$RELEASE" && -n "$OUTPUT" ]] || fail "--release and --output are required"
 [[ -f "$AUTOMATED_REVIEW_EVIDENCE" ]] || fail "--automated-review-evidence must be a receipt produced by the current-head gate"
+[[ "$EXPECTED_REVIEW_PR" =~ ^[1-9][0-9]*$ ]] || fail "--review-pull-request must identify the release or rollback pull request"
+[[ "$EXPECTED_REVIEW_HEAD" =~ ^[0-9a-f]{40}$ ]] || fail "--review-head-revision must identify the independently recorded reviewed head"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
-if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" '
+if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" \
+  --argjson expectedPullRequest "$EXPECTED_REVIEW_PR" --arg expectedHead "$EXPECTED_REVIEW_HEAD" '
   ($approvedReviewers | split(",")) as $approved |
   keys == ["headRevision","observedAt","proof","pullRequest","repository","requestCommentId","reviewer","schemaVersion","status","statusCheck"] and
   .schemaVersion == 1 and .repository == $repository and
-  (.pullRequest | type == "number" and . > 0) and
+  .pullRequest == $expectedPullRequest and
   (.requestCommentId | type == "number" and . > 0) and
-  (.headRevision | test("^[0-9a-f]{40}$")) and
+  .headRevision == $expectedHead and
   (.reviewer | type == "string" and length > 0) and
   (.reviewer as $reviewer | $approved | index($reviewer) != null) and
   .status == "passed" and .statusCheck == "ai/review" and

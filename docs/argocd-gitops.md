@@ -136,6 +136,9 @@ the last-known-good state when a new revision is unhealthy.
 The collector requires `--automated-review-evidence`; pass the receipt artifact
 emitted by the successful current-head gate so retained evidence cannot
 silently attribute the review or pass status to caller-supplied values.
+Also pass `--review-pull-request` and `--review-head-revision` from the
+independently retained release or rollback scope artifact; mismatched receipts
+are rejected.
 
 ## Azure Entra access
 

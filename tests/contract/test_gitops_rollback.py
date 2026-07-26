@@ -13,6 +13,8 @@ def test_rollback_is_a_reviewed_git_reversion() -> None:
     assert "verify-ai-review.sh" in workflow
     assert "AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json" in workflow
     assert "artifacts/automated-review-evidence.json" in workflow
+    assert "pull-request-head-sha" in workflow
+    assert "rollback-review-scope.json" in workflow
     assert "Direct Argo CD rollback is not authoritative" in workflow
     assert "kubectl" not in workflow.lower()
     assert "terraform" not in workflow.lower()
