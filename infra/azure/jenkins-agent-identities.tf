@@ -66,13 +66,22 @@ resource "azurerm_federated_identity_credential" "github_actions_publisher" {
   subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_actions_environment}-publisher"
 }
 
+resource "azurerm_federated_identity_credential" "github_actions_plan" {
+  name                = "github-actions-plan-${var.environment}"
+  resource_group_name = azurerm_resource_group.app.name
+  parent_id           = azurerm_user_assigned_identity.jenkins_deployer.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:infrastructure-plan"
+}
+
 resource "azurerm_federated_identity_credential" "github_actions_deployer" {
   name                = "github-actions-deployer-${var.environment}"
   resource_group_name = azurerm_resource_group.app.name
   parent_id           = azurerm_user_assigned_identity.jenkins_deployer.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_actions_environment}"
+  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:infrastructure-apply"
 }
 
 output "jenkins_delivery_identity_manifest" {
@@ -95,6 +104,10 @@ output "github_actions_delivery_identity_manifest" {
     deployer = {
       client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id
       subject   = azurerm_federated_identity_credential.github_actions_deployer.subject
+    }
+    plan = {
+      client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id
+      subject   = azurerm_federated_identity_credential.github_actions_plan.subject
     }
     issuer   = "https://token.actions.githubusercontent.com"
     audience = "api://AzureADTokenExchange"

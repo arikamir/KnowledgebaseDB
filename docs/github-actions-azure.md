@@ -67,7 +67,9 @@ Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
 publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
 permission. Pull requests receive no Azure token. The infrastructure identity
-is gated by `infrastructure-apply` and is never referenced by delivery jobs.
+has distinct `infrastructure-plan` and `infrastructure-apply` federated
+subjects; apply remains gated by its protected environment and the identity is
+never referenced by delivery jobs.
 OIDC subjects include the immutable GitHub owner and repository IDs configured
 by `github_repository_owner_id` and `github_repository_id`, matching GitHub's
 ID-bound subject format even when repository visibility changes.

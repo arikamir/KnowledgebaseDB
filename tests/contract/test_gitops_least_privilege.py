@@ -35,6 +35,8 @@ def test_github_federation_uses_immutable_repository_ids() -> None:
     assert "github_repository_id" in variables
     assert "@${var.github_repository_owner_id}" in identities
     assert "@${var.github_repository_id}:environment:" in identities
+    assert ":environment:infrastructure-plan" in identities
+    assert ":environment:infrastructure-apply" in identities
 
 
 def test_argocd_application_set_has_no_platform_paths() -> None:
