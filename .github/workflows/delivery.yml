@@ -147,20 +147,20 @@ jobs:
           body: |
             This bot-authored pull request is the reviewed desired-state hand-off.
             It contains only the immutable UI/BFF/Core release declaration.
-            GitHub Copilot review and protected `main` are required before merge.
+            A verified current-head automated review and protected `main` are required before merge.
           labels: gitops-release
-      - name: Verify the required Copilot review status
+      - name: Verify the required automated review status
         env:
           GH_TOKEN: ${{ github.token }}
           PULL_REQUEST_NUMBER: ${{ steps.release-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          COPILOT_REVIEW_CHECK_NAME: copilot/review
-        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+          AI_REVIEW_CHECK_NAME: ai/review
+        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - name: Publish release PR scope evidence
         run: |
           jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
             --arg pr "${{ steps.release-pr.outputs.pull-request-number }}" \
-            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"copilot-review-required", evidenceLinks:["artifact://published-release/"]}' \
+            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"automated-review-required", evidenceLinks:["artifact://published-release/"]}' \
             > release-workflow-scope.json
       - uses: actions/upload-artifact@v4
         if: always()

@@ -25,14 +25,15 @@ GitHub Actions run
 - affected service, recommended next action, and diagnosis/next-action visibility timestamps
 - automation identity or Entra tenant/subject/role for human actions
 - rollback source/target revisions, reason, actor, approval result, and outcome when the event type is `rollback`
-- protected source tag, normalized release version, and Copilot review result
+- protected source tag, normalized release version, and approved automated-review result
 - readiness result and elapsed-time fields for merge-to-sync, failure
   diagnosis, and drift detection
 
 The evidence record MUST include an `automationIdentity` when `actorType` is
 `automation`, or a `humanAction` identity record when `actorType` is `human`.
-It MUST include a `copilotReview` result with the required status-check name
-and observation time, plus a readiness result and validation evidence. A
+It MUST include an `automatedReview` result with the approved reviewer identity,
+required status-check name, and observation time, plus a readiness result and
+validation evidence. A
 rollback event MUST include its source/target revisions, actor, approval
 result, reason, and outcome. A failed rollout MUST include
 `affectedService`, `reason`, and `nextAction`; `diagnosedAt` and

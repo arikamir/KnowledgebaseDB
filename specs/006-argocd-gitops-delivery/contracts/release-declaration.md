@@ -9,7 +9,7 @@ tag version must equal `releaseVersion`, and the tag must point to
 `sourceRevision`; CI must verify the effective tag-protection gate. The
 normalized version must not have been used for a different source revision in
 repository history or the protected release ledger. The generated file is
-submitted through a bot-branch pull request whose required Copilot status is
+submitted through a bot-branch pull request whose required automated-review status is
 verified before merge to protected `main`.
 
 ## Valid document

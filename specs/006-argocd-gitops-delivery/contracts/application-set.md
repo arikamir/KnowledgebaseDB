@@ -15,7 +15,7 @@ The declaration environment is explicitly `nonprod`; any other environment is
 rejected before the ApplicationSet can render an Application.
 
 The declaration reaches `main` only through a CI-created/updated bot-branch pull
-request that passes the required GitHub Copilot review and branch-protection
+request that passes the required approved current-head automated review and branch-protection
 checks. The ApplicationSet does not read that branch before merge.
 
 ## Generated Application invariants

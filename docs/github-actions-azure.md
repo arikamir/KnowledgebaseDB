@@ -18,7 +18,7 @@ Jenkins controller or ACI callback.
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
   verifies tag protection, tag/source equality, repository-lifetime SemVer
-  uniqueness, and the required GitHub Copilot review status before `main` can
+  uniqueness, and the required approved automated-review status before `main` can
   receive the declaration.
 - `.github/workflows/reusable-validate.yml` is shared by delivery and regular
   CI so a protected ref cannot skip the all-ref validation gate.
@@ -35,16 +35,18 @@ these repository/environment values before enabling the workflows:
   `infrastructure-plan`, `infrastructure-apply`, and `nonprod-recovery`, with
   required reviewers configured on release/apply/recovery environments.
 
-Configure the repository branch/tag rules so that `main` requires the Copilot
-review status check and protected `v*` tags cannot be created or moved by an
+Configure the repository branch/tag rules so that `main` requires the
+`ai/review` status check and protected `v*` tags cannot be created or moved by an
 untrusted actor. The release bundle must pass
 `scripts/ci/validate-release-bundle.sh` before
 `deploy/argocd/environments/nonprod/release.json` is generated.
-The pull request gate calls `scripts/ci/verify-copilot-review.sh`, requests
-`copilot-pull-request-reviewer[bot]`, and accepts only a Copilot review whose
-`commit_id` matches the current pull-request head. The helper publishes the
-`copilot/review` commit status for branch protection and fails closed when the
-review is missing or stale.
+The pull request gate calls `scripts/ci/verify-ai-review.sh` and accepts only a
+review from a repository-approved automated identity whose `commit_id` matches
+the current pull-request head. The initial approved identity is
+`chatgpt-codex-connector[bot]`; changing that allowlist requires a reviewed
+repository-policy update. The helper publishes the `ai/review` commit status
+for branch protection and fails closed when the review is missing, stale, or
+unapproved.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application

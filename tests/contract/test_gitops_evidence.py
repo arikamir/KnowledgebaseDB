@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_evidence_schema_is_closed_and_redaction_aware() -> None:
     schema = json.loads((ROOT / "config/gitops-evidence.schema.json").read_text())
     assert schema["additionalProperties"] is False
-    assert "copilotReview" in schema["required"]
+    assert "automatedReview" in schema["required"]
     assert "timing" in schema["required"]
 
 

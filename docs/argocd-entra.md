@@ -33,7 +33,7 @@ APPLY=true scripts/azure/apply-argocd-rbac.sh      # platform-approved apply
 The default Argo CD role is read-only. Privileged actions require an active,
 non-expired and non-revoked session with a matching tenant and group/app-role
 claim. Session expiry/revocation must be checked before a sync or approval is
-accepted. GitHub Copilot review remains an independent required status check;
+accepted. The approved automated-review gate remains an independent required status check;
 it does not replace operator authentication.
 
 ## Audit and secret handling

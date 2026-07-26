@@ -54,14 +54,14 @@ jobs:
           commit-message: "chore(rollback): restore last-known-good application declaration"
           body: |
             This is a reviewed Git declaration reversion. Direct Argo CD rollback is not authoritative.
-            Copilot review and protected `main` are required before reconciliation.
-      - name: Verify Copilot review before merge
+            A verified current-head automated review and protected `main` are required before reconciliation.
+      - name: Verify automated review before merge
         env:
           GH_TOKEN: ${{ github.token }}
           PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          COPILOT_REVIEW_CHECK_NAME: copilot/review
-        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+          AI_REVIEW_CHECK_NAME: ai/review
+        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

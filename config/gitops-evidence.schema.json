@@ -19,7 +19,7 @@
     "actorType",
     "eventType",
     "imageDigests",
-    "copilotReview",
+    "automatedReview",
     "validationEvidence",
     "readiness",
     "sync",
@@ -96,11 +96,12 @@
         "core": {"$ref": "#/$defs/image"}
       }
     },
-    "copilotReview": {
+    "automatedReview": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "statusCheck", "observedAt"],
+      "required": ["reviewer", "status", "statusCheck", "observedAt"],
       "properties": {
+        "reviewer": {"type": "string", "minLength": 1},
         "status": {"enum": ["passed", "failed", "missing", "stale"]},
         "statusCheck": {"type": "string", "minLength": 1},
         "observedAt": {"type": "string", "format": "date-time"}

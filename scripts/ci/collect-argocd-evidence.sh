@@ -11,8 +11,9 @@ AUTOMATION_IDENTITY="github-actions/application-release"
 DESIRED_STATE_REVISION=""
 REPOSITORY="${GITHUB_REPOSITORY:-arikamir/KnowledgebaseDB}"
 BRANCH="${GITHUB_REF_NAME:-main}"
-COPILOT_STATUS="passed"
-COPILOT_CHECK="copilot/review"
+AUTOMATED_REVIEWER="chatgpt-codex-connector[bot]"
+AUTOMATED_REVIEW_STATUS="passed"
+AUTOMATED_REVIEW_CHECK="ai/review"
 READINESS_STATUS="ready"
 OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HUMAN_TENANT=""
@@ -39,8 +40,9 @@ while (($#)); do
     --desired-state-revision) DESIRED_STATE_REVISION="${2:-}"; shift 2 ;;
     --repository) REPOSITORY="${2:-}"; shift 2 ;;
     --branch) BRANCH="${2:-}"; shift 2 ;;
-    --copilot-status) COPILOT_STATUS="${2:-}"; shift 2 ;;
-    --copilot-check) COPILOT_CHECK="${2:-}"; shift 2 ;;
+    --automated-reviewer) AUTOMATED_REVIEWER="${2:-}"; shift 2 ;;
+    --automated-review-status) AUTOMATED_REVIEW_STATUS="${2:-}"; shift 2 ;;
+    --automated-review-check) AUTOMATED_REVIEW_CHECK="${2:-}"; shift 2 ;;
     --readiness-status) READINESS_STATUS="${2:-}"; shift 2 ;;
     --human-tenant) HUMAN_TENANT="${2:-}"; shift 2 ;;
     --human-subject) HUMAN_SUBJECT="${2:-}"; shift 2 ;;
@@ -67,8 +69,8 @@ fi
 
 base="$(jq -c --arg observed "$OBSERVED_AT" --arg revision "$DESIRED_STATE_REVISION" \
   --arg repository "$REPOSITORY" --arg branch "$BRANCH" --arg status "$SYNC_STATUS" --arg health "$HEALTH" \
-  --arg copilot "$COPILOT_STATUS" --arg copilotCheck "$COPILOT_CHECK" --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
-  '{schemaVersion:1,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},copilotReview:{status:$copilot,statusCheck:$copilotCheck,observedAt:$observed},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
+  --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewStatus "$AUTOMATED_REVIEW_STATUS" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
+  '{schemaVersion:1,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:$reviewStatus,statusCheck:$reviewCheck,observedAt:$observed},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
 
 if [[ "$ACTOR_TYPE" == human ]]; then
   base="$(jq --arg tenant "$HUMAN_TENANT" --arg subject "$HUMAN_SUBJECT" --arg role "$HUMAN_ROLE" --arg auth "$HUMAN_AUTH" --arg observed "$OBSERVED_AT" \

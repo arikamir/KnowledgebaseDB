@@ -11,7 +11,7 @@ cluster. It is intentionally not an infrastructure controller:
    `v*` SemVer tag and source commit, validates a release bundle, and records immutable
    `repository@sha256:...` references in
    `deploy/argocd/environments/nonprod/release.json`.
-3. CI opens or updates a bot-branch pull request. The required GitHub Copilot
+3. CI opens or updates a bot-branch pull request. The required approved automated
    status and repository branch protection must pass before the release
    declaration is merged to GitHub `main`; missing or stale review status blocks
    the merge.
@@ -110,7 +110,7 @@ scripts/ci/validate-gitops-release.sh
 The file is the only release selector. Mutable tags, branch/manual releases,
 registry credentials, Entra tokens, client secrets, and other secret material
 are rejected by the validator and must never be committed. A rollback is a
-Copilot-reviewed revert of this file to the last known-good Git revision; direct
+approved-automated-review revert of this file to the last known-good Git revision; direct
 Argo CD UI/CLI rollback is not authoritative and does not invoke Terraform.
 
 ## Readiness and timing evidence
@@ -127,7 +127,7 @@ minutes), and drift detection (target: five minutes).
 
 Use `scripts/ci/collect-argocd-evidence.sh` after a release or reconciliation
 to link the CI run, desired-state revision, generated Application, image
-digests, readiness result, Copilot status, and timing fields. Failed syncs must
+digests, readiness result, automated-review status, and timing fields. Failed syncs must
 include an affected service and next action. `scripts/ci/prepare-gitops-rollback.sh`
 creates an auditable rollback intent; only the resulting reviewed PR changes
 desired state. Argo retry/self-heal/prune are bounded by the ApplicationSet's
