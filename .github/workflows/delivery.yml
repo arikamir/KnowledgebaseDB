@@ -6,10 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  actions: read
-  contents: write
-  id-token: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: application-release-nonprod
@@ -46,6 +43,10 @@ jobs:
     needs: [validate, verify-release-source]
     runs-on: ubuntu-24.04
     environment: nonprod-publisher
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -120,6 +121,13 @@ jobs:
     needs: [verify-release-source, publish]
     runs-on: ubuntu-24.04
     environment: nonprod-release
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    outputs:
+      pull-request-number: ${{ steps.release-pr.outputs.pull-request-number }}
+      pull-request-head-sha: ${{ steps.release-pr.outputs.pull-request-head-sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -146,24 +154,49 @@ jobs:
           body: |
             This bot-authored pull request is the reviewed desired-state hand-off.
             It contains only the immutable UI/BFF/Core release declaration.
-            GitHub Copilot review and protected `main` are required before merge.
+            A verified current-head automated review and protected `main` are required before merge.
           labels: gitops-release
-      - name: Verify the required Copilot review status
-        env:
-          PULL_REQUEST_NUMBER: ${{ steps.release-pr.outputs.pull-request-number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          COPILOT_REVIEW_CHECK_NAME: copilot/review
-        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - name: Publish release PR scope evidence
         run: |
           jq -n --arg actor "${GITHUB_ACTOR}" --arg revision "${GITHUB_SHA}" \
             --arg pr "${{ steps.release-pr.outputs.pull-request-number }}" \
-            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"copilot-review-required", evidenceLinks:["artifact://published-release/"]}' \
+            --arg reviewHead "${{ steps.release-pr.outputs.pull-request-head-sha }}" \
+            '{workflow:"delivery.yml", actor:$actor, sourceRevision:$revision, environment:"nonprod", pullRequest:$pr, reviewedHead:$reviewHead, changedResourceSet:["deploy/argocd/environments/nonprod/release.json"], result:"automated-review-required", evidenceLinks:["artifact://published-release/"]}' \
             > release-workflow-scope.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: application-release-scope-${{ github.run_id }}
           path: release-workflow-scope.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  verify-release-review:
+    name: Verify current-head automated review
+    needs: open-release-pr
+    runs-on: ubuntu-24.04
+    environment: nonprod-release
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the required automated review status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST_NUMBER: ${{ needs.open-release-pr.outputs.pull-request-number }}
+          EXPECTED_REVIEW_HEAD: ${{ needs.open-release-pr.outputs.pull-request-head-sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_REVIEW_CHECK_NAME: ai/review
+          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
+          AI_REVIEW_REQUESTER_LOGIN: github-actions[bot]
+          AI_REVIEW_MERGE: "true"
+        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER" "$EXPECTED_REVIEW_HEAD"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: automated-review-evidence-${{ github.run_id }}
+          path: artifacts/automated-review-evidence.json
           if-no-files-found: warn
           retention-days: 90

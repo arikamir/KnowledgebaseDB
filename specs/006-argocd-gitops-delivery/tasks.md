@@ -15,7 +15,7 @@ by every delivery story.
 - [X] T001 [P] Document the repository ownership boundary and changed-file scope for infrastructure versus application release in `docs/argocd-gitops.md`.
 - [X] T002 [P] Document required GitHub Actions environments, variables, OIDC identities, ACR coordinates, and protected-tag/branch prerequisites in `docs/github-actions-azure.md`.
 - [X] T003 [P] Add reusable release-bundle and declaration fixtures for valid, malformed, unprotected-tag, tag/source-mismatch, mutable-tag, missing-service, duplicate-version, reused-version, and credential-containing inputs under `tests/contract/fixtures/gitops/`.
-- [X] T004 [P] Record the clarified release conventions (SemVer tag, Copilot review, rollback PR, and `career-agent-acr-pull`) in `specs/006-argocd-gitops-delivery/quickstart.md`.
+- [X] T004 [P] Record the clarified release conventions (SemVer tag, approved automated review, rollback PR, and `career-agent-acr-pull`) in `specs/006-argocd-gitops-delivery/quickstart.md`.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -67,7 +67,7 @@ mutate Azure or platform resources.
 **Goal**: Publish all three immutable images, create a reviewed desired-state
 PR, and let Argo CD reconcile the exact SemVer-bound digests from GitHub `main`.
 
-**Independent Test**: Publish a valid tagged release, merge the Copilot-reviewed
+**Independent Test**: Publish a valid tagged release, merge the approved-automated-review
 release PR, observe the generated Application sync, and verify that UI/BFF/Core
 run the three declared digests while the namespace and gateway remain
 platform-owned.
@@ -75,13 +75,13 @@ platform-owned.
 ### Tests for User Story 2
 
 - [X] T020 [P] [US2] Add release declaration contract tests for protected-tag matching, tag/source equality, full SemVer normalization including prerelease/build metadata, exact service completeness, digest immutability, unique versions, and invalid fixture rejection in `tests/contract/test_release_declaration.py`.
-- [X] T021 [P] [US2] Add a GitHub workflow contract test proving that the publication job creates or updates a bot-branch release PR, verifies the Copilot required-review status through `scripts/ci/verify-copilot-review.sh`, rejects stale/missing review results, and does not bypass protected `main` in `tests/contract/test_release_pull_request_flow.py`.
+- [X] T021 [P] [US2] Add a GitHub workflow contract test proving that the publication job creates or updates a bot-branch release PR, verifies the approved current-head automated-review status through `scripts/ci/verify-ai-review.sh`, rejects unapproved/stale/missing review results, and does not bypass protected `main` in `tests/contract/test_release_pull_request_flow.py`.
 - [X] T022 [P] [US2] Add an environment-gated reconciliation test script for ApplicationSet discovery, generated Application health, three Deployment digests, and `career-agent-acr-pull` availability in `tests/integration/test_argocd_nonprod_sync.sh`.
 
 ### Implementation for User Story 2
 
 - [X] T023 [US2] Generate the SemVer-matched release declaration as the sole declaration writer from the published release manifest and CI run evidence in `scripts/ci/write-gitops-release.sh`.
-- [X] T024 [US2] Update `.github/workflows/delivery.yml` to trigger releases only from verified protected `v*` tags, reject branch/manual release attempts and nonprod targets, derive and verify the tag version, validate the release bundle and repository-lifetime version uniqueness, write `deploy/argocd/environments/nonprod/release.json`, and open/update a bot-branch pull request whose Copilot required-review status is verified before merge.
+- [X] T024 [US2] Update `.github/workflows/delivery.yml` to trigger releases only from verified protected `v*` tags, reject branch/manual release attempts and nonprod targets, derive and verify the tag version, validate the release bundle and repository-lifetime version uniqueness, write `deploy/argocd/environments/nonprod/release.json`, and open/update a bot-branch pull request whose approved current-head automated-review status is verified before merge.
 - [X] T025 [US2] Validate the single release identity and three immutable digests after T023 writes `deploy/argocd/environments/nonprod/release.json`, rejecting partial or cross-release image combinations in `scripts/ci/validate-gitops-release.sh` without generating files.
 - [X] T026 [US2] Add the versioned readiness schema and read-only check for the existing namespace, Argo CD project, `career-agent-acr-pull`, registry reachability, and required workload prerequisites in `config/gitops-readiness.schema.json`, `contracts/gitops-readiness.md`, and `scripts/ci/check-gitops-platform-ready.sh`.
 - [X] T027 [US2] Invoke the identityless release gate and readiness command at the correct workflow boundary, validate the `ready`/`blocked` JSON result, and prove the release job cannot mutate infrastructure in `.github/workflows/delivery.yml` and `tests/contract/test_gitops_readiness.py`.
@@ -102,15 +102,15 @@ previous healthy declaration, and verify recovery without a Terraform run.
 
 ### Tests for User Story 3
 
-- [X] T029 [P] [US3] Add schema and contract tests for CI-to-Argo evidence links, repository/branch, event and actor type, required automation or human identity, Copilot status-check, validation/readiness evidence, conditional affected-service/reason/next-action fields, merge-to-sync/failure-diagnosis/drift elapsed-time fields, and credential redaction in `tests/contract/test_gitops_evidence.py`.
+- [X] T029 [P] [US3] Add schema and contract tests for CI-to-Argo evidence links, repository/branch, event and actor type, required automation or human identity, approved automated-review status-check, validation/readiness evidence, conditional affected-service/reason/next-action fields, merge-to-sync/failure-diagnosis/drift elapsed-time fields, and credential redaction in `tests/contract/test_gitops_evidence.py`.
 - [X] T030 [P] [US3] Add rollback workflow contract tests proving only a reviewed release-declaration PR can change desired state and that direct Argo CD rollback is non-authoritative in `tests/contract/test_gitops_rollback.py`.
 - [X] T031 [P] [US3] Add an environment-gated failure/drift/rollback scenario covering last-known-good retention, <=2-minute failure diagnosis, <=5-minute drift detection, and recovery evidence in `tests/integration/test_argocd_rollback.sh`.
 
 ### Implementation for User Story 3
 
 - [X] T032 [US3] Define the release and reconciliation evidence schema, repository/branch, event/actor type, validation/readiness evidence, conditional rollback fields, affected-service/next-action diagnosis fields, and credential-redaction rules in `config/gitops-evidence.schema.json` and `specs/006-argocd-gitops-delivery/contracts/release-evidence.md`.
-- [X] T033 [US3] Collect GitHub run, repository/branch, protected source tag, release version, source revision, image digests, event/actor identity, Copilot review result, validation/readiness evidence, generated Application, sync/health result, rollback data when applicable, merge/sync/failure/drift timestamps, and elapsed-time evidence in `scripts/ci/collect-argocd-evidence.sh`.
-- [X] T034 [US3] Implement the reviewed declaration-reversion workflow with actor, role, reason, source/target revisions, Copilot review, and merge result in `.github/workflows/rollback.yml` and `scripts/ci/prepare-gitops-rollback.sh`.
+- [X] T033 [US3] Collect GitHub run, repository/branch, protected source tag, release version, source revision, image digests, event/actor identity, approved automated-review result, validation/readiness evidence, generated Application, sync/health result, rollback data when applicable, merge/sync/failure/drift timestamps, and elapsed-time evidence in `scripts/ci/collect-argocd-evidence.sh`.
+- [X] T034 [US3] Implement the reviewed declaration-reversion workflow with actor, role, reason, source/target revisions, approved automated review, and merge result in `.github/workflows/rollback.yml` and `scripts/ci/prepare-gitops-rollback.sh`.
 - [X] T035 [US3] Ensure Argo CD retry, self-heal, prune, and last-known-good behavior is bounded and observable in `deploy/argocd/applicationset.yaml` and `docs/argocd-gitops.md`.
 - [X] T036 [US3] Document failed-release diagnosis, drift handling, reviewed rollback, and evidence lookup in `docs/argocd-gitops.md` and `specs/006-argocd-gitops-delivery/quickstart.md`.
 
@@ -135,7 +135,7 @@ credential material.
 ### Implementation for User Story 4
 
 - [X] T039 [US4] Define non-secret Argo CD RBAC role mappings and default read-only behavior in `config/argocd-rbac-policy.yaml`.
-- [X] T040 [US4] Document the Entra OIDC application registration, redirect URI, required group/app-role claims, Copilot-independent operator roles, session/revocation policy, and secret/workload-identity injection in `docs/argocd-entra.md`.
+- [X] T040 [US4] Document the Entra OIDC application registration, redirect URI, required group/app-role claims, automated-review-independent operator roles, session/revocation policy, and secret/workload-identity injection in `docs/argocd-entra.md`.
 - [X] T041 [US4] Apply the Entra OIDC/RBAC policy through the platform-owned Argo CD bootstrap path, validate tenant/subject/role claims for privileged actions, and keep tenant secrets, client secrets, and tokens out of `deploy/argocd/` desired state in `config/argocd-oidc-rbac.yaml` and `scripts/azure/apply-argocd-rbac.sh`.
 - [X] T042 [US4] Add audit assertions for tenant, subject, resolved role, authentication result, action/event type, actor type, environment, release version, and timestamp with credential redaction in `scripts/ci/collect-argocd-evidence.sh` and `tests/contract/test_argocd_entra_rbac.py`.
 
@@ -147,11 +147,11 @@ expired-session actions are rejected, and every privileged action is attributabl
 **Purpose**: Finish documentation, traceability, and repeatable validation across
 all stories.
 
-- [X] T043 [P] Update `docs/argocd-gitops.md`, `docs/github-actions-azure.md`, and `README.md` with the final GitOps hand-off, Copilot review, secret prerequisite, rollback, and Entra operator procedures.
+- [X] T043 [P] Update `docs/argocd-gitops.md`, `docs/github-actions-azure.md`, and `README.md` with the final GitOps hand-off, approved automated review, secret prerequisite, rollback, and Entra operator procedures.
 - [X] T044 [P] Update `specs/006-argocd-gitops-delivery/quickstart.md` to match the implemented workflow commands, environment gates, evidence locations, and non-production verification steps.
 - [X] T045 [P] Add requirements-to-task traceability for every functional identifier (FR-001, FR-002, FR-003, FR-004, FR-004a, FR-004b, FR-005, FR-006, FR-006a, FR-006b, FR-006c, FR-007, FR-007a, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-014a, FR-014b, FR-014c, FR-014d, FR-014e, FR-015, FR-015a, FR-016, FR-017, FR-018) and SC-001 through SC-012 in `specs/006-argocd-gitops-delivery/requirements-traceability.md`, with explicit task IDs and verification evidence.
-- [X] T046 Run the full identityless validation suite, release-bundle/tag/Copilot contract tests, YAML/JSON parsing, shell syntax checks, Kustomize renders, and `git diff --check` from the repository root.
-- [X] T047 Run the approved non-production end-to-end sync, Git/cluster-connectivity, concurrent-release convergence, drift, failure-retention, rollback, Copilot-gate, and Entra permission checks; attach evidence links without committing secrets in `specs/006-argocd-gitops-delivery/quickstart.md`.
+- [X] T046 Run the full identityless validation suite, release-bundle/tag/automated-review contract tests, YAML/JSON parsing, shell syntax checks, Kustomize renders, and `git diff --check` from the repository root.
+- [X] T047 Run the approved non-production end-to-end sync, Git/cluster-connectivity, concurrent-release convergence, drift, failure-retention, rollback, automated-review gate, and Entra permission checks; attach evidence links without committing secrets in `specs/006-argocd-gitops-delivery/quickstart.md`.
 - [X] T048 Review all changed workflow permissions and generated manifests for least privilege, immutable digests, absence of platform resources, and credential redaction before merge in `docs/argocd-gitops.md`.
 
 ## Dependencies & Execution Order

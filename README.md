@@ -109,7 +109,7 @@ from this application release path.
 
 Use `.github/workflows/infrastructure.yml` for the separately approved
 Terraform/platform lifecycle, `.github/workflows/delivery.yml` for a protected
-SemVer-tagged image release and Copilot-reviewed desired-state PR, and
+SemVer-tagged image release and approved-automated-review desired-state PR, and
 `.github/workflows/rollback.yml` for a reviewed declaration reversion. The
 application workflow has no AKS or Terraform credentials.
 

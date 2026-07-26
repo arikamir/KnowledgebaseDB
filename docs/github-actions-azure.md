@@ -18,7 +18,7 @@ Jenkins controller or ACI callback.
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
   verifies tag protection, tag/source equality, repository-lifetime SemVer
-  uniqueness, and the required GitHub Copilot review status before `main` can
+  uniqueness, and the required approved automated-review status before `main` can
   receive the declaration.
 - `.github/workflows/reusable-validate.yml` is shared by delivery and regular
   CI so a protected ref cannot skip the all-ref validation gate.
@@ -35,14 +35,33 @@ these repository/environment values before enabling the workflows:
   `infrastructure-plan`, `infrastructure-apply`, and `nonprod-recovery`, with
   required reviewers configured on release/apply/recovery environments.
 
-Configure the repository branch/tag rules so that `main` requires the Copilot
-review status check and protected `v*` tags cannot be created or moved by an
+Configure the repository branch/tag rules so that `main` requires the
+`ai/review` status check and protected `v*` tags cannot be created or moved by an
 untrusted actor. The release bundle must pass
 `scripts/ci/validate-release-bundle.sh` before
 `deploy/argocd/environments/nonprod/release.json` is generated.
-The pull request gate calls `scripts/ci/verify-copilot-review.sh` against the
-head commit and fails closed when the required status check is missing, stale,
-or unsuccessful.
+The pull request gate calls `scripts/ci/verify-ai-review.sh` and accepts only a
+review from a repository-approved automated identity whose `commit_id` matches
+the current pull-request head. A no-finding result may instead be proven by the
+approved reviewer's positive reaction to a review-request marker containing the
+exact head SHA, or by the connector's bot-authored no-findings comment naming
+the reviewed commit together with its positive PR reaction. The initial approved identity is
+`chatgpt-codex-connector[bot]`; changing that allowlist requires a reviewed
+repository-policy update. The helper publishes the `ai/review` commit status
+for branch protection and fails closed when the review is missing, stale,
+unapproved, or contains findings.
+Retries may reuse only an exact-head request comment owned by the configured
+trusted requester that already has a positive reaction from an approved
+reviewer. Otherwise the gate creates a fresh trusted request; comments from any
+other identity cannot suppress or satisfy it.
+For generated release and rollback PRs, the dedicated least-privilege review
+job re-authenticates the proof and head immediately before merging that exact
+SHA. A failed merge changes `ai/review` back to failure, so a successful status
+is not left on an unmerged delivery PR. An exit guard always resets the status
+when any receipt or API operation fails after success is published; for
+merge-enabled runs it remains armed through proof recheck and merge completion.
+The gate also requires the head SHA output by the PR-creation job, preventing a
+push between jobs from substituting a different release or rollback head.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application

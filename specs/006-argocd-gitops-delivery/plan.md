@@ -10,7 +10,7 @@ builds, scans, and publishes the UI, BFF, and Core images, derives one SemVer
 2.0.0 release version from a verified protected `v*` Git tag, validates a
 versioned release bundle, and writes immutable image digests plus evidence to a
 release declaration. CI opens or updates a bot-branch pull request; a verified
-GitHub Copilot required-review status and protected `main` are mandatory before
+current-head automated-review status from an approved identity and protected `main` are mandatory before
 merge. Argo CD's ApplicationSet reads only the reviewed non-production
 declaration and generates an application-only Application. Argo CD reconciles
 Git-based rollback, drift, and health; a direct Argo CD UI/CLI rollback is never
@@ -27,7 +27,7 @@ identities, Entra OIDC/RBAC configuration, and the out-of-band
 **Target Platform**: Existing AKS non-production cluster in UAE North, namespace `career-agent`; platform prerequisites and the registry pull secret are provisioned independently by Terraform/platform bootstrap  
 **Project Type**: Multi-service web application with GitOps delivery configuration and separate Azure infrastructure and application-release workflows  
 **Performance Goals**: At least 95% of valid releases reach declared state within 10 minutes of protected merge; an operator can identify failed-release next action within two minutes; drift is detected within five minutes  
-**Constraints**: Application release must not invoke Terraform, obtain AKS write credentials, or mutate cluster-scoped/platform resources; images are ACR `@sha256` digests; desired state contains no credentials; only verified protected SemVer tags can start a release; Copilot review and branch protection are required; release versions cannot be reused for another source revision; namespace, gateway, and `career-agent-acr-pull` must already exist  
+**Constraints**: Application release must not invoke Terraform, obtain AKS write credentials, or mutate cluster-scoped/platform resources; images are ACR `@sha256` digests; desired state contains no credentials; only verified protected SemVer tags can start a release; approved current-head automated review and branch protection are required; release versions cannot be reused for another source revision; namespace, gateway, and `career-agent-acr-pull` must already exist
 **Scale/Scope**: Three services (UI, BFF, Core), one non-production environment initially, one generated Argo `Application`, one fixed registry-secret reference, and explicit separately reviewed expansion for later environments
 
 ## Constitution Check
@@ -42,7 +42,7 @@ identities, Entra OIDC/RBAC configuration, and the out-of-band
       recorded in `research.md`; no unresolved planning question remains.
 - [x] Every story has an independent test, including elapsed-time assertions,
       negative permission checks, drift, rollback, and evidence validation.
-- [x] Documentation and runtime guidance cover tag creation, Copilot review,
+- [x] Documentation and runtime guidance cover tag creation, approved automated review,
       pull-secret ownership, Git rollback, Entra roles, and readiness output.
 - [x] Added complexity is bounded to the release schema, ApplicationSet,
       application overlay, readiness/evidence contracts, and workflow gates
@@ -96,7 +96,7 @@ scripts/ci/
 ├── validate-gitops-release.sh
 ├── write-gitops-release.sh
 ├── check-gitops-platform-ready.sh
-├── verify-copilot-review.sh
+├── verify-ai-review.sh
 ├── collect-argocd-evidence.sh
 ├── detect-changes.sh
 ├── prepare-gitops-rollback.sh
@@ -138,7 +138,7 @@ Application's resource set.
   gate, and reject versions already associated with another source revision in
   repository history or the protected evidence store.
 - Have CI create/update a bot-branch PR. Repository branch protection requires
-  a verified GitHub Copilot required-review status before merge. Argo CD consumes
+  a verified current-head review from an approved automated identity before merge. Argo CD consumes
   only the merged `main` revision; it never reads an unreviewed branch as desired
   state.
 - Make reviewed Git reversion the only rollback authority. Argo CD reconciles
@@ -174,7 +174,7 @@ Application's resource set.
 4. Document tag/PR/review, secret ownership, readiness, first sync, timing
    evidence, drift, and Git rollback in `quickstart.md` and `docs/argocd-gitops.md`.
 5. Add contract and environment-gated tests for workflow boundaries, full
-   SemVer, Copilot PR flow, three immutable digests, readiness output, timing,
+   SemVer, approved automated-review PR flow, three immutable digests, readiness output, timing,
    drift, rollback, and Entra permissions.
 
 ### Phase 2: Implementation sequencing
@@ -185,14 +185,14 @@ The existing task list follows this order:
 2. release-bundle schema/gate, application-only overlay, pull-secret reference,
    AppProject, and ApplicationSet;
 3. explicit Terraform-only versus application-release workflow boundaries;
-4. CI publication, bot-branch PR, Copilot review, and main-branch reconciliation;
+4. CI publication, bot-branch PR, approved automated review, and main-branch reconciliation;
 5. readiness/evidence contracts and timing assertions;
 6. Git rollback, drift recovery, Entra OIDC/RBAC, and final live verification.
 
 ### Post-design Constitution Re-check
 
 **PASS**. The plan now matches every clarification: Git tags assign versions,
-protected-tag and Copilot gates are verified before promotion, Git PR reversion
+protected-tag and automated-review gates are verified before promotion, Git PR reversion
 is authoritative, the pull secret is platform-owned, Entra OIDC/RBAC remains
 platform-owned, and readiness/timing evidence are testable. The
 application workflow has no infrastructure mutation path, all four stories have

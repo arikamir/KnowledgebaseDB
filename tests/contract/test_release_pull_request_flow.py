@@ -2,21 +2,66 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_delivery_opens_a_bot_pr_and_requires_copilot_before_main() -> None:
+def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> None:
     workflow = (ROOT / ".github/workflows/delivery.yml").read_text()
+    parsed = yaml.safe_load(workflow)
     assert "peter-evans/create-pull-request" in workflow
     assert "automation/gitops-release-" in workflow
-    assert "scripts/ci/verify-copilot-review.sh" in workflow
+    assert "scripts/ci/verify-ai-review.sh" in workflow
+    assert "AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json" in workflow
+    assert "artifacts/automated-review-evidence.json" in workflow
+    assert "pull-request-head-sha" in workflow
+    assert 'verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER" "$EXPECTED_REVIEW_HEAD"' in workflow
     assert "protected `main`" in workflow
     assert "branch: main" not in workflow
+    assert "statuses" not in parsed["permissions"]
+    assert "statuses" not in parsed["jobs"]["open-release-pr"]["permissions"]
+    assert parsed["jobs"]["verify-release-review"]["permissions"]["statuses"] == "write"
+    assert parsed["jobs"]["verify-release-review"]["permissions"]["contents"] == "write"
+    assert parsed["jobs"]["verify-release-review"]["needs"] == "open-release-pr"
+    assert "AI_REVIEW_MERGE: \"true\"" in workflow
 
 
-def test_copilot_gate_is_status_check_based_and_fails_closed() -> None:
-    script = (ROOT / "scripts/ci/verify-copilot-review.sh").read_text()
-    assert "check-runs" in script
-    assert "required Copilot status check is missing" in script
-    assert "not successful" in script
+def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
+    script = (ROOT / "scripts/ci/verify-ai-review.sh").read_text()
+    assert "chatgpt-codex-connector[bot]" in script
+    assert "AI_REVIEW_APPROVED_LOGINS" in script
+    assert "pulls/$pull_request/reviews" in script
+    assert "--paginate --slurp" in script
+    assert "per_page=100" in script
+    assert "reactions?per_page=100" in script
+    assert '.commit_id == $head' in script
+    assert "ai-review-head:$head_sha" in script
+    assert "review_request_id=" in script
+    assert "AI_REVIEW_REQUESTER_LOGIN" in script
+    assert ".body == $body and .user.login == $requester" in script
+    assert "candidate_request_id/reactions" in script
+    assert "completed_reviewer" in script
+    assert "AI_REVIEW_EVIDENCE_OUTPUT" in script
+    assert "write_review_evidence" in script
+    assert "require_unchanged_head" in script
+    assert "merge_verified_pull_request" in script
+    assert "automated review changed before protected merge" in script
+    assert "trap reset_status_after_error EXIT" in script
+    assert "Post-review receipt, verification, or merge failed" in script
+    assert "success_pending_completion=true" in script
+    assert "success_pending_completion=false" in script
+    assert "head changed during automated review" in script
+    assert "head does not match the expected release or rollback head" in script
+    assert "issues/$pull_request/comments" in script
+    assert 'content == "+1"' in script
+    assert "Codex Review: Didn" in script
+    assert '"no-findings-comment"' in script
+    assert "issues/$pull_request/reactions" in script
+    assert '"APPROVED"' in script
+    assert '"CHANGES_REQUESTED"' in script
+    assert '"DISMISSED"' in script
+    assert "reported findings for current PR head" in script
+    assert "statuses/$head_sha" in script
+    assert "required automated review is missing or stale" in script

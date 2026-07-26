@@ -13,14 +13,19 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   prepare:
     name: Prepare reviewed declaration reversion
     runs-on: ubuntu-24.04
     environment: nonprod-recovery
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pull-request-number: ${{ steps.rollback-pr.outputs.pull-request-number }}
+      pull-request-head-sha: ${{ steps.rollback-pr.outputs.pull-request-head-sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,16 +58,48 @@ jobs:
           commit-message: "chore(rollback): restore last-known-good application declaration"
           body: |
             This is a reviewed Git declaration reversion. Direct Argo CD rollback is not authoritative.
-            Copilot review and protected `main` are required before reconciliation.
-      - name: Verify Copilot review before merge
-        env:
-          PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          COPILOT_REVIEW_CHECK_NAME: copilot/review
-        run: scripts/ci/verify-copilot-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+            A verified current-head automated review and protected `main` are required before reconciliation.
+      - name: Record rollback review scope
+        run: |
+          jq -n \
+            --arg pr "${{ steps.rollback-pr.outputs.pull-request-number }}" \
+            --arg reviewHead "${{ steps.rollback-pr.outputs.pull-request-head-sha }}" \
+            '{pullRequest:$pr,reviewedHead:$reviewHead}' \
+            > artifacts/rollback-review-scope.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: rollback-evidence-${{ github.run_id }}
-          path: artifacts/rollback.json
+          path: |
+            artifacts/rollback.json
+            artifacts/rollback-review-scope.json
+          if-no-files-found: warn
+
+  verify-rollback-review:
+    name: Verify current-head automated rollback review
+    needs: prepare
+    runs-on: ubuntu-24.04
+    environment: nonprod-recovery
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify automated review before merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST_NUMBER: ${{ needs.prepare.outputs.pull-request-number }}
+          EXPECTED_REVIEW_HEAD: ${{ needs.prepare.outputs.pull-request-head-sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_REVIEW_CHECK_NAME: ai/review
+          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
+          AI_REVIEW_REQUESTER_LOGIN: github-actions[bot]
+          AI_REVIEW_MERGE: "true"
+        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER" "$EXPECTED_REVIEW_HEAD"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollback-review-evidence-${{ github.run_id }}
+          path: artifacts/automated-review-evidence.json
           if-no-files-found: warn

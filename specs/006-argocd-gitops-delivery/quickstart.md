@@ -82,10 +82,10 @@ CD rollback is not authoritative.
    The bundle schema and repository-lifetime version uniqueness gate must pass
    before a declaration can be generated.
 3. CI opens or updates a bot-branch release pull request. The required GitHub
-   Copilot status and normal branch protection must pass before merge; a missing,
-   stale, or failed Copilot result blocks the release.
-   The gate is verified with `scripts/ci/verify-copilot-review.sh` against the
-   pull-request head commit.
+   approved automated-review status and normal branch protection must pass
+   before merge; a missing, stale, unapproved, or failed result blocks the
+   release. The gate is verified with `scripts/ci/verify-ai-review.sh` against
+   the pull-request head commit.
 4. Review the normalized SemVer, source SHA, three digests, explicit `nonprod`
    environment, and
    evidence, then merge through protected `main`. Do not run `kubectl apply` or
@@ -112,8 +112,16 @@ CD rollback is not authoritative.
    ```bash
    scripts/ci/collect-argocd-evidence.sh \
      --release deploy/argocd/environments/nonprod/release.json \
+     --automated-review-evidence artifacts/automated-review-evidence.json \
+     --review-pull-request "$REVIEW_PULL_REQUEST" \
+     --review-head-revision "$REVIEW_HEAD_REVISION" \
      --output artifacts/argocd-evidence.json
    ```
+
+   Use the receipt artifact emitted by the successful current-head review gate;
+   set the expected PR and head from the independently retained release or
+   rollback scope artifact. The collector does not accept caller-supplied
+   reviewer or pass-status values and rejects a receipt for another PR/head.
 
 ## 4. Verify drift and recovery
 
@@ -146,7 +154,7 @@ and operations notes.
 - Missing service, malformed SemVer, mutable image tag, unsupported environment,
   duplicate/reused release version, or invalid bundle evidence: CI rejects the
   declaration before merge.
-- A branch push, unprotected tag, tag/source mismatch, or failed/missing/stale Copilot review/branch
+- A branch push, unprotected tag, tag/source mismatch, or failed/missing/stale/unapproved automated review/branch
   protection review cannot create a deployable release declaration.
 - Missing registry access, unavailable Git/cluster, or unhealthy rollout: Argo
   CD reports a non-successful state and retains the last healthy application.

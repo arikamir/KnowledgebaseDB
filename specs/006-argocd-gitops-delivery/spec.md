@@ -10,7 +10,7 @@
 ### Session 2026-07-25
 
 - Q: Which source should assign the SemVer release version? → A: CI derives it from a protected SemVer Git tag (for example, `v1.2.3`) and requires the release declaration to match.
-- Q: How should CI place the validated release declaration onto protected `main`? → A: CI opens or updates a release pull request from a bot branch, and GitHub Copilot performs the required automated review before the protected merge.
+- Q: How should CI place the validated release declaration onto protected `main`? → A: CI opens or updates a release pull request from a bot branch, and an approved automated reviewer must review the current pull-request head before the protected merge. The initial approved identity is `chatgpt-codex-connector[bot]`; additional identities require a separately reviewed repository-policy change.
 - Q: What should be the authoritative rollback mechanism? → A: Revert the release declaration to the previous healthy revision through a reviewed GitHub pull request and let Argo CD reconcile it.
 - Q: How should AKS obtain the private ACR images referenced by Argo CD? → A: A namespace-scoped `imagePullSecret` is provisioned out of band and referenced by the application workloads; its credential data is never stored in Git.
 - Q: What fixed name should the application workloads reference for the out-of-band registry secret? → A: `career-agent-acr-pull`.
@@ -100,7 +100,7 @@ As a delivery operator, I want to authenticate through the organization's Azure 
 - **FR-004b**: CI MUST derive the release version from a protected SemVer 2 Git tag, verify that the tag protection state and tag commit match the build source revision, validate and expose that version before a release can be promoted, and write the matching value to the release declaration; malformed, reused, or ambiguous release versions MUST be rejected.
 - **FR-005**: The release process MUST represent each environment's desired application state in the main GitHub repository in a version-controlled, reviewable source of truth.
 - **FR-006**: Argo CD MUST watch the main branch of the GitHub repository and reconcile the selected environment without requiring a manual workload mutation.
-- **FR-006a**: Application release changes MUST enter the GitHub `main` branch through a CI-created or CI-updated pull request, a verified GitHub Copilot required-review status, and the repository's branch-protection controls; the merge gate MUST reject a pull request when the Copilot review/status is absent, stale, or unsuccessful. Argo CD MUST NOT use a separate unreviewed desired-state repository as its release source.
+- **FR-006a**: Application release changes MUST enter the GitHub `main` branch through a CI-created or CI-updated pull request, a verified required automated-review status, and the repository's branch-protection controls; the merge gate MUST accept only an approved automated reviewer whose review targets the current pull-request head, including a head-bound positive no-finding reaction or bot-authored no-finding result naming the reviewed commit, and MUST reject an absent, stale, unapproved, or unsuccessful review/status. Argo CD MUST NOT use a separate unreviewed desired-state repository as its release source.
 - **FR-006b**: An Argo CD ApplicationSet MUST discover the reviewed non-production release declaration from GitHub `main` and generate the application release resource from that declaration.
 - **FR-006c**: The generated application release resource MUST target only the UI, BFF, and Core application overlay; it MUST NOT manage the cluster namespace, gateway, private load balancer, Terraform resources, or other platform-owned resources.
 - **FR-007**: Releases MUST use immutable image digests; mutable tags alone MUST NOT be accepted as the deployment identity.
@@ -160,11 +160,11 @@ As a delivery operator, I want to authenticate through the organization's Azure 
 - Infrastructure provisioning remains owned by Terraform and its existing approval and evidence gates; Argo CD does not become an infrastructure controller.
 - The main GitHub repository is accessible to Argo CD and its `main` branch is protected by review and branch controls appropriate for the environment.
 - CI updates the application release declaration in the main GitHub repository after artifact validation; Argo CD observes and reconciles that committed change.
-- CI opens or updates the release pull request from a bot branch, and GitHub Copilot is configured as the required automated reviewer for that pull request before it can merge to `main`.
+- CI opens or updates the release pull request from a bot branch, and an approved automated reviewer is configured as the required current-head reviewer before it can merge to `main`.
 - SemVer 2.0.0 is the release-versioning standard; image digests remain the immutable deployment references even when a release also has a human-readable version.
 - Protected SemVer Git tags are the authoritative release-version input; the tag version and `releaseVersion` in the declaration must match exactly after an optional `v` prefix is normalized.
 - A release version is unique for the lifetime of the repository: the same normalized SemVer MUST NOT be reused for a different source revision, even after an older declaration is reverted or replaced.
-- GitHub tag protection and the Copilot required-review status are externally configured repository gates; CI MUST verify their effective status and fail closed when either gate cannot be proven.
+- GitHub tag protection and the approved automated-review status are externally configured repository gates; CI MUST verify their effective status and fail closed when either gate cannot be proven.
 - The first implementation targets the non-production UAE North environment and supports a later promotion path without coupling application release to infrastructure changes.
 - Registry access, cluster access, and Git access are provided through dedicated least-privilege identities; long-lived credentials are not stored in application manifests.
 - The platform workflow provisions and rotates the namespace-scoped ACR `imagePullSecret` named `career-agent-acr-pull` out of band without changing the release declaration; the application overlay references only that name.

@@ -36,7 +36,8 @@
 - GitHub `main` is explicitly the sole Argo CD desired-state source in FR-005,
   FR-006, and FR-006a; the ApplicationSet boundary is explicit in FR-006b and
   FR-006c; release changes remain subject to repository review and branch
-  protection.
+  protection. FR-006a requires an approved automated reviewer to review the
+  current pull-request head and fails closed for stale or unapproved identities.
 - SemVer 2.0.0 is explicitly required for release identity and traceability in
   FR-004a, FR-004b, FR-009, and FR-015; immutable image digests remain the
   deployment integrity reference. Protected-tag provenance, repository-lifetime

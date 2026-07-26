@@ -83,9 +83,11 @@ the deployment identity even when SemVer is used for human-facing history.
 
 **Decision**: The application workflow builds/scans/publishes images and opens or
 updates a bot-branch pull request containing the reviewed GitOps declaration.
-GitHub Copilot is a required automated review gate before protected `main` can
-change; CI verifies the required Copilot status check and fails closed when it
-is missing or stale. Terraform remains the only infrastructure provisioner. Argo CD performs
+An approved automated identity is a required review gate before protected
+`main` can change; CI verifies that the review targets the current
+pull-request head, publishes the required `ai/review` status, and fails closed
+when it is missing, stale, or from an unapproved identity. Terraform remains
+the only infrastructure provisioner. Argo CD performs
 application reconciliation after the declaration lands on protected `main`; the
 application workflow does not obtain AKS credentials, run Terraform, publish
 application images from the infrastructure workflow, or apply platform

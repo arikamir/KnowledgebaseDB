@@ -23,21 +23,25 @@ def test_release_bundle_schema_carries_provenance_and_evidence() -> None:
     assert set(schema["properties"]["services"]["required"]) == {"ui", "bff", "core"}
 
 
-def test_evidence_schema_exposes_failure_diagnosis_and_copilot_gate() -> None:
+def test_evidence_schema_exposes_failure_diagnosis_and_automated_review_gate() -> None:
     schema = json.loads((ROOT / "config/gitops-evidence.schema.json").read_text())
     assert {
         "repository",
         "branch",
         "actorType",
         "eventType",
-        "copilotReview",
+        "automatedReview",
         "validationEvidence",
         "readiness",
     } <= set(schema["required"])
     assert {"automationIdentity", "humanAction", "rollback"} <= set(schema["properties"])
-    assert schema["properties"]["copilotReview"]["required"] == [
+    assert schema["properties"]["automatedReview"]["required"] == [
+        "reviewer",
         "status",
         "statusCheck",
+        "headRevision",
+        "pullRequest",
+        "proof",
         "observedAt",
     ]
     conditional_requirements = [
@@ -120,8 +124,19 @@ def test_delivery_workflow_only_starts_release_validation_from_v_tags() -> None:
     assert "scripts/ci/derive-release-version.sh" in workflow
 
 
-def test_copilot_review_helper_fails_closed_on_missing_or_unsuccessful_check() -> None:
-    script = (ROOT / "scripts/ci/verify-copilot-review.sh").read_text()
-    assert "required Copilot status check is missing" in script
-    assert "conclusion" in script
-    assert "not successful" in script
+def test_automated_review_helper_fails_closed_on_missing_or_stale_review() -> None:
+    script = (ROOT / "scripts/ci/verify-ai-review.sh").read_text()
+    assert "chatgpt-codex-connector[bot]" in script
+    assert "AI_REVIEW_APPROVED_LOGINS" in script
+    assert "--paginate --slurp" in script
+    assert ".commit_id == $head" in script
+    assert "ai-review-head:$head_sha" in script
+    assert "review_request_id=" in script
+    assert ".body == $body and .user.login == $requester" in script
+    assert "candidate_request_id/reactions" in script
+    assert '"CHANGES_REQUESTED"' in script
+    assert '"DISMISSED"' in script
+    assert '"no-findings-comment"' in script
+    assert "reported current-head findings" in script
+    assert "required automated review is missing or stale" in script
+    assert "publish_status failure" in script

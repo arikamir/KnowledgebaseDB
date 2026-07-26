@@ -1,9 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v1.json",
+  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v2.json",
   "title": "Career Agent GitOps release evidence",
   "type": "object",
-  "additionalProperties": false,
   "additionalProperties": false,
   "required": [
     "schemaVersion",
@@ -19,7 +18,7 @@
     "actorType",
     "eventType",
     "imageDigests",
-    "copilotReview",
+    "automatedReview",
     "validationEvidence",
     "readiness",
     "sync",
@@ -63,7 +62,7 @@
     }
   ],
   "properties": {
-    "schemaVersion": {"const": 1},
+    "schemaVersion": {"const": 2},
     "environment": {"const": "nonprod"},
     "ciRunId": {"type": "string", "minLength": 1},
     "sourceTag": {
@@ -96,13 +95,17 @@
         "core": {"$ref": "#/$defs/image"}
       }
     },
-    "copilotReview": {
+    "automatedReview": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "statusCheck", "observedAt"],
+      "required": ["reviewer", "status", "statusCheck", "headRevision", "pullRequest", "proof", "observedAt"],
       "properties": {
+        "reviewer": {"type": "string", "minLength": 1},
         "status": {"enum": ["passed", "failed", "missing", "stale"]},
         "statusCheck": {"type": "string", "minLength": 1},
+        "headRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "pullRequest": {"type": "integer", "minimum": 1},
+        "proof": {"enum": ["approved-review", "no-findings-reaction", "no-findings-comment"]},
         "observedAt": {"type": "string", "format": "date-time"}
       }
     },

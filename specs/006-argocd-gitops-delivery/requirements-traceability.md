@@ -14,7 +14,7 @@ to planned tasks and its verification point. Task completion remains tracked in
 | FR-004b | T003, T006-T007, T020, T024 | Protected-tag/source-match tests |
 | FR-005 | T010, T021, T024-T025 | Git desired-state and PR-flow tests |
 | FR-006 | T010, T024, T028 | ApplicationSet and reconciliation tests |
-| FR-006a | T017, T021, T024 | Copilot and protected-main tests |
+| FR-006a | T017, T021, T024 | Approved automated-review and protected-main tests |
 | FR-006b | T010-T011, T024, T028 | ApplicationSet discovery tests |
 | FR-006c | T008-T011 | Kustomize and resource-boundary tests |
 | FR-007 | T005-T006, T008, T011, T020, T025 | Digest validation and render tests |

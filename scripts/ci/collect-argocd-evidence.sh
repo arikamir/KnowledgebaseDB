@@ -11,8 +11,10 @@ AUTOMATION_IDENTITY="github-actions/application-release"
 DESIRED_STATE_REVISION=""
 REPOSITORY="${GITHUB_REPOSITORY:-arikamir/KnowledgebaseDB}"
 BRANCH="${GITHUB_REF_NAME:-main}"
-COPILOT_STATUS="passed"
-COPILOT_CHECK="copilot/review"
+AUTOMATED_REVIEW_EVIDENCE=""
+APPROVED_REVIEWERS="${AI_REVIEW_APPROVED_LOGINS:-chatgpt-codex-connector[bot]}"
+EXPECTED_REVIEW_PR=""
+EXPECTED_REVIEW_HEAD=""
 READINESS_STATUS="ready"
 OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HUMAN_TENANT=""
@@ -39,8 +41,9 @@ while (($#)); do
     --desired-state-revision) DESIRED_STATE_REVISION="${2:-}"; shift 2 ;;
     --repository) REPOSITORY="${2:-}"; shift 2 ;;
     --branch) BRANCH="${2:-}"; shift 2 ;;
-    --copilot-status) COPILOT_STATUS="${2:-}"; shift 2 ;;
-    --copilot-check) COPILOT_CHECK="${2:-}"; shift 2 ;;
+    --automated-review-evidence) AUTOMATED_REVIEW_EVIDENCE="${2:-}"; shift 2 ;;
+    --review-pull-request) EXPECTED_REVIEW_PR="${2:-}"; shift 2 ;;
+    --review-head-revision) EXPECTED_REVIEW_HEAD="${2:-}"; shift 2 ;;
     --readiness-status) READINESS_STATUS="${2:-}"; shift 2 ;;
     --human-tenant) HUMAN_TENANT="${2:-}"; shift 2 ;;
     --human-subject) HUMAN_SUBJECT="${2:-}"; shift 2 ;;
@@ -56,8 +59,79 @@ while (($#)); do
   esac
 done
 [[ -f "$RELEASE" && -n "$OUTPUT" ]] || fail "--release and --output are required"
+[[ -f "$AUTOMATED_REVIEW_EVIDENCE" ]] || fail "--automated-review-evidence must be a receipt produced by the current-head gate"
+[[ "$EXPECTED_REVIEW_PR" =~ ^[1-9][0-9]*$ ]] || fail "--review-pull-request must identify the release or rollback pull request"
+[[ "$EXPECTED_REVIEW_HEAD" =~ ^[0-9a-f]{40}$ ]] || fail "--review-head-revision must identify the independently recorded reviewed head"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
+command -v gh >/dev/null 2>&1 || fail "gh CLI is required to authenticate automated review evidence"
+if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" \
+  --argjson expectedPullRequest "$EXPECTED_REVIEW_PR" --arg expectedHead "$EXPECTED_REVIEW_HEAD" '
+  ($approvedReviewers | split(",")) as $approved |
+  keys == ["headRevision","observedAt","proof","proofCommentId","pullRequest","repository","reviewer","schemaVersion","status","statusCheck"] and
+  .schemaVersion == 1 and .repository == $repository and
+  .pullRequest == $expectedPullRequest and
+  (.proofCommentId | type == "number" and . > 0) and
+  .headRevision == $expectedHead and
+  (.reviewer | type == "string" and length > 0) and
+  (.reviewer as $reviewer | $approved | index($reviewer) != null) and
+  .status == "passed" and .statusCheck == "ai/review" and
+  (.proof == "approved-review" or .proof == "no-findings-reaction" or .proof == "no-findings-comment") and
+  (.observedAt | type == "string" and length > 0)
+' "$AUTOMATED_REVIEW_EVIDENCE" >/dev/null; then
+  fail "automated review evidence is not a valid successful gate receipt for this repository"
+fi
+AUTOMATED_REVIEWER="$(jq -r '.reviewer' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_CHECK="$(jq -r '.statusCheck' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_OBSERVED_AT="$(jq -r '.observedAt' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_HEAD="$(jq -r '.headRevision' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_PR="$(jq -r '.pullRequest' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_PROOF="$(jq -r '.proof' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_COMMENT_ID="$(jq -r '.proofCommentId' "$AUTOMATED_REVIEW_EVIDENCE")"
+
+CURRENT_REVIEW_HEAD="$(gh api "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR" --jq '.head.sha')" ||
+  fail "unable to authenticate the reviewed pull-request head"
+[[ "$CURRENT_REVIEW_HEAD" == "$EXPECTED_REVIEW_HEAD" ]] ||
+  fail "authenticated pull-request head does not match the retained review scope"
+STATUS_STATE="$(gh api "repos/$REPOSITORY/commits/$EXPECTED_REVIEW_HEAD/status" --jq \
+  '.statuses | map(select(.context == "ai/review")) | first | .state // empty')" ||
+  fail "unable to authenticate the automated-review status"
+[[ "$STATUS_STATE" == "success" ]] ||
+  fail "authenticated ai/review status is not successful"
+
+if [[ "$AUTOMATED_REVIEW_PROOF" == "approved-review" ]]; then
+  AUTHENTICATED_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR/reviews?per_page=100" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" --arg head "$EXPECTED_REVIEW_HEAD" \
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state}] | last | select(.state == "APPROVED") | .reviewer // empty')"
+elif [[ "$AUTOMATED_REVIEW_PROOF" == "no-findings-reaction" ]]; then
+  EXPECTED_MARKER="@codex review
+
+<!-- ai-review-head:$EXPECTED_REVIEW_HEAD -->"
+  COMMENT_BODY="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID" --jq '.body')" ||
+    fail "unable to authenticate the automated-review request comment"
+  [[ "$COMMENT_BODY" == "$EXPECTED_MARKER" ]] ||
+    fail "authenticated review request does not match the retained head"
+  AUTHENTICATED_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions?per_page=100" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" \
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+else
+  RESULT_COMMENT="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID")" ||
+    fail "unable to authenticate the no-findings result comment"
+  RESULT_COMMENT_REVIEWER="$(jq -r '.user.login' <<<"$RESULT_COMMENT")"
+  RESULT_COMMENT_BODY="$(jq -r '.body' <<<"$RESULT_COMMENT")"
+  ISSUE_REACTION_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/issues/$EXPECTED_REVIEW_PR/reactions?per_page=100" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" \
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+  if [[ "$RESULT_COMMENT_REVIEWER" == "$ISSUE_REACTION_REVIEWER" &&
+        "$RESULT_COMMENT_BODY" == *"Codex Review: Didn't find any major issues."* &&
+        "$RESULT_COMMENT_BODY" == *"**Reviewed commit:** \`${EXPECTED_REVIEW_HEAD:0:10}\`"* ]]; then
+    AUTHENTICATED_REVIEWER="$RESULT_COMMENT_REVIEWER"
+  else
+    AUTHENTICATED_REVIEWER=""
+  fi
+fi
+[[ "$AUTHENTICATED_REVIEWER" == "$AUTOMATED_REVIEWER" ]] ||
+  fail "GitHub does not authenticate the reviewer and proof in the gate receipt"
 if [[ "$ACTOR_TYPE" == human ]]; then
   [[ -n "$HUMAN_TENANT" && -n "$HUMAN_SUBJECT" ]] || fail "human evidence requires Entra tenant and subject"
 fi
@@ -67,8 +141,10 @@ fi
 
 base="$(jq -c --arg observed "$OBSERVED_AT" --arg revision "$DESIRED_STATE_REVISION" \
   --arg repository "$REPOSITORY" --arg branch "$BRANCH" --arg status "$SYNC_STATUS" --arg health "$HEALTH" \
-  --arg copilot "$COPILOT_STATUS" --arg copilotCheck "$COPILOT_CHECK" --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
-  '{schemaVersion:1,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},copilotReview:{status:$copilot,statusCheck:$copilotCheck,observedAt:$observed},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
+  --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg reviewObserved "$AUTOMATED_REVIEW_OBSERVED_AT" \
+  --arg reviewHead "$AUTOMATED_REVIEW_HEAD" --argjson reviewPr "$AUTOMATED_REVIEW_PR" --arg reviewProof "$AUTOMATED_REVIEW_PROOF" \
+  --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
+  '{schemaVersion:2,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
 
 if [[ "$ACTOR_TYPE" == human ]]; then
   base="$(jq --arg tenant "$HUMAN_TENANT" --arg subject "$HUMAN_SUBJECT" --arg role "$HUMAN_ROLE" --arg auth "$HUMAN_AUTH" --arg observed "$OBSERVED_AT" \
