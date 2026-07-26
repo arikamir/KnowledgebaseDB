@@ -128,5 +128,6 @@ def test_automated_review_helper_fails_closed_on_missing_or_stale_review() -> No
     assert "--paginate --slurp" in script
     assert ".commit_id == $head" in script
     assert "ai-review-head:$head_sha" in script
+    assert "reported current-head findings" in script
     assert "required automated review is missing or stale" in script
     assert "publish_status failure" in script

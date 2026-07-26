@@ -57,9 +57,13 @@ while ((SECONDS < deadline)); do
     '($reviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED")) | {reviewer:.user.login,state,commit_id,submitted_at}] | last // empty')"
   if [[ -n "$review" ]]; then
     reviewer="$(jq -r '.reviewer' <<<"$review")"
-    publish_status success "Approved automated reviewer verified current PR head"
-    printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
-    exit 0
+    if [[ "$(jq -r '.state' <<<"$review")" == "APPROVED" ]]; then
+      publish_status success "Approved automated reviewer approved current PR head"
+      printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
+      exit 0
+    fi
+    publish_status failure "Approved automated reviewer reported current-head findings"
+    fail "approved automated reviewer reported findings for current PR head"
   fi
   reaction_reviewer="$(gh api "repos/$repository/issues/comments/$existing_request_id/reactions" | jq -r \
     --arg reviewers "$approved_reviewers" \

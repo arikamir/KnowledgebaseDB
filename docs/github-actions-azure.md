@@ -47,8 +47,8 @@ approved reviewer's positive reaction to a review-request marker containing the
 exact head SHA. The initial approved identity is
 `chatgpt-codex-connector[bot]`; changing that allowlist requires a reviewed
 repository-policy update. The helper publishes the `ai/review` commit status
-for branch protection and fails closed when the review is missing, stale, or
-unapproved.
+for branch protection and fails closed when the review is missing, stale,
+unapproved, or contains findings.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
