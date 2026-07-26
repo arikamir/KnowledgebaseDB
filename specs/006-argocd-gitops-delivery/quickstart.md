@@ -112,8 +112,12 @@ CD rollback is not authoritative.
    ```bash
    scripts/ci/collect-argocd-evidence.sh \
      --release deploy/argocd/environments/nonprod/release.json \
+     --automated-reviewer chatgpt-codex-connector[bot] \
      --output artifacts/argocd-evidence.json
    ```
+
+   Pass the identity reported by the successful current-head review gate; the
+   collector deliberately has no reviewer default.
 
 ## 4. Verify drift and recovery
 

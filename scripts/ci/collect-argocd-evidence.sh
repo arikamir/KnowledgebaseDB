@@ -11,7 +11,7 @@ AUTOMATION_IDENTITY="github-actions/application-release"
 DESIRED_STATE_REVISION=""
 REPOSITORY="${GITHUB_REPOSITORY:-arikamir/KnowledgebaseDB}"
 BRANCH="${GITHUB_REF_NAME:-main}"
-AUTOMATED_REVIEWER="chatgpt-codex-connector[bot]"
+AUTOMATED_REVIEWER=""
 AUTOMATED_REVIEW_STATUS="passed"
 AUTOMATED_REVIEW_CHECK="ai/review"
 READINESS_STATUS="ready"
@@ -58,6 +58,7 @@ while (($#)); do
   esac
 done
 [[ -f "$RELEASE" && -n "$OUTPUT" ]] || fail "--release and --output are required"
+[[ -n "$AUTOMATED_REVIEWER" ]] || fail "--automated-reviewer must identify the reviewer that passed the current-head gate"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
 if [[ "$ACTOR_TYPE" == human ]]; then

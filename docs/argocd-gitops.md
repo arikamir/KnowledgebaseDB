@@ -133,6 +133,9 @@ creates an auditable rollback intent; only the resulting reviewed PR changes
 desired state. Argo retry/self-heal/prune are bounded by the ApplicationSet's
 five-attempt, three-minute backoff policy, and the previous Git declaration is
 the last-known-good state when a new revision is unhealthy.
+The collector requires `--automated-reviewer`; pass the identity reported by
+the successful current-head gate so retained evidence cannot silently attribute
+the review to a default identity.
 
 ## Azure Entra access
 
