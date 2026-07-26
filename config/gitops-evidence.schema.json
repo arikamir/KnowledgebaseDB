@@ -98,11 +98,14 @@
     "automatedReview": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reviewer", "status", "statusCheck", "observedAt"],
+      "required": ["reviewer", "status", "statusCheck", "headRevision", "pullRequest", "proof", "observedAt"],
       "properties": {
         "reviewer": {"type": "string", "minLength": 1},
         "status": {"enum": ["passed", "failed", "missing", "stale"]},
         "statusCheck": {"type": "string", "minLength": 1},
+        "headRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "pullRequest": {"type": "integer", "minimum": 1},
+        "proof": {"enum": ["approved-review", "no-findings-reaction"]},
         "observedAt": {"type": "string", "format": "date-time"}
       }
     },

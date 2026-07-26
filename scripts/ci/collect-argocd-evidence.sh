@@ -11,9 +11,8 @@ AUTOMATION_IDENTITY="github-actions/application-release"
 DESIRED_STATE_REVISION=""
 REPOSITORY="${GITHUB_REPOSITORY:-arikamir/KnowledgebaseDB}"
 BRANCH="${GITHUB_REF_NAME:-main}"
-AUTOMATED_REVIEWER=""
-AUTOMATED_REVIEW_STATUS="passed"
-AUTOMATED_REVIEW_CHECK="ai/review"
+AUTOMATED_REVIEW_EVIDENCE=""
+APPROVED_REVIEWERS="${AI_REVIEW_APPROVED_LOGINS:-chatgpt-codex-connector[bot]}"
 READINESS_STATUS="ready"
 OBSERVED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 HUMAN_TENANT=""
@@ -40,9 +39,7 @@ while (($#)); do
     --desired-state-revision) DESIRED_STATE_REVISION="${2:-}"; shift 2 ;;
     --repository) REPOSITORY="${2:-}"; shift 2 ;;
     --branch) BRANCH="${2:-}"; shift 2 ;;
-    --automated-reviewer) AUTOMATED_REVIEWER="${2:-}"; shift 2 ;;
-    --automated-review-status) AUTOMATED_REVIEW_STATUS="${2:-}"; shift 2 ;;
-    --automated-review-check) AUTOMATED_REVIEW_CHECK="${2:-}"; shift 2 ;;
+    --automated-review-evidence) AUTOMATED_REVIEW_EVIDENCE="${2:-}"; shift 2 ;;
     --readiness-status) READINESS_STATUS="${2:-}"; shift 2 ;;
     --human-tenant) HUMAN_TENANT="${2:-}"; shift 2 ;;
     --human-subject) HUMAN_SUBJECT="${2:-}"; shift 2 ;;
@@ -58,9 +55,30 @@ while (($#)); do
   esac
 done
 [[ -f "$RELEASE" && -n "$OUTPUT" ]] || fail "--release and --output are required"
-[[ -n "$AUTOMATED_REVIEWER" ]] || fail "--automated-reviewer must identify the reviewer that passed the current-head gate"
+[[ -f "$AUTOMATED_REVIEW_EVIDENCE" ]] || fail "--automated-review-evidence must be a receipt produced by the current-head gate"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
+if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" '
+  ($approvedReviewers | split(",")) as $approved |
+  keys == ["headRevision","observedAt","proof","pullRequest","repository","requestCommentId","reviewer","schemaVersion","status","statusCheck"] and
+  .schemaVersion == 1 and .repository == $repository and
+  (.pullRequest | type == "number" and . > 0) and
+  (.requestCommentId | type == "number" and . > 0) and
+  (.headRevision | test("^[0-9a-f]{40}$")) and
+  (.reviewer | type == "string" and length > 0) and
+  (.reviewer as $reviewer | $approved | index($reviewer) != null) and
+  .status == "passed" and .statusCheck == "ai/review" and
+  (.proof == "approved-review" or .proof == "no-findings-reaction") and
+  (.observedAt | type == "string" and length > 0)
+' "$AUTOMATED_REVIEW_EVIDENCE" >/dev/null; then
+  fail "automated review evidence is not a valid successful gate receipt for this repository"
+fi
+AUTOMATED_REVIEWER="$(jq -r '.reviewer' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_CHECK="$(jq -r '.statusCheck' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_OBSERVED_AT="$(jq -r '.observedAt' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_HEAD="$(jq -r '.headRevision' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_PR="$(jq -r '.pullRequest' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_PROOF="$(jq -r '.proof' "$AUTOMATED_REVIEW_EVIDENCE")"
 if [[ "$ACTOR_TYPE" == human ]]; then
   [[ -n "$HUMAN_TENANT" && -n "$HUMAN_SUBJECT" ]] || fail "human evidence requires Entra tenant and subject"
 fi
@@ -70,8 +88,10 @@ fi
 
 base="$(jq -c --arg observed "$OBSERVED_AT" --arg revision "$DESIRED_STATE_REVISION" \
   --arg repository "$REPOSITORY" --arg branch "$BRANCH" --arg status "$SYNC_STATUS" --arg health "$HEALTH" \
-  --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewStatus "$AUTOMATED_REVIEW_STATUS" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
-  '{schemaVersion:2,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:$reviewStatus,statusCheck:$reviewCheck,observedAt:$observed},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
+  --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg reviewObserved "$AUTOMATED_REVIEW_OBSERVED_AT" \
+  --arg reviewHead "$AUTOMATED_REVIEW_HEAD" --argjson reviewPr "$AUTOMATED_REVIEW_PR" --arg reviewProof "$AUTOMATED_REVIEW_PROOF" \
+  --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
+  '{schemaVersion:2,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
 
 if [[ "$ACTOR_TYPE" == human ]]; then
   base="$(jq --arg tenant "$HUMAN_TENANT" --arg subject "$HUMAN_SUBJECT" --arg role "$HUMAN_ROLE" --arg auth "$HUMAN_AUTH" --arg observed "$OBSERVED_AT" \

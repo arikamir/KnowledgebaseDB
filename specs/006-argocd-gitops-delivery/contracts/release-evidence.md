@@ -35,8 +35,9 @@ The evidence record MUST include an `automationIdentity` when `actorType` is
 `automation`, or a `humanAction` identity record when `actorType` is `human`.
 It MUST include an `automatedReview` result with the approved reviewer identity,
 required status-check name, and observation time, plus a readiness result and
-validation evidence. The collector MUST require the reviewer identity that
-actually passed the current-head gate and MUST NOT substitute a default. A
+validation evidence. The collector MUST consume the successful gate's receipt,
+including its current head, pull request, reviewer, and proof type, and MUST NOT
+accept caller-supplied reviewer or pass-status values. A
 rollback event MUST include its source/target revisions, actor, approval
 result, reason, and outcome. A failed rollout MUST include
 `affectedService`, `reason`, and `nextAction`; `diagnosedAt` and

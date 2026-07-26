@@ -39,6 +39,9 @@ def test_evidence_schema_exposes_failure_diagnosis_and_automated_review_gate() -
         "reviewer",
         "status",
         "statusCheck",
+        "headRevision",
+        "pullRequest",
+        "proof",
         "observedAt",
     ]
     conditional_requirements = [

@@ -8,6 +8,7 @@ approved_reviewers="${AI_REVIEW_APPROVED_LOGINS:-chatgpt-codex-connector[bot]}"
 request_reviewer="${AI_REVIEW_REQUEST_LOGIN:-}"
 timeout_seconds="${AI_REVIEW_TIMEOUT_SECONDS:-600}"
 poll_seconds="${AI_REVIEW_POLL_SECONDS:-10}"
+evidence_output="${AI_REVIEW_EVIDENCE_OUTPUT:-}"
 
 fail() {
   printf 'automated review: %s\n' "$1" >&2
@@ -30,6 +31,26 @@ publish_status() {
     -f "context=$check_name" \
     -f "description=$description" \
     -f "target_url=$status_url" >/dev/null
+}
+
+write_review_evidence() {
+  local reviewer="$1"
+  local proof="$2"
+  local observed_at
+  [[ -n "$evidence_output" ]] || return 0
+  observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  mkdir -p "$(dirname "$evidence_output")"
+  jq -n \
+    --arg repository "$repository" \
+    --argjson pullRequest "$pull_request" \
+    --arg headRevision "$head_sha" \
+    --arg reviewer "$reviewer" \
+    --arg statusCheck "$check_name" \
+    --arg proof "$proof" \
+    --arg observedAt "$observed_at" \
+    --argjson requestCommentId "$review_request_id" \
+    '{schemaVersion:1,repository:$repository,pullRequest:$pullRequest,headRevision:$headRevision,reviewer:$reviewer,status:"passed",statusCheck:$statusCheck,proof:$proof,requestCommentId:$requestCommentId,observedAt:$observedAt}' \
+    > "$evidence_output"
 }
 
 publish_status pending "Waiting for approved automated review"
@@ -55,6 +76,7 @@ while ((SECONDS < deadline)); do
     reviewer="$(jq -r '.reviewer' <<<"$review")"
     if [[ "$(jq -r '.state' <<<"$review")" == "APPROVED" ]]; then
       publish_status success "Approved automated reviewer approved current PR head"
+      write_review_evidence "$reviewer" "approved-review"
       printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
       exit 0
     fi
@@ -66,6 +88,7 @@ while ((SECONDS < deadline)); do
     '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ -n "$reaction_reviewer" ]]; then
     publish_status success "Approved automated reviewer found no current-head issues"
+    write_review_evidence "$reaction_reviewer" "no-findings-reaction"
     printf 'automated review: %s passed for PR %s at %s by %s (+1)\n' "$check_name" "$pull_request" "$head_sha" "$reaction_reviewer"
     exit 0
   fi

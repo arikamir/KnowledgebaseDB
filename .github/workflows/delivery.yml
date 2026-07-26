@@ -155,6 +155,7 @@ jobs:
           PULL_REQUEST_NUMBER: ${{ steps.release-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           AI_REVIEW_CHECK_NAME: ai/review
+          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
         run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - name: Publish release PR scope evidence
         run: |
@@ -166,6 +167,8 @@ jobs:
         if: always()
         with:
           name: application-release-scope-${{ github.run_id }}
-          path: release-workflow-scope.json
+          path: |
+            release-workflow-scope.json
+            artifacts/automated-review-evidence.json
           if-no-files-found: warn
           retention-days: 90

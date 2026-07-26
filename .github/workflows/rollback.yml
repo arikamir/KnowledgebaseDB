@@ -61,10 +61,13 @@ jobs:
           PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           AI_REVIEW_CHECK_NAME: ai/review
+          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
         run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: rollback-evidence-${{ github.run_id }}
-          path: artifacts/rollback.json
+          path: |
+            artifacts/rollback.json
+            artifacts/automated-review-evidence.json
           if-no-files-found: warn
