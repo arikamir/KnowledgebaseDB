@@ -26,6 +26,8 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "ai-review-head:$head_sha" in script
     assert 'content == "+1"' in script
     assert '"APPROVED"' in script
+    assert '"CHANGES_REQUESTED"' in script
+    assert '"DISMISSED"' in script
     assert "reported findings for current PR head" in script
     assert "statuses/$head_sha" in script
     assert "required automated review is missing or stale" in script

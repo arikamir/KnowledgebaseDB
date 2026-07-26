@@ -54,7 +54,7 @@ deadline=$((SECONDS + timeout_seconds))
 while ((SECONDS < deadline)); do
   review="$(gh api --paginate --slurp "repos/$repository/pulls/$pull_request/reviews?per_page=100" | jq -c \
     --arg reviewers "$approved_reviewers" --arg head "$head_sha" \
-    '($reviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED")) | {reviewer:.user.login,state,commit_id,submitted_at}] | last // empty')"
+    '($reviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state,commit_id,submitted_at}] | last // empty')"
   if [[ -n "$review" ]]; then
     reviewer="$(jq -r '.reviewer' <<<"$review")"
     if [[ "$(jq -r '.state' <<<"$review")" == "APPROVED" ]]; then

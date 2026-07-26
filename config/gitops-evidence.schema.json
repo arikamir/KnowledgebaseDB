@@ -1,9 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v1.json",
+  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v2.json",
   "title": "Career Agent GitOps release evidence",
   "type": "object",
-  "additionalProperties": false,
   "additionalProperties": false,
   "required": [
     "schemaVersion",
@@ -63,7 +62,7 @@
     }
   ],
   "properties": {
-    "schemaVersion": {"const": 1},
+    "schemaVersion": {"const": 2},
     "environment": {"const": "nonprod"},
     "ciRunId": {"type": "string", "minLength": 1},
     "sourceTag": {

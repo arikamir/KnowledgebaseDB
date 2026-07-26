@@ -126,7 +126,7 @@ actionable failure reason and next action with diagnosis visibility (target: two
 minutes), and drift detection (target: five minutes).
 
 Use `scripts/ci/collect-argocd-evidence.sh` after a release or reconciliation
-to link the CI run, desired-state revision, generated Application, image
+to produce a schema-v2 record linking the CI run, desired-state revision, generated Application, image
 digests, readiness result, automated-review status, and timing fields. Failed syncs must
 include an affected service and next action. `scripts/ci/prepare-gitops-rollback.sh`
 creates an auditable rollback intent; only the resulting reviewed PR changes

@@ -72,6 +72,7 @@ system or exported audit store.
 
 | Field | Type | Required | Meaning |
 | --- | --- | --- | --- |
+| `schemaVersion` | integer | yes | `2`; this version uses the vendor-neutral `automatedReview` result. |
 | `repository` | string | yes | GitHub repository associated with the evidence. |
 | `branch` | string | yes | Desired-state branch associated with the evidence. |
 | `eventType` | enum | yes | `release`, `sync`, or `rollback`. |

@@ -15,6 +15,8 @@ GitHub Actions run
 
 ## Required evidence fields
 
+- schema version `2` (the version that introduces the vendor-neutral
+  `automatedReview` record)
 - CI run ID and repository/branch
 - event type (`release`, `sync`, or `rollback`) and actor type (`automation` or `human`)
 - source revision and release version
