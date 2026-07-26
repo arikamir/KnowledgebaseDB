@@ -78,9 +78,20 @@ review_marker="<!-- ai-review-head:$head_sha -->"
 review_request_body="@codex review
 
 $review_marker"
-review_request_id="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/comments?per_page=100" | jq -r \
+trusted_request_ids="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/comments?per_page=100" | jq -r \
   --arg body "$review_request_body" --arg requester "$requester_login" \
-  '[.[][] | select(.body == $body and .user.login == $requester) | .id] | last // empty')"
+  '[.[][] | select(.body == $body and .user.login == $requester) | .id] | reverse[]')"
+review_request_id=""
+while IFS= read -r candidate_request_id; do
+  [[ -n "$candidate_request_id" ]] || continue
+  completed_reviewer="$(gh api "repos/$repository/issues/comments/$candidate_request_id/reactions" | jq -r \
+    --arg reviewers "$approved_reviewers" \
+    '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+  if [[ -n "$completed_reviewer" ]]; then
+    review_request_id="$candidate_request_id"
+    break
+  fi
+done <<<"$trusted_request_ids"
 if [[ -z "$review_request_id" ]]; then
   created_request="$(gh api --method POST "repos/$repository/issues/$pull_request/comments" \
     -f "body=$review_request_body" --jq '{id,user:.user.login}')"

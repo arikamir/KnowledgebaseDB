@@ -50,8 +50,9 @@ repository-policy update. The helper publishes the `ai/review` commit status
 for branch protection and fails closed when the review is missing, stale,
 unapproved, or contains findings.
 Retries may reuse only an exact-head request comment owned by the configured
-trusted requester; comments from any other identity cannot suppress or satisfy
-the gate.
+trusted requester that already has a positive reaction from an approved
+reviewer. Otherwise the gate creates a fresh trusted request; comments from any
+other identity cannot suppress or satisfy it.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
