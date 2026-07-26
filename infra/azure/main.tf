@@ -66,7 +66,9 @@ resource "azurerm_kubernetes_cluster" "app" {
   }
 
   role_based_access_control_enabled = true
-  api_server_authorized_ip_ranges   = local.aks_api_server_authorized_ip_ranges
+  api_server_access_profile {
+    authorized_ip_ranges = local.aks_api_server_authorized_ip_ranges
+  }
   network_profile {
     network_plugin = "azure"
     network_policy = "azure"

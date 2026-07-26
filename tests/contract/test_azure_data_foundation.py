@@ -64,7 +64,8 @@ def test_aks_control_plane_access_is_terraform_managed() -> None:
     variables = source("variables.tf")
     outputs = source("outputs.tf")
 
-    assert "api_server_authorized_ip_ranges" in main
+    assert "api_server_access_profile" in main
+    assert "authorized_ip_ranges = local.aks_api_server_authorized_ip_ranges" in main
     assert "var.aks_api_server_authorized_ip_ranges" in main
     assert "var.poc_operator_source_cidrs" in main
     assert "Formal environments must provide at least one reviewed AKS API authorized CIDR." in main
