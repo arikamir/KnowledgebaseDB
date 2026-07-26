@@ -68,6 +68,9 @@ bound to the repository and protected environment subjects. The application
 publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
 permission. Pull requests receive no Azure token. The infrastructure identity
 is gated by `infrastructure-apply` and is never referenced by delivery jobs.
+OIDC subjects include the immutable GitHub owner and repository IDs configured
+by `github_repository_owner_id` and `github_repository_id`, matching GitHub's
+ID-bound subject format even when repository visibility changes.
 
 The first Azure apply after creating the GitHub repository must include
 `github_repository = "owner/name"`. Do not place a client secret, kubeconfig,

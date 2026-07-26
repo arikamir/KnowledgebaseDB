@@ -67,12 +67,24 @@ jobs:
           enable-AzPSSession: false
       - name: Login to ACR
         run: az acr login --name "${ACR_LOGIN_SERVER%%.*}"
-      - name: Install image tooling
+      - name: Install jq
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.59.1/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.59.1
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/v1.18.1/install.sh | sudo sh -s -- -b /usr/local/bin v1.18.1
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          cache: true
+          version: v0.70.0
+      - name: Install Syft
+        id: setup-syft
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          syft-version: v1.18.1
+      - name: Add Syft to PATH
+        env:
+          SYFT_CMD: ${{ steps.setup-syft.outputs.cmd }}
+        run: dirname "$SYFT_CMD" >> "$GITHUB_PATH"
       - name: Build, scan, and publish digest-pinned images
         env:
           RELEASE_DIR: artifacts/release

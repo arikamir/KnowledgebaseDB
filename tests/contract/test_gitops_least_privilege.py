@@ -19,6 +19,24 @@ def test_release_workflow_and_application_manifests_remain_least_privilege() -> 
         assert "kubeconfig" not in text
 
 
+def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
+    workflow = (ROOT / ".github/workflows/delivery.yml").read_text()
+    assert "aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514" in workflow
+    assert "anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610" in workflow
+    assert "version: v0.70.0" in workflow
+    assert "syft-version: v1.18.1" in workflow
+    assert "curl -sSfL https://raw.githubusercontent.com/aquasecurity" not in workflow
+
+
+def test_github_federation_uses_immutable_repository_ids() -> None:
+    identities = (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
+    variables = (ROOT / "infra/azure/variables.tf").read_text()
+    assert "github_repository_owner_id" in variables
+    assert "github_repository_id" in variables
+    assert "@${var.github_repository_owner_id}" in identities
+    assert "@${var.github_repository_id}:environment:" in identities
+
+
 def test_argocd_application_set_has_no_platform_paths() -> None:
     text = (ROOT / "deploy/argocd/applicationset.yaml").read_text().lower()
     assert "infra/" not in text
