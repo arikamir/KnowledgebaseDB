@@ -9,6 +9,7 @@ request_reviewer="${AI_REVIEW_REQUEST_LOGIN:-}"
 timeout_seconds="${AI_REVIEW_TIMEOUT_SECONDS:-600}"
 poll_seconds="${AI_REVIEW_POLL_SECONDS:-10}"
 evidence_output="${AI_REVIEW_EVIDENCE_OUTPUT:-}"
+requester_login="${AI_REVIEW_REQUESTER_LOGIN:-}"
 
 fail() {
   printf 'automated review: %s\n' "$1" >&2
@@ -19,6 +20,9 @@ fail() {
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ && "$poll_seconds" =~ ^[1-9][0-9]*$ ]] || fail "review timeout and polling interval must be positive integers"
 command -v gh >/dev/null 2>&1 || fail "gh CLI is required"
 command -v jq >/dev/null 2>&1 || fail "jq is required"
+if [[ -z "$requester_login" ]]; then
+  requester_login="$(gh api user --jq '.login')" || fail "unable to resolve authenticated review requester"
+fi
 
 head_sha="$(gh api "repos/$repository/pulls/$pull_request" --jq '.head.sha')" || fail "unable to read pull request"
 status_url="https://github.com/$repository/pull/$pull_request"
@@ -74,8 +78,16 @@ review_marker="<!-- ai-review-head:$head_sha -->"
 review_request_body="@codex review
 
 $review_marker"
-review_request_id="$(gh api --method POST "repos/$repository/issues/$pull_request/comments" \
-  -f "body=$review_request_body" --jq '.id')"
+review_request_id="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/comments?per_page=100" | jq -r \
+  --arg body "$review_request_body" --arg requester "$requester_login" \
+  '[.[][] | select(.body == $body and .user.login == $requester) | .id] | last // empty')"
+if [[ -z "$review_request_id" ]]; then
+  created_request="$(gh api --method POST "repos/$repository/issues/$pull_request/comments" \
+    -f "body=$review_request_body" --jq '{id,user:.user.login}')"
+  [[ "$(jq -r '.user' <<<"$created_request")" == "$requester_login" ]] ||
+    fail "created review request is not owned by the trusted requester"
+  review_request_id="$(jq -r '.id' <<<"$created_request")"
+fi
 
 deadline=$((SECONDS + timeout_seconds))
 while ((SECONDS < deadline)); do

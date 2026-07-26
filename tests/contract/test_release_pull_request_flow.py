@@ -35,12 +35,13 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert '.commit_id == $head' in script
     assert "ai-review-head:$head_sha" in script
     assert "review_request_id=" in script
+    assert "AI_REVIEW_REQUESTER_LOGIN" in script
+    assert ".body == $body and .user.login == $requester" in script
     assert "AI_REVIEW_EVIDENCE_OUTPUT" in script
     assert "write_review_evidence" in script
     assert "require_unchanged_head" in script
     assert "head changed during automated review" in script
     assert "issues/$pull_request/comments" in script
-    assert "existing_request_id" not in script
     assert 'content == "+1"' in script
     assert '"APPROVED"' in script
     assert '"CHANGES_REQUESTED"' in script

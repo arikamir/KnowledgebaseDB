@@ -93,6 +93,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           AI_REVIEW_CHECK_NAME: ai/review
           AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
+          AI_REVIEW_REQUESTER_LOGIN: github-actions[bot]
         run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - uses: actions/upload-artifact@v4
         if: always()

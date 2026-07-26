@@ -49,6 +49,9 @@ exact head SHA. The initial approved identity is
 repository-policy update. The helper publishes the `ai/review` commit status
 for branch protection and fails closed when the review is missing, stale,
 unapproved, or contains findings.
+Retries may reuse only an exact-head request comment owned by the configured
+trusted requester; comments from any other identity cannot suppress or satisfy
+the gate.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
