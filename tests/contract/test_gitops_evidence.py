@@ -31,6 +31,7 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert 'commits/$EXPECTED_REVIEW_HEAD/status' in script
     assert 'issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions' in script
     assert 'issues/$EXPECTED_REVIEW_PR/reactions' in script
+    assert "reactions?per_page=100" in script
     assert "credential-shaped content is forbidden" in script
     assert "humanAction" in script
     assert "rollback" in script
@@ -47,7 +48,7 @@ case "$*" in
   *"pulls/46 --jq .head.sha"*) printf '%s\\n' '0123456789abcdef0123456789abcdef01234567' ;;
   *"commits/0123456789abcdef0123456789abcdef01234567/status"*) printf '%s\\n' 'success' ;;
   *"issues/comments/5085272253 --jq .body"*) printf '%s\\n\\n%s\\n' '@codex review' '<!-- ai-review-head:0123456789abcdef0123456789abcdef01234567 -->' ;;
-  *"issues/comments/5085272253/reactions"*) printf '%s\\n' '[{"content":"+1","user":{"login":"chatgpt-codex-connector[bot]"}}]' ;;
+  *"issues/comments/5085272253/reactions"*) printf '%s\\n' '[[{"content":"+1","user":{"login":"chatgpt-codex-connector[bot]"}}]]' ;;
   *) exit 1 ;;
 esac
 """

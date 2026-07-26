@@ -94,16 +94,16 @@ merge_verified_pull_request() {
       --arg reviewers "$approved_reviewers" --arg head "$head_sha" \
       '($reviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state}] | last | select(.state == "APPROVED") | .reviewer // empty')"
   elif [[ "$proof" == "no-findings-reaction" ]]; then
-    authenticated_reviewer="$(gh api "repos/$repository/issues/comments/$review_request_id/reactions" | jq -r \
+    authenticated_reviewer="$(gh api --paginate --slurp "repos/$repository/issues/comments/$review_request_id/reactions?per_page=100" | jq -r \
       --arg reviewers "$approved_reviewers" \
-      '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+      '($reviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   else
     result_comment="$(gh api "repos/$repository/issues/comments/$proof_comment_id")"
     result_comment_reviewer="$(jq -r '.user.login' <<<"$result_comment")"
     result_comment_body="$(jq -r '.body' <<<"$result_comment")"
-    issue_reaction_reviewer="$(gh api "repos/$repository/issues/$pull_request/reactions" | jq -r \
+    issue_reaction_reviewer="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/reactions?per_page=100" | jq -r \
       --arg reviewers "$approved_reviewers" \
-      '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+      '($reviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
     if [[ "$result_comment_reviewer" == "$reviewer" &&
           "$issue_reaction_reviewer" == "$reviewer" &&
           "$result_comment_body" == *"Codex Review: Didn't find any major issues."* &&
@@ -143,9 +143,9 @@ trusted_request_ids="$(gh api --paginate --slurp "repos/$repository/issues/$pull
 review_request_id=""
 while IFS= read -r candidate_request_id; do
   [[ -n "$candidate_request_id" ]] || continue
-  completed_reviewer="$(gh api "repos/$repository/issues/comments/$candidate_request_id/reactions" | jq -r \
+  completed_reviewer="$(gh api --paginate --slurp "repos/$repository/issues/comments/$candidate_request_id/reactions?per_page=100" | jq -r \
     --arg reviewers "$approved_reviewers" \
-    '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+    '($reviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ -n "$completed_reviewer" ]]; then
     review_request_id="$candidate_request_id"
     break
@@ -179,9 +179,9 @@ while ((SECONDS < deadline)); do
     publish_status failure "Approved automated reviewer reported current-head findings"
     fail "approved automated reviewer reported findings for current PR head"
   fi
-  reaction_reviewer="$(gh api "repos/$repository/issues/comments/$review_request_id/reactions" | jq -r \
+  reaction_reviewer="$(gh api --paginate --slurp "repos/$repository/issues/comments/$review_request_id/reactions?per_page=100" | jq -r \
     --arg reviewers "$approved_reviewers" \
-    '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+    '($reviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ -n "$reaction_reviewer" ]]; then
     require_unchanged_head
     success_pending_completion=true
@@ -199,9 +199,9 @@ while ((SECONDS < deadline)); do
   if [[ -n "$no_findings_result" ]]; then
     no_findings_reviewer="$(jq -r '.reviewer' <<<"$no_findings_result")"
     no_findings_comment_id="$(jq -r '.id' <<<"$no_findings_result")"
-    issue_reaction_reviewer="$(gh api "repos/$repository/issues/$pull_request/reactions" | jq -r \
+    issue_reaction_reviewer="$(gh api --paginate --slurp "repos/$repository/issues/$pull_request/reactions?per_page=100" | jq -r \
       --arg reviewers "$approved_reviewers" \
-      '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+      '($reviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
     if [[ "$issue_reaction_reviewer" == "$no_findings_reviewer" ]]; then
       require_unchanged_head
       success_pending_completion=true

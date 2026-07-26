@@ -34,6 +34,7 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "pulls/$pull_request/reviews" in script
     assert "--paginate --slurp" in script
     assert "per_page=100" in script
+    assert "reactions?per_page=100" in script
     assert '.commit_id == $head' in script
     assert "ai-review-head:$head_sha" in script
     assert "review_request_id=" in script

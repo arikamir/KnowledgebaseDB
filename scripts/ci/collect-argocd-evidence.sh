@@ -111,17 +111,17 @@ elif [[ "$AUTOMATED_REVIEW_PROOF" == "no-findings-reaction" ]]; then
     fail "unable to authenticate the automated-review request comment"
   [[ "$COMMENT_BODY" == "$EXPECTED_MARKER" ]] ||
     fail "authenticated review request does not match the retained head"
-  AUTHENTICATED_REVIEWER="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions" | jq -r \
+  AUTHENTICATED_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions?per_page=100" | jq -r \
     --arg approvedReviewers "$APPROVED_REVIEWERS" \
-    '($approvedReviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
 else
   RESULT_COMMENT="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID")" ||
     fail "unable to authenticate the no-findings result comment"
   RESULT_COMMENT_REVIEWER="$(jq -r '.user.login' <<<"$RESULT_COMMENT")"
   RESULT_COMMENT_BODY="$(jq -r '.body' <<<"$RESULT_COMMENT")"
-  ISSUE_REACTION_REVIEWER="$(gh api "repos/$REPOSITORY/issues/$EXPECTED_REVIEW_PR/reactions" | jq -r \
+  ISSUE_REACTION_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/issues/$EXPECTED_REVIEW_PR/reactions?per_page=100" | jq -r \
     --arg approvedReviewers "$APPROVED_REVIEWERS" \
-    '($approvedReviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
   if [[ "$RESULT_COMMENT_REVIEWER" == "$ISSUE_REACTION_REVIEWER" &&
         "$RESULT_COMMENT_BODY" == *"Codex Review: Didn't find any major issues."* &&
         "$RESULT_COMMENT_BODY" == *"**Reviewed commit:** \`${EXPECTED_REVIEW_HEAD:0:10}\`"* ]]; then
