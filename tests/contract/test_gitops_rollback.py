@@ -21,6 +21,8 @@ def test_rollback_is_a_reviewed_git_reversion() -> None:
     assert "statuses" not in parsed["permissions"]
     assert "statuses" not in parsed["jobs"]["prepare"]["permissions"]
     assert parsed["jobs"]["verify-rollback-review"]["permissions"]["statuses"] == "write"
+    assert parsed["jobs"]["verify-rollback-review"]["permissions"]["contents"] == "write"
+    assert "AI_REVIEW_MERGE: \"true\"" in workflow
     assert "Direct Argo CD rollback is not authoritative" in workflow
     assert "kubectl" not in workflow.lower()
     assert "terraform" not in workflow.lower()

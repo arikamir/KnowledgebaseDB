@@ -22,7 +22,9 @@ def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> 
     assert "statuses" not in parsed["permissions"]
     assert "statuses" not in parsed["jobs"]["open-release-pr"]["permissions"]
     assert parsed["jobs"]["verify-release-review"]["permissions"]["statuses"] == "write"
+    assert parsed["jobs"]["verify-release-review"]["permissions"]["contents"] == "write"
     assert parsed["jobs"]["verify-release-review"]["needs"] == "open-release-pr"
+    assert "AI_REVIEW_MERGE: \"true\"" in workflow
 
 
 def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
@@ -42,6 +44,8 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "AI_REVIEW_EVIDENCE_OUTPUT" in script
     assert "write_review_evidence" in script
     assert "require_unchanged_head" in script
+    assert "merge_verified_pull_request" in script
+    assert "automated review changed before protected merge" in script
     assert "head changed during automated review" in script
     assert "issues/$pull_request/comments" in script
     assert 'content == "+1"' in script

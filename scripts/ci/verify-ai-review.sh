@@ -10,6 +10,7 @@ timeout_seconds="${AI_REVIEW_TIMEOUT_SECONDS:-600}"
 poll_seconds="${AI_REVIEW_POLL_SECONDS:-10}"
 evidence_output="${AI_REVIEW_EVIDENCE_OUTPUT:-}"
 requester_login="${AI_REVIEW_REQUESTER_LOGIN:-}"
+merge_after_review="${AI_REVIEW_MERGE:-false}"
 
 fail() {
   printf 'automated review: %s\n' "$1" >&2
@@ -18,6 +19,7 @@ fail() {
 
 [[ -n "$repository" && "$pull_request" =~ ^[0-9]+$ ]] || fail "repository and pull-request number are required"
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ && "$poll_seconds" =~ ^[1-9][0-9]*$ ]] || fail "review timeout and polling interval must be positive integers"
+[[ "$merge_after_review" == "true" || "$merge_after_review" == "false" ]] || fail "AI_REVIEW_MERGE must be true or false"
 command -v gh >/dev/null 2>&1 || fail "gh CLI is required"
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 if [[ -z "$requester_login" ]]; then
@@ -67,6 +69,35 @@ write_review_evidence() {
     > "$evidence_output"
 }
 
+merge_verified_pull_request() {
+  local reviewer="$1"
+  local proof="$2"
+  local authenticated_reviewer
+  local merged
+  [[ "$merge_after_review" == "true" ]] || return 0
+  require_unchanged_head
+  if [[ "$proof" == "approved-review" ]]; then
+    authenticated_reviewer="$(gh api --paginate --slurp "repos/$repository/pulls/$pull_request/reviews?per_page=100" | jq -r \
+      --arg reviewers "$approved_reviewers" --arg head "$head_sha" \
+      '($reviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state}] | last | select(.state == "APPROVED") | .reviewer // empty')"
+  else
+    authenticated_reviewer="$(gh api "repos/$repository/issues/comments/$review_request_id/reactions" | jq -r \
+      --arg reviewers "$approved_reviewers" \
+      '($reviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+  fi
+  if [[ "$authenticated_reviewer" != "$reviewer" ]]; then
+    publish_status failure "Automated review changed before protected merge" || true
+    fail "automated review changed before protected merge"
+  fi
+  require_unchanged_head
+  merged="$(gh api --method PUT "repos/$repository/pulls/$pull_request/merge" \
+    -f "sha=$head_sha" -f "merge_method=merge" --jq '.merged')"
+  if [[ "$merged" != "true" ]]; then
+    publish_status failure "Protected merge failed after automated review" || true
+    fail "protected merge failed after automated review"
+  fi
+}
+
 publish_status pending "Waiting for approved automated review"
 if [[ -n "$request_reviewer" ]]; then
   request_payload="$(jq -cn --arg reviewer "$request_reviewer" '{reviewers:[$reviewer]}')"
@@ -111,6 +142,7 @@ while ((SECONDS < deadline)); do
       require_unchanged_head
       publish_status success "Approved automated reviewer approved current PR head"
       write_review_evidence "$reviewer" "approved-review"
+      merge_verified_pull_request "$reviewer" "approved-review"
       printf 'automated review: %s passed for PR %s at %s by %s\n' "$check_name" "$pull_request" "$head_sha" "$reviewer"
       exit 0
     fi
@@ -124,6 +156,7 @@ while ((SECONDS < deadline)); do
     require_unchanged_head
     publish_status success "Approved automated reviewer found no current-head issues"
     write_review_evidence "$reaction_reviewer" "no-findings-reaction"
+    merge_verified_pull_request "$reaction_reviewer" "no-findings-reaction"
     printf 'automated review: %s passed for PR %s at %s by %s (+1)\n' "$check_name" "$pull_request" "$head_sha" "$reaction_reviewer"
     exit 0
   fi

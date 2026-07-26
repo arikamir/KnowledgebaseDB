@@ -40,7 +40,9 @@ including its current head, pull request, reviewer, and proof type, and MUST NOT
 accept caller-supplied reviewer or pass-status values. It MUST compare the
 receipt's pull request and head with the independently retained release or
 rollback scope, then authenticate the live PR head, successful status, and
-approved review or no-findings reaction through GitHub. A
+approved review or no-findings reaction through GitHub. Generated release and
+rollback PRs MUST re-authenticate that proof and exact head immediately before
+the dedicated gate job merges the reviewed SHA. A
 rollback event MUST include its source/target revisions, actor, approval
 result, reason, and outcome. A failed rollout MUST include
 `affectedService`, `reason`, and `nextAction`; `diagnosedAt` and
