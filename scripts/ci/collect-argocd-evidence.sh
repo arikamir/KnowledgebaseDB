@@ -68,15 +68,15 @@ command -v gh >/dev/null 2>&1 || fail "gh CLI is required to authenticate automa
 if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" \
   --argjson expectedPullRequest "$EXPECTED_REVIEW_PR" --arg expectedHead "$EXPECTED_REVIEW_HEAD" '
   ($approvedReviewers | split(",")) as $approved |
-  keys == ["headRevision","observedAt","proof","pullRequest","repository","requestCommentId","reviewer","schemaVersion","status","statusCheck"] and
+  keys == ["headRevision","observedAt","proof","proofCommentId","pullRequest","repository","reviewer","schemaVersion","status","statusCheck"] and
   .schemaVersion == 1 and .repository == $repository and
   .pullRequest == $expectedPullRequest and
-  (.requestCommentId | type == "number" and . > 0) and
+  (.proofCommentId | type == "number" and . > 0) and
   .headRevision == $expectedHead and
   (.reviewer | type == "string" and length > 0) and
   (.reviewer as $reviewer | $approved | index($reviewer) != null) and
   .status == "passed" and .statusCheck == "ai/review" and
-  (.proof == "approved-review" or .proof == "no-findings-reaction") and
+  (.proof == "approved-review" or .proof == "no-findings-reaction" or .proof == "no-findings-comment") and
   (.observedAt | type == "string" and length > 0)
 ' "$AUTOMATED_REVIEW_EVIDENCE" >/dev/null; then
   fail "automated review evidence is not a valid successful gate receipt for this repository"
@@ -87,7 +87,7 @@ AUTOMATED_REVIEW_OBSERVED_AT="$(jq -r '.observedAt' "$AUTOMATED_REVIEW_EVIDENCE"
 AUTOMATED_REVIEW_HEAD="$(jq -r '.headRevision' "$AUTOMATED_REVIEW_EVIDENCE")"
 AUTOMATED_REVIEW_PR="$(jq -r '.pullRequest' "$AUTOMATED_REVIEW_EVIDENCE")"
 AUTOMATED_REVIEW_PROOF="$(jq -r '.proof' "$AUTOMATED_REVIEW_EVIDENCE")"
-AUTOMATED_REVIEW_COMMENT_ID="$(jq -r '.requestCommentId' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_COMMENT_ID="$(jq -r '.proofCommentId' "$AUTOMATED_REVIEW_EVIDENCE")"
 
 CURRENT_REVIEW_HEAD="$(gh api "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR" --jq '.head.sha')" ||
   fail "unable to authenticate the reviewed pull-request head"
@@ -103,7 +103,7 @@ if [[ "$AUTOMATED_REVIEW_PROOF" == "approved-review" ]]; then
   AUTHENTICATED_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR/reviews?per_page=100" | jq -r \
     --arg approvedReviewers "$APPROVED_REVIEWERS" --arg head "$EXPECTED_REVIEW_HEAD" \
     '($approvedReviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state}] | last | select(.state == "APPROVED") | .reviewer // empty')"
-else
+elif [[ "$AUTOMATED_REVIEW_PROOF" == "no-findings-reaction" ]]; then
   EXPECTED_MARKER="@codex review
 
 <!-- ai-review-head:$EXPECTED_REVIEW_HEAD -->"
@@ -114,6 +114,21 @@ else
   AUTHENTICATED_REVIEWER="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions" | jq -r \
     --arg approvedReviewers "$APPROVED_REVIEWERS" \
     '($approvedReviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+else
+  RESULT_COMMENT="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID")" ||
+    fail "unable to authenticate the no-findings result comment"
+  RESULT_COMMENT_REVIEWER="$(jq -r '.user.login' <<<"$RESULT_COMMENT")"
+  RESULT_COMMENT_BODY="$(jq -r '.body' <<<"$RESULT_COMMENT")"
+  ISSUE_REACTION_REVIEWER="$(gh api "repos/$REPOSITORY/issues/$EXPECTED_REVIEW_PR/reactions" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" \
+    '($approvedReviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+  if [[ "$RESULT_COMMENT_REVIEWER" == "$ISSUE_REACTION_REVIEWER" &&
+        "$RESULT_COMMENT_BODY" == *"Codex Review: Didn't find any major issues."* &&
+        "$RESULT_COMMENT_BODY" == *"**Reviewed commit:** \`${EXPECTED_REVIEW_HEAD:0:10}\`"* ]]; then
+    AUTHENTICATED_REVIEWER="$RESULT_COMMENT_REVIEWER"
+  else
+    AUTHENTICATED_REVIEWER=""
+  fi
 fi
 [[ "$AUTHENTICATED_REVIEWER" == "$AUTOMATED_REVIEWER" ]] ||
   fail "GitHub does not authenticate the reviewer and proof in the gate receipt"

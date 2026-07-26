@@ -53,6 +53,9 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "head changed during automated review" in script
     assert "issues/$pull_request/comments" in script
     assert 'content == "+1"' in script
+    assert "Codex Review: Didn" in script
+    assert '"no-findings-comment"' in script
+    assert "issues/$pull_request/reactions" in script
     assert '"APPROVED"' in script
     assert '"CHANGES_REQUESTED"' in script
     assert '"DISMISSED"' in script

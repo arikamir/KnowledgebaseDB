@@ -105,7 +105,7 @@
         "statusCheck": {"type": "string", "minLength": 1},
         "headRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "pullRequest": {"type": "integer", "minimum": 1},
-        "proof": {"enum": ["approved-review", "no-findings-reaction"]},
+        "proof": {"enum": ["approved-review", "no-findings-reaction", "no-findings-comment"]},
         "observedAt": {"type": "string", "format": "date-time"}
       }
     },

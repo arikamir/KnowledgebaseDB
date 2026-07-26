@@ -40,7 +40,8 @@ including its current head, pull request, reviewer, and proof type, and MUST NOT
 accept caller-supplied reviewer or pass-status values. It MUST compare the
 receipt's pull request and head with the independently retained release or
 rollback scope, then authenticate the live PR head, successful status, and
-approved review or no-findings reaction through GitHub. Generated release and
+approved review, exact-marker reaction, or bot-authored head-bound no-findings
+comment plus PR reaction through GitHub. Generated release and
 rollback PRs MUST re-authenticate that proof and exact head immediately before
 the dedicated gate job merges the reviewed SHA. A
 rollback event MUST include its source/target revisions, actor, approval

@@ -26,8 +26,11 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "--automated-review-status" not in script
     assert '"approved-review"' in script
     assert '"no-findings-reaction"' in script
+    assert '"no-findings-comment"' in script
+    assert "proofCommentId" in script
     assert 'commits/$EXPECTED_REVIEW_HEAD/status' in script
     assert 'issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions' in script
+    assert 'issues/$EXPECTED_REVIEW_PR/reactions' in script
     assert "credential-shaped content is forbidden" in script
     assert "humanAction" in script
     assert "rollback" in script

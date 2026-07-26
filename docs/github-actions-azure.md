@@ -44,7 +44,8 @@ The pull request gate calls `scripts/ci/verify-ai-review.sh` and accepts only a
 review from a repository-approved automated identity whose `commit_id` matches
 the current pull-request head. A no-finding result may instead be proven by the
 approved reviewer's positive reaction to a review-request marker containing the
-exact head SHA. The initial approved identity is
+exact head SHA, or by the connector's bot-authored no-findings comment naming
+the reviewed commit together with its positive PR reaction. The initial approved identity is
 `chatgpt-codex-connector[bot]`; changing that allowlist requires a reviewed
 repository-policy update. The helper publishes the `ai/review` commit status
 for branch protection and fails closed when the review is missing, stale,

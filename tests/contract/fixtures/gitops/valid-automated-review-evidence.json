@@ -7,6 +7,6 @@
   "status": "passed",
   "statusCheck": "ai/review",
   "proof": "no-findings-reaction",
-  "requestCommentId": 5085272253,
+  "proofCommentId": 5085272253,
   "observedAt": "2026-07-26T20:35:51Z"
 }
