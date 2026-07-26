@@ -40,9 +40,11 @@ review status check and protected `v*` tags cannot be created or moved by an
 untrusted actor. The release bundle must pass
 `scripts/ci/validate-release-bundle.sh` before
 `deploy/argocd/environments/nonprod/release.json` is generated.
-The pull request gate calls `scripts/ci/verify-copilot-review.sh` against the
-head commit and fails closed when the required status check is missing, stale,
-or unsuccessful.
+The pull request gate calls `scripts/ci/verify-copilot-review.sh`, requests
+`copilot-pull-request-reviewer[bot]`, and accepts only a Copilot review whose
+`commit_id` matches the current pull-request head. The helper publishes the
+`copilot/review` commit status for branch protection and fails closed when the
+review is missing or stale.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application

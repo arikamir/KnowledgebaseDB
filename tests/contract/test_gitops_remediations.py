@@ -120,8 +120,9 @@ def test_delivery_workflow_only_starts_release_validation_from_v_tags() -> None:
     assert "scripts/ci/derive-release-version.sh" in workflow
 
 
-def test_copilot_review_helper_fails_closed_on_missing_or_unsuccessful_check() -> None:
+def test_copilot_review_helper_fails_closed_on_missing_or_stale_review() -> None:
     script = (ROOT / "scripts/ci/verify-copilot-review.sh").read_text()
-    assert "required Copilot status check is missing" in script
-    assert "conclusion" in script
-    assert "not successful" in script
+    assert "copilot-pull-request-reviewer[bot]" in script
+    assert ".commit_id == $head" in script
+    assert "required Copilot review is missing or stale" in script
+    assert "publish_status failure" in script

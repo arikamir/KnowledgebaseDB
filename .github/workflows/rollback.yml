@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  statuses: write
 
 jobs:
   prepare:
@@ -56,6 +57,7 @@ jobs:
             Copilot review and protected `main` are required before reconciliation.
       - name: Verify Copilot review before merge
         env:
+          GH_TOKEN: ${{ github.token }}
           PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           COPILOT_REVIEW_CHECK_NAME: copilot/review

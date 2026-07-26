@@ -10,6 +10,7 @@ permissions:
   contents: write
   id-token: write
   pull-requests: write
+  statuses: write
 
 concurrency:
   group: application-release-nonprod
@@ -150,6 +151,7 @@ jobs:
           labels: gitops-release
       - name: Verify the required Copilot review status
         env:
+          GH_TOKEN: ${{ github.token }}
           PULL_REQUEST_NUMBER: ${{ steps.release-pr.outputs.pull-request-number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           COPILOT_REVIEW_CHECK_NAME: copilot/review
