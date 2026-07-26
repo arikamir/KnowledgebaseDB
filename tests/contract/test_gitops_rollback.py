@@ -17,6 +17,7 @@ def test_rollback_is_a_reviewed_git_reversion() -> None:
     assert "AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json" in workflow
     assert "artifacts/automated-review-evidence.json" in workflow
     assert "pull-request-head-sha" in workflow
+    assert 'verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER" "$EXPECTED_REVIEW_HEAD"' in workflow
     assert "rollback-review-scope.json" in workflow
     assert "statuses" not in parsed["permissions"]
     assert "statuses" not in parsed["jobs"]["prepare"]["permissions"]

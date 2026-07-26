@@ -17,6 +17,7 @@ def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> 
     assert "AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json" in workflow
     assert "artifacts/automated-review-evidence.json" in workflow
     assert "pull-request-head-sha" in workflow
+    assert 'verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER" "$EXPECTED_REVIEW_HEAD"' in workflow
     assert "protected `main`" in workflow
     assert "branch: main" not in workflow
     assert "statuses" not in parsed["permissions"]
@@ -52,6 +53,7 @@ def test_automated_review_gate_is_status_based_and_fails_closed() -> None:
     assert "success_pending_completion=true" in script
     assert "success_pending_completion=false" in script
     assert "head changed during automated review" in script
+    assert "head does not match the expected release or rollback head" in script
     assert "issues/$pull_request/comments" in script
     assert 'content == "+1"' in script
     assert "Codex Review: Didn" in script

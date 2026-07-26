@@ -3,6 +3,7 @@ set -euo pipefail
 
 repository="${1:-${GITHUB_REPOSITORY:-}}"
 pull_request="${2:-${PULL_REQUEST_NUMBER:-}}"
+expected_head="${3:-${AI_REVIEW_EXPECTED_HEAD:-}}"
 check_name="${AI_REVIEW_CHECK_NAME:-ai/review}"
 approved_reviewers="${AI_REVIEW_APPROVED_LOGINS:-chatgpt-codex-connector[bot]}"
 request_reviewer="${AI_REVIEW_REQUEST_LOGIN:-}"
@@ -19,6 +20,7 @@ fail() {
 
 [[ -n "$repository" && "$pull_request" =~ ^[0-9]+$ ]] || fail "repository and pull-request number are required"
 [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ && "$poll_seconds" =~ ^[1-9][0-9]*$ ]] || fail "review timeout and polling interval must be positive integers"
+[[ -z "$expected_head" || "$expected_head" =~ ^[0-9a-f]{40}$ ]] || fail "expected pull-request head must be a 40-character commit SHA"
 [[ "$merge_after_review" == "true" || "$merge_after_review" == "false" ]] || fail "AI_REVIEW_MERGE must be true or false"
 command -v gh >/dev/null 2>&1 || fail "gh CLI is required"
 command -v jq >/dev/null 2>&1 || fail "jq is required"
@@ -27,6 +29,9 @@ if [[ -z "$requester_login" ]]; then
 fi
 
 head_sha="$(gh api "repos/$repository/pulls/$pull_request" --jq '.head.sha')" || fail "unable to read pull request"
+if [[ -n "$expected_head" && "$head_sha" != "$expected_head" ]]; then
+  fail "pull-request head does not match the expected release or rollback head"
+fi
 status_url="https://github.com/$repository/pull/$pull_request"
 
 publish_status() {

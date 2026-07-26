@@ -60,6 +60,8 @@ SHA. A failed merge changes `ai/review` back to failure, so a successful status
 is not left on an unmerged delivery PR. An exit guard always resets the status
 when any receipt or API operation fails after success is published; for
 merge-enabled runs it remains armed through proof recheck and merge completion.
+The gate also requires the head SHA output by the PR-creation job, preventing a
+push between jobs from substituting a different release or rollback head.
 
 Terraform creates separate publisher and infrastructure federated credentials
 bound to the repository and protected environment subjects. The application
