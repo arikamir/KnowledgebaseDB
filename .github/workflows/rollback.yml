@@ -13,15 +13,19 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
-  statuses: write
+  contents: read
 
 jobs:
   prepare:
     name: Prepare reviewed declaration reversion
     runs-on: ubuntu-24.04
     environment: nonprod-recovery
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pull-request-number: ${{ steps.rollback-pr.outputs.pull-request-number }}
+      pull-request-head-sha: ${{ steps.rollback-pr.outputs.pull-request-head-sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,14 +59,6 @@ jobs:
           body: |
             This is a reviewed Git declaration reversion. Direct Argo CD rollback is not authoritative.
             A verified current-head automated review and protected `main` are required before reconciliation.
-      - name: Verify automated review before merge
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PULL_REQUEST_NUMBER: ${{ steps.rollback-pr.outputs.pull-request-number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          AI_REVIEW_CHECK_NAME: ai/review
-          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
-        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
       - name: Record rollback review scope
         run: |
           jq -n \
@@ -77,5 +73,30 @@ jobs:
           path: |
             artifacts/rollback.json
             artifacts/rollback-review-scope.json
-            artifacts/automated-review-evidence.json
+          if-no-files-found: warn
+
+  verify-rollback-review:
+    name: Verify current-head automated rollback review
+    needs: prepare
+    runs-on: ubuntu-24.04
+    environment: nonprod-recovery
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify automated review before merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST_NUMBER: ${{ needs.prepare.outputs.pull-request-number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_REVIEW_CHECK_NAME: ai/review
+          AI_REVIEW_EVIDENCE_OUTPUT: artifacts/automated-review-evidence.json
+        run: scripts/ci/verify-ai-review.sh "$GITHUB_REPOSITORY" "$PULL_REQUEST_NUMBER"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rollback-review-evidence-${{ github.run_id }}
+          path: artifacts/automated-review-evidence.json
           if-no-files-found: warn

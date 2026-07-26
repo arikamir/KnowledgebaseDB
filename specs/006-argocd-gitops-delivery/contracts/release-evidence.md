@@ -39,7 +39,8 @@ validation evidence. The collector MUST consume the successful gate's receipt,
 including its current head, pull request, reviewer, and proof type, and MUST NOT
 accept caller-supplied reviewer or pass-status values. It MUST compare the
 receipt's pull request and head with the independently retained release or
-rollback scope. A
+rollback scope, then authenticate the live PR head, successful status, and
+approved review or no-findings reaction through GitHub. A
 rollback event MUST include its source/target revisions, actor, approval
 result, reason, and outcome. A failed rollout MUST include
 `affectedService`, `reason`, and `nextAction`; `diagnosedAt` and

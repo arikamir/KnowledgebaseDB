@@ -64,6 +64,7 @@ done
 [[ "$EXPECTED_REVIEW_HEAD" =~ ^[0-9a-f]{40}$ ]] || fail "--review-head-revision must identify the independently recorded reviewed head"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
+command -v gh >/dev/null 2>&1 || fail "gh CLI is required to authenticate automated review evidence"
 if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" \
   --argjson expectedPullRequest "$EXPECTED_REVIEW_PR" --arg expectedHead "$EXPECTED_REVIEW_HEAD" '
   ($approvedReviewers | split(",")) as $approved |
@@ -86,6 +87,36 @@ AUTOMATED_REVIEW_OBSERVED_AT="$(jq -r '.observedAt' "$AUTOMATED_REVIEW_EVIDENCE"
 AUTOMATED_REVIEW_HEAD="$(jq -r '.headRevision' "$AUTOMATED_REVIEW_EVIDENCE")"
 AUTOMATED_REVIEW_PR="$(jq -r '.pullRequest' "$AUTOMATED_REVIEW_EVIDENCE")"
 AUTOMATED_REVIEW_PROOF="$(jq -r '.proof' "$AUTOMATED_REVIEW_EVIDENCE")"
+AUTOMATED_REVIEW_COMMENT_ID="$(jq -r '.requestCommentId' "$AUTOMATED_REVIEW_EVIDENCE")"
+
+CURRENT_REVIEW_HEAD="$(gh api "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR" --jq '.head.sha')" ||
+  fail "unable to authenticate the reviewed pull-request head"
+[[ "$CURRENT_REVIEW_HEAD" == "$EXPECTED_REVIEW_HEAD" ]] ||
+  fail "authenticated pull-request head does not match the retained review scope"
+STATUS_STATE="$(gh api "repos/$REPOSITORY/commits/$EXPECTED_REVIEW_HEAD/status" --jq \
+  '.statuses | map(select(.context == "ai/review")) | first | .state // empty')" ||
+  fail "unable to authenticate the automated-review status"
+[[ "$STATUS_STATE" == "success" ]] ||
+  fail "authenticated ai/review status is not successful"
+
+if [[ "$AUTOMATED_REVIEW_PROOF" == "approved-review" ]]; then
+  AUTHENTICATED_REVIEWER="$(gh api --paginate --slurp "repos/$REPOSITORY/pulls/$EXPECTED_REVIEW_PR/reviews?per_page=100" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" --arg head "$EXPECTED_REVIEW_HEAD" \
+    '($approvedReviewers | split(",")) as $approved | [.[][] | select((.user.login as $login | $approved | index($login)) != null and .commit_id == $head and (.state == "COMMENTED" or .state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")) | {reviewer:.user.login,state}] | last | select(.state == "APPROVED") | .reviewer // empty')"
+else
+  EXPECTED_MARKER="@codex review
+
+<!-- ai-review-head:$EXPECTED_REVIEW_HEAD -->"
+  COMMENT_BODY="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID" --jq '.body')" ||
+    fail "unable to authenticate the automated-review request comment"
+  [[ "$COMMENT_BODY" == "$EXPECTED_MARKER" ]] ||
+    fail "authenticated review request does not match the retained head"
+  AUTHENTICATED_REVIEWER="$(gh api "repos/$REPOSITORY/issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions" | jq -r \
+    --arg approvedReviewers "$APPROVED_REVIEWERS" \
+    '($approvedReviewers | split(",")) as $approved | [.[] | select(.content == "+1" and (.user.login as $login | $approved | index($login)) != null) | .user.login] | last // empty')"
+fi
+[[ "$AUTHENTICATED_REVIEWER" == "$AUTOMATED_REVIEWER" ]] ||
+  fail "GitHub does not authenticate the reviewer and proof in the gate receipt"
 if [[ "$ACTOR_TYPE" == human ]]; then
   [[ -n "$HUMAN_TENANT" && -n "$HUMAN_SUBJECT" ]] || fail "human evidence requires Entra tenant and subject"
 fi

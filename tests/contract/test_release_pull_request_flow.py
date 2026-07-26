@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> None:
     workflow = (ROOT / ".github/workflows/delivery.yml").read_text()
+    parsed = yaml.safe_load(workflow)
     assert "peter-evans/create-pull-request" in workflow
     assert "automation/gitops-release-" in workflow
     assert "scripts/ci/verify-ai-review.sh" in workflow
@@ -16,6 +19,10 @@ def test_delivery_opens_a_bot_pr_and_requires_automated_review_before_main() -> 
     assert "pull-request-head-sha" in workflow
     assert "protected `main`" in workflow
     assert "branch: main" not in workflow
+    assert "statuses" not in parsed["permissions"]
+    assert "statuses" not in parsed["jobs"]["open-release-pr"]["permissions"]
+    assert parsed["jobs"]["verify-release-review"]["permissions"]["statuses"] == "write"
+    assert parsed["jobs"]["verify-release-review"]["needs"] == "open-release-pr"
 
 
 def test_automated_review_gate_is_status_based_and_fails_closed() -> None:

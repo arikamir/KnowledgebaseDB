@@ -138,7 +138,9 @@ emitted by the successful current-head gate so retained evidence cannot
 silently attribute the review or pass status to caller-supplied values.
 Also pass `--review-pull-request` and `--review-head-revision` from the
 independently retained release or rollback scope artifact; mismatched receipts
-are rejected.
+are rejected. The collector uses `gh` with an authenticated GitHub token to
+recheck the PR head, `ai/review` status, and approved review or exact-marker
+reaction before writing the retained record.
 
 ## Azure Entra access
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -25,6 +26,8 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "--automated-review-status" not in script
     assert '"approved-review"' in script
     assert '"no-findings-reaction"' in script
+    assert 'commits/$EXPECTED_REVIEW_HEAD/status' in script
+    assert 'issues/comments/$AUTOMATED_REVIEW_COMMENT_ID/reactions' in script
     assert "credential-shaped content is forbidden" in script
     assert "humanAction" in script
     assert "rollback" in script
@@ -32,6 +35,23 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
 
 
 def test_collector_consumes_successful_gate_receipt(tmp_path: Path) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text(
+        """#!/usr/bin/env bash
+case "$*" in
+  *"pulls/46 --jq .head.sha"*) printf '%s\\n' '0123456789abcdef0123456789abcdef01234567' ;;
+  *"commits/0123456789abcdef0123456789abcdef01234567/status"*) printf '%s\\n' 'success' ;;
+  *"issues/comments/5085272253 --jq .body"*) printf '%s\\n\\n%s\\n' '@codex review' '<!-- ai-review-head:0123456789abcdef0123456789abcdef01234567 -->' ;;
+  *"issues/comments/5085272253/reactions"*) printf '%s\\n' '[{"content":"+1","user":{"login":"chatgpt-codex-connector[bot]"}}]' ;;
+  *) exit 1 ;;
+esac
+"""
+    )
+    fake_gh.chmod(0o755)
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_bin}:{env['PATH']}"
     output = tmp_path / "evidence.json"
     result = subprocess.run(
         [
@@ -48,6 +68,7 @@ def test_collector_consumes_successful_gate_receipt(tmp_path: Path) -> None:
             str(output),
         ],
         cwd=ROOT,
+        env=env,
         text=True,
         capture_output=True,
         check=False,
