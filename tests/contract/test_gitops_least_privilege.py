@@ -31,12 +31,16 @@ def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
 def test_github_federation_uses_immutable_repository_ids() -> None:
     identities = (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
     variables = (ROOT / "infra/azure/variables.tf").read_text()
+    documentation = (ROOT / "docs/github-actions-azure.md").read_text()
     assert "github_repository_owner_id" in variables
     assert "github_repository_id" in variables
     assert "@${var.github_repository_owner_id}" in identities
     assert "@${var.github_repository_id}:environment:" in identities
     assert ":environment:infrastructure-plan" in identities
     assert ":environment:infrastructure-apply" in identities
+    assert "sub_claim_prefix" in documentation
+    assert "repo:arikamir@10241590/KnowledgebaseDB@1305159236" in documentation
+    assert "X-GitHub-Api-Version: 2026-03-10" in documentation
 
 
 def test_argocd_application_set_has_no_platform_paths() -> None:

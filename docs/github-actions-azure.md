@@ -72,7 +72,23 @@ subjects; apply remains gated by its protected environment and the identity is
 never referenced by delivery jobs.
 OIDC subjects include the immutable GitHub owner and repository IDs configured
 by `github_repository_owner_id` and `github_repository_id`, matching GitHub's
-ID-bound subject format even when repository visibility changes.
+ID-bound subject format even when repository visibility changes. Do not infer
+the subject format from `use_default`: GitHub's immutable-default rollout can
+leave that field set while emitting an ID-bound subject. Before applying the
+Azure credentials, query the current-version repository endpoint and treat its
+`sub_claim_prefix` as authoritative:
+
+```bash
+gh api repos/OWNER/REPOSITORY/actions/oidc/customization/sub \
+  -H 'X-GitHub-Api-Version: 2026-03-10'
+```
+
+For this repository the verified response prefix is
+`repo:arikamir@10241590/KnowledgebaseDB@1305159236`; Azure's failed-token
+diagnostic reported the same prefix before the federated credentials were
+updated. The Terraform owner/repository names and IDs must reproduce that
+prefix exactly. Re-check it after a repository transfer or rename and update
+Azure trust before running delivery again.
 
 The first Azure apply after creating the GitHub repository must include
 `github_repository = "owner/name"`. Do not place a client secret, kubeconfig,

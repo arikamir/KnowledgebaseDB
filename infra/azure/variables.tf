@@ -303,7 +303,7 @@ variable "github_repository" {
 }
 
 variable "github_repository_owner_id" {
-  description = "Immutable GitHub owner ID included in the Actions OIDC subject."
+  description = "Immutable owner ID from the repository OIDC sub_claim_prefix; do not infer it from use_default."
   type        = string
   default     = "10241590"
   validation {
@@ -313,7 +313,7 @@ variable "github_repository_owner_id" {
 }
 
 variable "github_repository_id" {
-  description = "Immutable GitHub repository ID included in the Actions OIDC subject."
+  description = "Immutable repository ID from the repository OIDC sub_claim_prefix; do not infer it from use_default."
   type        = string
   default     = "1305159236"
   validation {
