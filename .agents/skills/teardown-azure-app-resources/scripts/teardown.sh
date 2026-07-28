@@ -39,14 +39,10 @@ for identity in "${required_workloads[@]}"; do
   }
 done
 for address in \
-  azurerm_user_assigned_identity.jenkins_publisher \
-  azurerm_user_assigned_identity.jenkins_deployer \
+  azurerm_user_assigned_identity.github_actions_publisher \
   azurerm_role_assignment.publisher_exact_acr_push \
-  azurerm_role_assignment.deployer_exact_aks_writer \
-  azurerm_role_assignment.deployer_target_rg_reader \
   azurerm_role_assignment.kubelet_exact_acr_pull \
-  azurerm_role_assignment.publisher_evidence_prefix \
-  azurerm_role_assignment.deployer_evidence_prefix; do
+  azurerm_role_assignment.publisher_evidence_prefix; do
   grep -Fq "$address" <<<"$state_inventory" || {
     echo "[teardown] State parity failure: missing $address; recover/import state before destroy" >&2
     exit 1

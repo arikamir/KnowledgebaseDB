@@ -33,7 +33,7 @@ migration="$ROOT/deploy/k8s/base/migration/kustomization.yaml"
 [[ -f "$install_contract" && -f "$migration" ]] || exit 1
 grep -Fq 'installOrder: gateway-api-crds,alb-controller,controller-ready-attestation,gateway-resources' "$install_contract"
 grep -Fq 'liveInstallAllowed: "false-before-T194"' "$install_contract"
-for guardrail in namespace.yaml service-account.yaml deployer-rbac.yaml network-policy.yaml validating-admission-policy.yaml; do
+for guardrail in namespace.yaml service-account.yaml gitops-rbac.yaml network-policy.yaml validating-admission-policy.yaml; do
   grep -Fq "$guardrail" "$migration" || exit 1
 done
 

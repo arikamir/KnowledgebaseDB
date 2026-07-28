@@ -22,7 +22,7 @@
 - [x] CHK009 Are “missing,” “empty,” “duplicate,” “out-of-order,” “unknown-task,” “drift,” and “conflict” defined precisely enough to produce one deterministic traceability-gate result? [Clarity, Plan §Implementation readiness, Tasks §T030/T034]
 - [x] CHK010 Are prerequisite freshness periods explicit about their start point, expiry point, renewal trigger, and whether expiration blocks authoring, external mutation, protected delivery, pilot opening, or only the affected consumer? [Clarity, Plan §Implementation readiness prerequisite register]
 - [x] CHK011 Is the distinction between an authoring prerequisite, an externally executed prerequisite, and a release-time live attestation explicit for every Platform Operations dependency? [Clarity, Spec §FR-071–FR-074, Plan §Implementation readiness]
-- [x] CHK012 Are conditional gates expressed with objective applicability rules for UI-only, BFF-only, core-only, shared-contract, infrastructure, documentation-only, first-baseline, and multi-service changes? [Clarity, Spec §SC-033–SC-034, Plan §Jenkins delivery strategy]
+- [x] CHK012 Are conditional gates expressed with objective applicability rules for UI-only, BFF-only, core-only, shared-contract, infrastructure, documentation-only, first-baseline, and multi-service changes? [Clarity, Spec §SC-033–SC-034, Plan §GitHub Actions delivery strategy]
 
 ## Requirement Consistency
 
@@ -31,7 +31,7 @@
 - [x] CHK015 Are normative-source precedence and conflict behavior consistent across the specification, plan, API contracts, security/delivery contracts, readiness contract, and traceability matrix? [Consistency, Spec §FR-016/FR-039, Readiness Contract §Authority and interpretation]
 - [x] CHK016 Do task dependencies preserve the same service ownership, identity, persistence, migration, compatibility, and evidence boundaries required by the specification and plan? [Consistency, Spec §FR-035–FR-075, Plan §Service and API boundaries, Tasks §Dependencies and Execution Order]
 - [x] CHK017 Are TDD ordering, phase checkpoints, parallel markers, and same-file ownership rules mutually consistent for all tasks that share generated contracts, registries, migrations, infrastructure, or evidence artifacts? [Consistency, Tasks §Dependencies and Execution Order, §Within each story, §Parallel Execution Examples]
-- [x] CHK018 Are the implementation-gate rules consistent with the rule that Jenkins cannot repair bootstrap drift, read Terraform state, or substitute runtime/test inputs for approved normative artifacts? [Consistency, Spec §FR-071, Plan §Implementation readiness and §Jenkins delivery strategy]
+- [x] CHK018 Are the implementation-gate rules consistent with the rule that GitHub Actions cannot repair bootstrap drift, read Terraform state, or substitute runtime/test inputs for approved normative artifacts? [Consistency, Spec §FR-071, Plan §Implementation readiness and §GitHub Actions delivery strategy]
 
 ## Acceptance Criteria Quality
 
@@ -47,7 +47,7 @@
 - [x] CHK025 Are exception requirements defined when a normative contract, digest, traceability row, task dependency, or generated artifact is missing, malformed, stale, or mutually inconsistent? [Coverage, Spec §FR-016/FR-039, Plan §Implementation readiness]
 - [x] CHK026 Are recovery requirements defined for returning the feature to gate-ready status after requirements, contracts, tasks, or external prerequisites change during implementation? [Recovery, Gap, Spec §FR-016, Tasks §T030/T034]
 - [x] CHK027 Are requirements explicit for continuing unaffected local authoring when an external prerequisite blocks only live bootstrap, protected delivery, a machine consumer, a lab reference, or the measured pilot? [Coverage, Plan §Implementation readiness prerequisite register]
-- [x] CHK028 Are requirements defined for stopping at each checkpoint without invalidating already accepted artifacts, completed tasks, immutable evidence, or unaffected service digests? [Coverage, Plan §Implementation Strategy and §Jenkins delivery strategy, Spec §SC-026/SC-035]
+- [x] CHK028 Are requirements defined for stopping at each checkpoint without invalidating already accepted artifacts, completed tasks, immutable evidence, or unaffected service digests? [Coverage, Plan §Implementation Strategy and §GitHub Actions delivery strategy, Spec §SC-026/SC-035]
 
 ## Edge Case Coverage
 
@@ -65,7 +65,7 @@
 
 ## Dependencies & Assumptions
 
-- [x] CHK037 Are all assumptions about Entra, machine clients, private networks, AKS/ACR capacity, Jenkins cloud `azure`, managed Azure services, lab providers, pilot population, and supported browsers assigned an owner, evidence source, freshness rule, and failure effect? [Assumption, Spec §Assumptions, Plan §Implementation readiness prerequisite register]
+- [x] CHK037 Are all assumptions about Entra, machine clients, private networks, AKS/ACR capacity, retired controller cloud `azure`, managed Azure services, lab providers, pilot population, and supported browsers assigned an owner, evidence source, freshness rule, and failure effect? [Assumption, Spec §Assumptions, Plan §Implementation readiness prerequisite register]
 - [x] CHK038 Are responsibilities clearly divided between the specification author, implementation team, Product/UX Research, Security Reviewers, Learning Content Operations, Application Operations, and Platform Operations at every gate checkpoint? [Dependency, Gap, Plan §Implementation readiness]
 - [x] CHK039 Is the external Platform Operations action at T194 explicitly excluded from earlier authoring tasks while all scripts, policies, static contracts, and live-test harnesses required for it remain mandatory beforehand? [Dependency, Clarity, Spec §FR-071–FR-074, Tasks §T175–T194]
 - [x] CHK040 Are the consequences of unavailable owners, unavailable dependencies, expired attestations, or denied privileges documented without granting fallback identities, bypasses, or silent scope reduction? [Dependency, Coverage, Spec §FR-048–FR-052/FR-064–FR-075]

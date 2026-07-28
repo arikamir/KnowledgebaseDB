@@ -6,10 +6,10 @@
   "approvalAuthority": "Feature specification owner",
   "fixtureDigestAlgorithm": "sha256",
   "fixtureDigestScope": "UTF-8 bytes of the fixtures array serialized as recursively key-sorted compact JSON with no trailing newline",
-  "fixtureDigest": "2237d68ee242871598c67f49bb96f541cff5709bc28a865965f21158fdf475ef",
+  "fixtureDigest": "e924f7dec679a4cb837628fb7ec4cf1d6ee576734dd26a3f1ac83ffff5127755",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "3493d7db80108e5b7fdd1b940171f81c63d0e4155f29e6fb940e7a509d82e606",
+  "profileDigest": "cb75f1d03f59c9bdc734be7192164db2975a7f077ede64a5212363ee3a1578e3",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
@@ -189,10 +189,10 @@
       }
     },
     {
-      "caseId": "guidance-advanced-jenkins-001",
+      "caseId": "guidance-advanced-github_actions-001",
       "scenario": "guidance",
       "request": {
-        "topic": "jenkins",
+        "topic": "github_actions",
         "employeeProfile": {
           "role": "Senior DevOps Engineer",
           "experienceLevel": "advanced",
@@ -210,7 +210,7 @@
             "private-network labs"
           ]
         },
-        "requestText": "Recommend advanced Jenkins reliability and security improvements."
+        "requestText": "Recommend advanced GitHub Actions reliability and security improvements."
       }
     }
   ],

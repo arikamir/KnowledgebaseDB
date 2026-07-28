@@ -84,7 +84,12 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert '"$normalized_actual_key_vault_id" != "$normalized_target_key_vault_id"' in lifecycle
     assert "KEY_VAULT_NAME" not in lifecycle
     assert ".keyVaultId == $keyVaultId" in lifecycle
-    assert ".schemaVersion == 2" in lifecycle
+    assert ".schemaVersion == 3" in lifecycle
+    assert "verify_planned_github_trust" in lifecycle
+    assert ".planned_values.outputs.github_actions_publisher_trust.value" in lifecycle
+    assert "TF_VAR_github_actions_environment" in lifecycle
+    assert "effective planned GitHub publisher trust does not match" in lifecycle
+    assert ".githubTrust == $githubTrust" in lifecycle
     assert ".backend == {" in lifecycle
     assert lifecycle.index(".backend == {") < lifecycle.index('init -reconfigure')
     assert "githubTrust" in lifecycle

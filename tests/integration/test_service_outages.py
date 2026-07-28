@@ -163,9 +163,9 @@ EVIDENCE_OWNERS = {
     "sc029_session_expiry": ["bff/tests/unit/session-policy.test.ts"],
     "sc030_sc031_lifecycle_retention": ["tests/integration/test_directory_reconciliation.py", "tests/integration/test_retention.py"],
     "sc032_idempotency": ["tests/integration/test_idempotency.py"],
-    "sc036_sc048_controller_audit": ["tests/ci/test_jenkins_delivery.py", "tests/ci/test_controller_audit_plugin.py"],
-    "sc039_agent_identity_isolation": ["tests/ci/test_jenkins_aci_identity_binding.py"],
-    "sc040_sc041_rotation": ["tests/contract/test_bff_certificate_rotation_policy.py", "tests/ci/test_jenkins_cloud_credential_lifecycle.py"],
+    "sc036_sc048_controller_audit": ["tests/ci/test_github_actions_delivery.py"],
+    "sc039_agent_identity_isolation": ["tests/contract/test_gitops_least_privilege.py"],
+    "sc040_sc041_rotation": ["tests/contract/test_bff_certificate_rotation_policy.py"],
     "sc042_evidence_retention": ["tests/ci/test_delivery_evidence_retention.py"],
 }
 

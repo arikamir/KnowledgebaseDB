@@ -1,21 +1,21 @@
 [
   {
-    "name": "Jenkins",
+    "name": "GitHub Actions",
     "category": "CI/CD orchestration",
-    "description": "Automate build, test, and delivery pipelines with Jenkins jobs, agents, and shared libraries.",
+    "description": "Automate build, test, image publication, and GitOps delivery with GitHub Actions workflows.",
     "related_skills": ["Azure DevOps", "GitLab CI", "Docker"],
     "priority_level": 1,
     "is_active": true,
-    "aliases": ["jenkins pipeline", "jenkins ci"],
+    "aliases": ["github actions pipeline", "github actions ci"],
     "current_level_fit": "Foundational to intermediate DevOps experience.",
-    "practical_next_action": "Build a multibranch pipeline that builds and tests one sample application.",
+    "practical_next_action": "Build a workflow that tests an application and publishes an immutable image digest.",
     "common_pitfalls": ["Hard-coding secrets in jobs", "Allowing pipelines to drift without shared standards"]
   },
   {
     "name": "Azure DevOps",
     "category": "CI/CD orchestration",
     "description": "Plan work, manage repos, and run pipelines with Azure DevOps services.",
-    "related_skills": ["Jenkins", "GitLab CI", "Terraform"],
+    "related_skills": ["GitHub Actions", "GitLab CI", "Terraform"],
     "priority_level": 2,
     "is_active": true,
     "aliases": ["azure devops pipelines", "ado"],
@@ -27,7 +27,7 @@
     "name": "GitLab CI",
     "category": "CI/CD orchestration",
     "description": "Define repeatable pipelines with GitLab CI stages, jobs, and runners.",
-    "related_skills": ["Jenkins", "Azure DevOps", "Docker"],
+    "related_skills": ["GitHub Actions", "Azure DevOps", "Docker"],
     "priority_level": 3,
     "is_active": true,
     "aliases": ["gitlab ci cd", "gitlab pipeline"],
@@ -264,4 +264,3 @@
     "common_pitfalls": ["Treating security as a final gate only", "Skipping secrets, certificates, and policy basics"]
   }
 ]
-

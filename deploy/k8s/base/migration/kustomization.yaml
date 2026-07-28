@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - service-account.yaml
-  - deployer-rbac.yaml
+  - gitops-rbac.yaml
   - network-policy.yaml
   - policy-parameters.yaml
   - validating-admission-policy.yaml

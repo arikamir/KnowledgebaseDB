@@ -26,7 +26,7 @@ Do not spend a separate reasoning phase reconsidering the standard topology unle
 ## Read project context
 
 1. Read `references/project-profile.md`.
-2. Read `specs/003-develop-ui/plan.md`, `quickstart.md`, `contracts/jenkins-delivery-contract.md`, and `contracts/implementation-readiness-contract.md` when present.
+2. Read `specs/003-develop-ui/plan.md`, `quickstart.md`, `contracts/github-actions-delivery-contract.md`, and `contracts/implementation-readiness-contract.md` when present.
 3. Inspect existing infrastructure files before generating anything. Extend the established IaC tool and layout when one exists.
 4. Inspect `deploy/k8s/` to keep infrastructure outputs compatible with the Kubernetes manifests.
 
@@ -57,7 +57,7 @@ Create the complete reviewed feature-003 foundation; partial identity topology i
 - one-to-one federated identities for BFF, core, lifecycle, retention, lab revalidation, migration, evidence-hold reconciliation, ALB Controller, and gateway certificate/DNS rotation;
 - non-federatable kubelet identity with only exact-ACR `AcrPull`;
 - identityless UI and `azure-aci-validator`;
-- distinct Jenkins publisher/deployer user-assigned identities: publisher receives exact-ACR push plus prefix-scoped evidence creation/verification; deployer receives exact-AKS mutation, target-resource-group Reader, and prefix-scoped evidence creation/verification;
+- a distinct GitHub Actions publisher identity with exact-ACR push plus prefix-scoped evidence creation/verification; application deployment remains GitOps-owned without a direct AKS deployer identity;
 - explicit denial validation for Terraform state, Key Vault secrets, Redis/PostgreSQL data, cross-identity use, ACR administration, evidence list/delete/overwrite, and any system-assigned/additional ACI identity;
 - Log Analytics/Container Insights when required by the selected AKS configuration;
 - Application Gateway for Containers/Gateway API public UI+BFF routing and a separately governed private core endpoint;

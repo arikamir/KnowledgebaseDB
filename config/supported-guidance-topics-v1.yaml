@@ -9,10 +9,10 @@ normalization:
     - name
     - aliases
 topics:
-  - id: jenkins
-    name: Jenkins
+  - id: github-actions
+    name: GitHub Actions
     category: CI/CD orchestration
-    aliases: [jenkins pipeline, jenkins ci]
+    aliases: [github actions pipeline, github actions ci]
     status: active
   - id: azure-devops
     name: Azure DevOps

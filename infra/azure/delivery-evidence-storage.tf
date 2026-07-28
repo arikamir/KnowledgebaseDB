@@ -2,11 +2,9 @@ locals {
   delivery_evidence_storage_name = "st${substr(var.prefix, 0, 8)}${substr(sha256("${var.subscription_id}:${var.environment}:delivery-evidence"), 0, 12)}"
   evidence_hold_storage_name     = "st${substr(var.prefix, 0, 8)}${substr(sha256("${var.subscription_id}:${var.environment}:evidence-holds"), 0, 12)}"
   publisher_evidence_stages      = ["validation", "build", "scan", "publish", "pre-promotion"]
-  deployer_evidence_stages       = ["promotion", "migration", "core", "bff", "ui", "verify", "rollback", "final"]
 
   evidence_blob_path_attribute = "@Resource[Microsoft.Storage/storageAccounts/blobServices/containers/blobs:path]"
   publisher_evidence_condition = "((@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringEquals 'delivery-evidence') AND (${join(" OR ", [for stage in local.publisher_evidence_stages : "(${local.evidence_blob_path_attribute} StringLike 'deliveries/${var.environment}/*/${stage}/*')"])}))"
-  deployer_evidence_condition  = "((@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringEquals 'delivery-evidence') AND (${join(" OR ", [for stage in local.deployer_evidence_stages : "(${local.evidence_blob_path_attribute} StringLike 'deliveries/${var.environment}/*/${stage}/*')"])}))"
 }
 
 # This account enables account-level version WORM at creation. Each accepted
@@ -79,17 +77,9 @@ resource "azurerm_role_definition" "delivery_evidence_exact_writer" {
 resource "azurerm_role_assignment" "publisher_evidence_prefix" {
   scope              = azurerm_storage_container.delivery_evidence.id
   role_definition_id = azurerm_role_definition.delivery_evidence_exact_writer.role_definition_resource_id
-  principal_id       = azurerm_user_assigned_identity.jenkins_publisher.principal_id
+  principal_id       = azurerm_user_assigned_identity.github_actions_publisher.principal_id
   condition_version  = "2.0"
   condition          = local.publisher_evidence_condition
-}
-
-resource "azurerm_role_assignment" "deployer_evidence_prefix" {
-  scope              = azurerm_storage_container.delivery_evidence.id
-  role_definition_id = azurerm_role_definition.delivery_evidence_exact_writer.role_definition_resource_id
-  principal_id       = azurerm_user_assigned_identity.jenkins_deployer.principal_id
-  condition_version  = "2.0"
-  condition          = local.deployer_evidence_condition
 }
 
 resource "azurerm_role_assignment" "delivery_evidence_reader" {

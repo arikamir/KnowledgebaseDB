@@ -29,6 +29,18 @@ output "key_vault_target" {
     subscription_id     = var.subscription_id
   }
 }
+output "github_actions_publisher_trust" {
+  description = "Effective non-secret publisher trust inputs used to bind lifecycle plan receipts."
+  value = {
+    repository    = var.github_repository
+    owner_id      = var.github_repository_owner_id
+    repository_id = var.github_repository_id
+    environment   = var.github_actions_environment
+    subject       = azurerm_federated_identity_credential.github_actions_publisher.subject
+    issuer        = "https://token.actions.githubusercontent.com"
+    audience      = "api://AzureADTokenExchange"
+  }
+}
 output "managed_redis_id" { value = azurerm_managed_redis.bff.id }
 output "postgresql_id" { value = azurerm_postgresql_flexible_server.core.id }
 output "evidence_hold_authorization" {

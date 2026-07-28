@@ -40,9 +40,9 @@ Before apply, call out that teardown deletes:
 - the AKS cluster, AGC/private-core/data/evidence resources, and its workloads;
 - images stored only in the application ACR;
 - the Log Analytics workspace and retained logs;
-- all nine workload identities/federated credentials, the two Jenkins delivery identities, kubelet exact-ACR pull, their exact role assignments, and the application resource group managed by state.
+- all nine workload identities/federated credentials, the GitHub Actions publisher identity, kubelet exact-ACR pull, their exact role assignments, and the application resource group managed by state.
 
-The destroy plan must include all identities declared in `infra/azure/jenkins-agent-identities.tf`. Missing identity state is an import/state-recovery blocker, not permission to leave an orphan. UI and validator must remain absent because they are intentionally identityless.
+The destroy plan must include all identities declared in `infra/azure/github-actions-identities.tf`. Missing identity state is an import/state-recovery blocker, not permission to leave an orphan. UI and validator must remain absent because they are intentionally identityless.
 
 Check the plan for resources outside the expected application resource group and stop if any appear. Ask whether ACR images, Kubernetes manifests/state, logs, or diagnostic data require export. Do not create backups unless requested.
 

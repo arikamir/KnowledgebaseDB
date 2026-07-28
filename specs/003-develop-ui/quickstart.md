@@ -1,5 +1,9 @@
 # Quickstart: Three-Service Learning UI
 
+> Delivery commands involving a local controller, ACI agents, or direct cluster
+> promotion are obsolete. Follow `docs/github-actions-azure.md` and
+> `specs/006-argocd-gitops-delivery/quickstart.md`.
+
 ## Goal
 
 Run UI, BFF, and core as independent local services, verify all four learning
@@ -17,17 +21,14 @@ journeys, and prove that browser traffic cannot bypass the BFF.
 - Helm for the pinned ALB Controller installation
 - Azure CLI access to the target AKS, ACR, Key Vault, Azure Managed Redis,
   PostgreSQL, and Azure Monitor resources
-- Jenkins with Pipeline/Declarative Pipeline, Credentials Binding, JUnit, and
-  approved ephemeral container-agent support; an environment lock mechanism is
-  required for deployment jobs
-- Existing functional Jenkins Azure cloud node named `azure`, with ACI capacity
-  in the configured resource group
+- GitHub Actions protected environments with OIDC federation to the declared
+  least-privilege Azure identities
 - A Platform Operations interactive Entra identity authorized to apply/import
   Terraform, grant the required Entra/data-plane roles, install the declared
   controller/guardrails, and invoke the sole finalization command that emits the
   reviewed non-secret bootstrap manifest through time-bounded PIM assignments. Use a
   separate JIT Privileged Role Administrator approver for Graph application
-  consent; do not use Owner/Global Administrator or a Jenkins identity
+  consent; do not use Owner/Global Administrator or a GitHub Actions identity
 
 ## Normative implementation gates
 
@@ -58,7 +59,7 @@ schema, evidence-field, operation-set, mapper, case-count, fixture, assignment,
 or timeout drift before implementation or verification.
 
 A conflict between either authority and an OpenAPI, authentication, learning, or
-Jenkins delivery contract blocks implementation and release. Record the
+GitHub Actions delivery contract blocks implementation and release. Record the
 validation result with the build/pilot evidence; a checklist pass or an
 assumption from planning is not a substitute.
 
@@ -138,7 +139,7 @@ reach the BFF while no UI route reaches core directly.
 ### Roadmap-only local MVP (non-release)
 
 This checkpoint demonstrates only User Story 1. It is **not a protected release**
-and does not claim that the T194 Azure/Jenkins release gate has passed.
+and does not claim that the T194 Azure/GitHub Actions release gate has passed.
 
 1. Start PostgreSQL, Redis, core, BFF, and UI with `docker compose up --build`.
 2. Open `http://localhost:5173/roadmaps` and sign in through the configured
@@ -198,8 +199,8 @@ uv run pytest tests/contract/test_aks_workload_resilience.py \
   tests/contract/test_gateway_certificate_rotation.py \
   tests/integration/test_lab_reference_validation.py
 
-# Jenkins disk-loss recovery, unpromoted artifacts, rollback, and evidence
-uv run pytest tests/ci/test_jenkins_delivery.py \
+# GitHub Actions disk-loss recovery, unpromoted artifacts, rollback, and evidence
+uv run pytest tests/ci/test_github_actions_delivery.py \
   tests/ci/test_delivery_evidence_retention.py
 ```
 
@@ -331,13 +332,13 @@ Verify:
 
 ## Optimized Azure deployment
 
-1. As Platform Operations, outside Jenkins, configure the Azure Storage backend
+1. As Platform Operations, outside GitHub Actions, configure the Azure Storage backend
    and run `scripts/azure/bootstrap-ui-platform.sh` with an interactive Entra
    identity. Review/apply or import locked Terraform that pins AzureRM/AzureAD,
    enables AKS OIDC/Workload Identity, disables legacy Web App Routing, and
    creates/reuses AGC, Key Vault, Azure Managed Redis, PostgreSQL, monitoring,
-   private DNS/TLS, Workload Identities, Jenkins delivery identities, and
-   evidence storage. Jenkins identities receive no Terraform apply/import or
+   private DNS/TLS, Workload Identities, GitHub Actions delivery identities, and
+   evidence storage. GitHub Actions identities receive no Terraform apply/import or
    state-read permission.
 2. Still as Platform Operations, run
    `scripts/azure/bootstrap-data-principals.sh` to establish the Redis data-plane
@@ -365,10 +366,10 @@ Verify:
    deployer/controller denial boundaries, and deployer target-resource-group-
    only `Reader` grant. The deployer cannot read Terraform state, secrets, ACR
    content, Redis data, or PostgreSQL data.
-5. Configure a Jenkins multibranch job to load the root `Jenkinsfile`. Permit
+5. Configure a GitHub Actions multibranch job to load the root `.github/workflows/delivery.yml`. Permit
    Azure publication/deployment only from the protected ref; PRs validate only.
    Configure the target environment lock and milestone behavior.
-6. Keep the Jenkins controller at `http://localhost:8080` and use its existing
+6. Keep the retired CI controller at `http://localhost:8080` and use its existing
    Azure cloud node named `azure` to create ephemeral ACI agents in the configured
    resource group. Configure `azure-aci-publisher` with an ACR-scoped
    user-assigned identity and `azure-aci-deployer` with an AKS-scoped
@@ -383,10 +384,10 @@ Verify:
    revoking the old credential, and revokes immediately on suspected compromise.
    Missing/unreadable expiry or fewer than 30 valid days quarantines cloud
    `azure` for protected Azure stages. Developer-local validation remains
-   available during quarantine, but Jenkins has no controller/local-agent
+   available during quarantine, but GitHub Actions has no controller/local-agent
    fallback; quarantine clears only after all three declared templates pass.
-   Store no additional Azure delivery credential or kubeconfig in Jenkins.
-   Use a dedicated Jenkins credential-manager identity that can update only the
+   Store no additional Azure delivery credential or kubeconfig in GitHub Actions.
+   Use a dedicated GitHub Actions credential-manager identity that can update only the
    stable cloud credential and cannot configure jobs, run builds, or read other
    credentials. Configure a separate Evidence Hold Managers Entra group whose
    custom role can mutate only hold metadata and cannot read/write/delete
@@ -397,7 +398,7 @@ Verify:
    general evidence read, overwrite, or delete permission.
    Enforce the assigned environment/stage prefixes with Azure ABAC conditions,
    upload with `If-None-Match: *`, and enable immutable storage for accepted
-   evidence. Configure Jenkins rotation with a stable credential ID and supply
+   evidence. Configure GitHub Actions rotation with a stable credential ID and supply
    replacement secret material only through protected standard input or an
    inherited file descriptor.
 6. Confirm the external Platform Operations bootstrap installed the version-
@@ -474,10 +475,10 @@ Pin and promote UI, BFF, and core ACR image digests independently. Deploy additi
 core changes first, then BFF, then UI; remove old fields only after compatible
 consumers are no longer deployed.
 
-## Jenkins pipeline verification
+## GitHub Actions pipeline verification
 
 Before enabling protected-branch deployment, run the repository CI scripts
-locally and exercise the Jenkins job in validation-only mode:
+locally and exercise the GitHub Actions job in validation-only mode:
 
 ```bash
 bash -n scripts/ci/*.sh
@@ -500,7 +501,7 @@ invalid-supplied-baseline, and audited rebuild-all cases. Assert the archived
 plan contains all three service
 booleans plus mandatory `contractIntegrity`, `readinessScenarios`,
 `performanceProfile`, and `infrastructure` booleans with the exact selection
-rules in the Jenkins delivery contract; prove no downstream stage recalculates
+rules in the GitHub Actions delivery contract; prove no downstream stage recalculates
 them. Assert a first/missing baseline uses JSON `null`, selects every service
 and lane, and records `missing-baseline`, while an invalid supplied revision
 fails closed. Then inject a validation failure and prove that no ACR publish or
@@ -512,7 +513,7 @@ state by replaying the mutation journal in reverse; untouched services retain
 their state. Include a reversible
 configuration mutation and prove both configuration and digest return to their
 prior values; prove an irreversible entry cannot enter automatic promotion.
-Compare the live Jenkins ACI template and running container-group identity
+Compare the live GitHub Actions ACI template and running container-group identity
 resource IDs to the reviewed bootstrap manifest. Confirm the identityless
 validator executes the same non-Azure suite on protected and unprotected refs,
 while unprotected refs stop before Azure stages. Confirm the Azure Storage copy
@@ -520,7 +521,7 @@ is authoritative, the controller archive is only a convenience copy, and the
 evidence-content validator rejects tokens, kubeconfigs, secrets, and personal
 learner data. Simulate pre-agent failure, abort, and agent connection and verify
 the trusted controller `RunAction` is created without an executor/workspace even
-when the Jenkinsfile omits audit calls or shadows repository/library symbols,
+when the .github/workflows/delivery.yml omits audit calls or shadows repository/library symbols,
 reaches exactly one terminal state through the installed plugin, and is copied into the
 authoritative evidence set only after authenticated evidence activation.
 Prove every accepted transition is fsynced to the normal run record and the

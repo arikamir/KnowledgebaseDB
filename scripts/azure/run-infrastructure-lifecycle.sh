@@ -53,6 +53,8 @@ temporary_receipt=""
 current_revision="$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
 target_key_vault_id=""
 target_key_vault_name=""
+planned_github_trust=""
+expected_publisher_subject=""
 
 write_scope() {
   local result="$1"
@@ -73,7 +75,9 @@ write_scope() {
       --arg repository "${TF_VAR_github_repository:-}" \
       --arg ownerId "${TF_VAR_github_repository_owner_id:-}" \
       --arg repositoryId "${TF_VAR_github_repository_id:-}" \
-      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVault:{id:$keyVaultId,name:$keyVaultName},githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
+      --arg githubEnvironment "${TF_VAR_github_actions_environment:-}" \
+      --arg publisherSubject "$expected_publisher_subject" \
+      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVault:{id:$keyVaultId,name:$keyVaultName},githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId,environment:$githubEnvironment,subject:$publisherSubject}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
       > "$scope_path"
   else
     printf '{"workflow":"private-platform-lifecycle","result":"%s"}\n' "$result" > "$scope_path"
@@ -117,6 +121,7 @@ required_variables=(
   TF_VAR_github_repository
   TF_VAR_github_repository_owner_id
   TF_VAR_github_repository_id
+  TF_VAR_github_actions_environment
 )
 for variable_name in "${required_variables[@]}"; do
   if [[ -z "${!variable_name:-}" ]]; then
@@ -124,6 +129,14 @@ for variable_name in "${required_variables[@]}"; do
     exit 1
   fi
 done
+
+github_repository_owner="${TF_VAR_github_repository%%/*}"
+github_repository_name="${TF_VAR_github_repository#*/}"
+if [[ -z "$github_repository_owner" || -z "$github_repository_name" || "$github_repository_name" == */* ]]; then
+  echo "TF_VAR_github_repository must contain exactly one owner/name pair" >&2
+  exit 1
+fi
+expected_publisher_subject="repo:${github_repository_owner}@${TF_VAR_github_repository_owner_id}/${github_repository_name}@${TF_VAR_github_repository_id}:environment:${TF_VAR_github_actions_environment}-publisher"
 
 terraform_source_paths=(
   infra/azure
@@ -163,7 +176,9 @@ else
     --arg repository "$TF_VAR_github_repository" \
     --arg ownerId "$TF_VAR_github_repository_owner_id" \
     --arg repositoryId "$TF_VAR_github_repository_id" \
-    '.schemaVersion == 2
+    --arg githubEnvironment "$TF_VAR_github_actions_environment" \
+    --arg publisherSubject "$expected_publisher_subject" \
+    '.schemaVersion == 3
       and .sourceRevision == $revision
       and .backend == {
         tenantId:$backendTenantId,
@@ -173,7 +188,15 @@ else
         container:$backendContainer,
         key:$backendKey
       }
-      and .githubTrust == {repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}' \
+      and .githubTrust == {
+        repository:$repository,
+        ownerId:$ownerId,
+        repositoryId:$repositoryId,
+        environment:$githubEnvironment,
+        subject:$publisherSubject,
+        issuer:"https://token.actions.githubusercontent.com",
+        audience:"api://AzureADTokenExchange"
+      }' \
     "$receipt_path" >/dev/null || {
       echo "reviewed plan receipt does not match the current revision, backend, and trust tuple" >&2
       exit 1
@@ -257,11 +280,56 @@ verify_planned_key_vault() {
   fi
 }
 
+verify_planned_github_trust() {
+  local candidate_plan="$1"
+  planned_github_trust="$(
+    terraform -chdir="$terraform_directory" show -json "$candidate_plan" |
+      jq -cer '.planned_values.outputs.github_actions_publisher_trust.value
+        | select(
+            (.repository | type == "string" and length > 0)
+            and (.owner_id | type == "string" and length > 0)
+            and (.repository_id | type == "string" and length > 0)
+            and (.environment | type == "string" and length > 0)
+            and (.subject | type == "string" and length > 0)
+            and .issuer == "https://token.actions.githubusercontent.com"
+            and .audience == "api://AzureADTokenExchange"
+          )
+        | {
+            repository,
+            ownerId:.owner_id,
+            repositoryId:.repository_id,
+            environment,
+            subject,
+            issuer,
+            audience
+          }'
+  )"
+  jq -e \
+    --arg repository "$TF_VAR_github_repository" \
+    --arg ownerId "$TF_VAR_github_repository_owner_id" \
+    --arg repositoryId "$TF_VAR_github_repository_id" \
+    --arg githubEnvironment "$TF_VAR_github_actions_environment" \
+    --arg publisherSubject "$expected_publisher_subject" \
+    '. == {
+      repository:$repository,
+      ownerId:$ownerId,
+      repositoryId:$repositoryId,
+      environment:$githubEnvironment,
+      subject:$publisherSubject,
+      issuer:"https://token.actions.githubusercontent.com",
+      audience:"api://AzureADTokenExchange"
+    }' <<<"$planned_github_trust" >/dev/null || {
+      echo "effective planned GitHub publisher trust does not match the approved trust tuple" >&2
+      exit 1
+    }
+}
+
 if [[ "$action" == "plan" ]]; then
   temporary_plan="$(mktemp "$artifact_directory/.platform.tfplan.XXXXXX")"
   temporary_receipt="$(mktemp "$artifact_directory/.platform.tfplan.receipt.XXXXXX")"
   terraform -chdir="$terraform_directory" plan -out="$temporary_plan"
   verify_planned_key_vault "$temporary_plan"
+  verify_planned_github_trust "$temporary_plan"
   plan_sha256="$(shasum -a 256 "$temporary_plan" | awk '{print $1}')"
   jq -n \
     --arg revision "$current_revision" \
@@ -273,10 +341,8 @@ if [[ "$action" == "plan" ]]; then
     --arg backendContainer "$TF_BACKEND_CONTAINER" \
     --arg backendKey "$TF_BACKEND_KEY" \
     --arg keyVaultId "$target_key_vault_id" \
-    --arg repository "$TF_VAR_github_repository" \
-    --arg ownerId "$TF_VAR_github_repository_owner_id" \
-    --arg repositoryId "$TF_VAR_github_repository_id" \
-    '{schemaVersion:2,sourceRevision:$revision,planSha256:$planSha256,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultId:$keyVaultId,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}}' \
+    --argjson githubTrust "$planned_github_trust" \
+    '{schemaVersion:3,sourceRevision:$revision,planSha256:$planSha256,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultId:$keyVaultId,githubTrust:$githubTrust}' \
     > "$temporary_receipt"
   mv "$temporary_plan" "$plan_path"
   temporary_plan=""
@@ -284,8 +350,13 @@ if [[ "$action" == "plan" ]]; then
   temporary_receipt=""
 else
   verify_planned_key_vault "$plan_path"
+  verify_planned_github_trust "$plan_path"
   jq -e --arg keyVaultId "$target_key_vault_id" '.keyVaultId == $keyVaultId' "$receipt_path" >/dev/null || {
     echo "reviewed plan vault does not match its receipt" >&2
+    exit 1
+  }
+  jq -e --argjson githubTrust "$planned_github_trust" '.githubTrust == $githubTrust' "$receipt_path" >/dev/null || {
+    echo "effective planned GitHub publisher trust does not match its receipt" >&2
     exit 1
   }
   terraform -chdir="$terraform_directory" apply "$plan_path"

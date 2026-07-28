@@ -1,5 +1,9 @@
 # Research: Three-Service DevOps Career Agent UI
 
+> Historical delivery decisions below are superseded by feature 006. Current
+> authority is GitHub Actions for build and ACR publication and Argo CD for
+> application reconciliation.
+
 ## Decision 1: Build a separate React and TypeScript UI service
 
 - **Decision**: Implement a client-only React SPA with strict TypeScript, Vite,
@@ -339,7 +343,7 @@
   excludes private/link-local/metadata/cluster destinations while the validator
   enforces the provider-domain/redirect allowlist.
 - **Data-plane bootstrap**: An interactive Platform Operations identity, outside
-  Jenkins, establishes the Managed Redis data-plane assignment and PostgreSQL
+  GitHub Actions, establishes the Managed Redis data-plane assignment and PostgreSQL
   Entra administrator plus separate core DML; lifecycle known-identity/status/
   reconciliation/outbox and unclaimed-retention-scheduling; retention audited
   security-definer claim/process-due procedure-only; lab-validation destination/
@@ -350,7 +354,7 @@
   without granting direct queue or learning-row reads. The lab role cannot
   access profiles, learning sessions, or reviews. Bootstrap
   proves cross-role denial before access
-  keys/password fallback are disabled. Jenkins may validate but cannot grant
+  keys/password fallback are disabled. GitHub Actions may validate but cannot grant
   these roles.
 - **Rationale**: Managed services remove backups, patching, failover, and
   storage scheduling from the application cluster. Workload Identity avoids
@@ -492,15 +496,15 @@
 - **Alternatives considered**: Last-write-wins can overwrite progress.
   Reject-all breaks safe retries. Duplicate-and-reconcile corrupts scoring.
 
-## Decision 21: Use Jenkins as a thin, repository-owned delivery orchestrator
+## Decision 21: Use GitHub Actions as a thin, repository-owned delivery orchestrator
 
-- **Decision**: Put a Declarative `Jenkinsfile` at repository root and keep
+- **Decision**: Put a Declarative `.github/workflows/delivery.yml` at repository root and keep
   change detection, validation, build/publish, promotion, deployment,
-  verification, and rollback behavior in versioned repository scripts. Jenkins
+  verification, and rollback behavior in versioned repository scripts. GitHub Actions
   runs selected service validation in parallel with fail-fast behavior, then
   serializes protected-branch deployment in compatibility order.
 - **Recovery and notification policy**: Manual rebuild/recovery requires a
-  Jenkins Delivery Recovery Operator and a distinct Platform Operations
+  GitHub Actions Delivery Recovery Operator and a distinct Platform Operations
   approver. Automatic compensation uses at most three attempts with
   0/15/45-second delays and a 20-minute total deadline, stops at the first
   unverified reverse dependency, and quarantines as `rollback_failed` for
@@ -509,18 +513,18 @@
   rollback failures page Application and Platform Operations with 15-minute
   acknowledgement and 30-minute incident escalation. Successful delivery is
   informational to Delivery and Application Operations.
-- **Rationale**: Jenkins is the specified CI platform. A thin pipeline makes
+- **Rationale**: GitHub Actions is the specified CI platform. A thin pipeline makes
   delivery reviewable with the source while keeping critical behavior locally
   testable. Declarative Pipeline supports parallel stages, fail-fast behavior,
   timeouts, and stage conditions; milestones and environment locking prevent a
   stale or concurrent build from overwriting a newer deployment.
 - **Alternatives considered**: A provider-neutral runner does not satisfy the
-  explicit Jenkins requirement. GitHub Actions and Azure Pipelines add an
+  explicit GitHub Actions requirement. GitHub Actions and Azure Pipelines add an
   unrequested control plane. Rebuild-all wastes time and expands blast radius.
   Encoding all behavior directly in Groovy makes it harder to test and reuse.
-- **Sources**: [Jenkins Pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/),
-  [Jenkins tests and artifacts](https://www.jenkins.io/doc/pipeline/tour/tests-and-artifacts/),
-  [Jenkins milestone step](https://www.jenkins.io/doc/pipeline/steps/pipeline-milestone-step/)
+- **Sources**: [GitHub Actions Pipeline syntax](https://www.github_actions.io/doc/book/pipeline/syntax/),
+  [GitHub Actions tests and artifacts](https://www.github_actions.io/doc/pipeline/tour/tests-and-artifacts/),
+  [GitHub Actions milestone step](https://www.github_actions.io/doc/pipeline/steps/pipeline-milestone-step/)
 
 ## Decision 22: Validate labs before publication and periodically afterward
 
@@ -533,10 +537,10 @@
 - **Alternatives considered**: Browser-only checks are inconsistent and expose
   users first. Manual-only checks do not detect links that later fail.
 
-## Decision 23: Use existing Jenkins Azure cloud ACI agents
+## Decision 23: Use existing retired controller Azure cloud ACI agents
 
-- **Decision**: The Jenkins controller remains at `http://localhost:8080` and
-  uses its existing Jenkins Azure cloud node named `azure` to provision and connect
+- **Decision**: The retired CI controller remains at `http://localhost:8080` and
+  uses its existing retired controller Azure cloud node named `azure` to provision and connect
   ephemeral ACI agents in the configured resource group. Separate publisher
   and deployer templates (`azure-aci-publisher` and `azure-aci-deployer`) use
   distinct ACR- and AKS-scoped user-assigned managed identities. A
@@ -578,20 +582,20 @@
   Platform Operations owns this credential, rotates it at least every 90 days,
   and receives expiry alerts at 30, 14, and 7 days. Missing/unreadable expiry or
   fewer than 30 valid days quarantines Azure agent provisioning for protected
-  deployments. Developer-local validation remains possible, but Jenkins never
-  falls back to its controller or a local agent; all-ref Jenkins validation
+  deployments. Developer-local validation remains possible, but GitHub Actions never
+  falls back to its controller or a local agent; all-ref GitHub Actions validation
   resumes only on the identityless ACI validator. Validate that the identityless
   validator plus publisher and deployer ACI templates can provision and connect
   with their declared identity boundaries before revoking the prior credential;
   revoke immediately after suspected
-  compromise. Update the stable Jenkins credential ID only through the
-  authenticated localhost API with CSRF protection using a dedicated Jenkins
+  compromise. Update the stable GitHub Actions credential ID only through the
+  authenticated localhost API with CSRF protection using a dedicated GitHub Actions
   credential-manager identity. That identity may update only the stable cloud
   credential and cannot configure jobs, run builds, or read other credentials.
   Accept replacement secret material only through protected standard input or
   an inherited file descriptor with redacted logs and guaranteed cleanup.
   Quarantine clears only after all three replacement-template checks pass.
-- **External infrastructure bootstrap**: Platform Operations, not Jenkins, uses
+- **External infrastructure bootstrap**: Platform Operations, not GitHub Actions, uses
   an interactive Entra identity to initialize locked Azure Storage remote state
   and apply/import reviewed Terraform with pinned AzureRM/AzureAD providers and
   a committed provider lock file. `bootstrap-ui-platform.sh` applies/imports all
@@ -605,7 +609,7 @@
   non-secret reviewed manifest containing state lineage/serial, repository
   configuration digest, resource/identity IDs, origins, controller/migration-
   policy attestations, and seven-day
-  provider/quota/capacity attestations. Jenkins has no Terraform apply/import or
+  provider/quota/capacity attestations. GitHub Actions has no Terraform apply/import or
   state-read permission and blocks protected delivery when the manifest is
   missing, expired, stale, or inconsistent with live resources.
   Bootstrap privileges are PIM-activated and scoped by action: state-container
@@ -614,7 +618,7 @@
   provider-registration/quota-read custom subscription role, JIT `Application
   Administrator`, and a separate JIT `Privileged Role Administrator` approver
   for the Microsoft Graph `User.Read.All` application consent. `Owner`, `Global
-  Administrator`, standing privilege, unrelated app/data access, and Jenkins
+  Administrator`, standing privilege, unrelated app/data access, and GitHub Actions
   principals are denied. This split reflects that Azure Contributor cannot
   assign roles and that Application/Cloud Application Administrator consent
   excludes Microsoft Graph application permissions.
@@ -632,14 +636,14 @@
   preflight checks, with no Terraform-state, Key Vault-secret, ACR-content,
   Redis-data, or PostgreSQL-data read. Post-bootstrap delivery-identity validation rejects
   missing, additional, swapped, or system-assigned identities by comparing the
-  live Jenkins template and running ACI resource IDs with the reviewed manifest;
+  live GitHub Actions template and running ACI resource IDs with the reviewed manifest;
   it also proves that the validator is identityless.
 - **Two-phase readiness**: The identityless validator checks manifest schema and
   repository digest. On protected refs the deployer performs target-resource-
   group-only live checks for AKS version/capacity/networking/OIDC, ALB Controller,
   ACR reachability, private DNS, data-plane principals, and legacy-ingress
   absence; subscription provider/quota checks use the unexpired external
-  attestation rather than a Jenkins subscription-wide grant. Then run a separate
+  attestation rather than a GitHub Actions subscription-wide grant. Then run a separate
   delivery-identity validation for kubelet pull, publisher push,
   deployer AKS access, controller denial, cross-identity denial, and exact
   tenant/subscription/resource-group scope.
@@ -664,13 +668,13 @@
   blob-version hold permission. A separate reconciler identity is the sole data-
   plane principal that may apply or clear the exact enumerated version legal
   holds authorized by that metadata. Neither principal can read delivery
-  evidence, create artifacts, change base retention, or delete blobs. Jenkins
+  evidence, create artifacts, change base retention, or delete blobs. GitHub Actions
   controller archives are
   convenience copies, not the system of record. A globally trusted,
   administrator-installed controller plugin built from a pinned protected
   revision and verified digest uses `RunListener` to create a controller
   `RunAction` with `pending` state before `node`, agent allocation, checkout, or
-  workspace creation. It runs independently of repository Jenkinsfile/shared-
+  workspace creation. It runs independently of repository .github/workflows/delivery.yml/shared-
   library calls, so omission or symbol shadowing cannot bypass creation; it owns
   monotonic updates, restart recovery, retention, and exactly-once finalization.
   Repository shell code may request allowed updates/synchronization but cannot
@@ -719,7 +723,7 @@
   | PostgreSQL | RPO at most five minutes; RTO at most four hours; continuous backup/PITR retention is seven days, and restored access waits for retention catch-up plus owner/access checks. |
   | Redis sessions | Durable-session RPO is intentionally excluded; RTO at most 60 minutes. Session loss may require sign-in but cannot lose core learning data, and restored state requires key/version validation. |
   | Delivery evidence | RPO 0 after immutable-version acceptance; access RTO at most four hours, with delivery blocked until recovery/completeness. |
-  | Jenkins controller audit | RPO 0 after a two-copy fsync; RTO at most four hours for replica restore and queue/run, webhook, and Azure-evidence reconciliation. Protected delivery stays blocked until accepted orphans are terminal and post-mutation orphans have verified rollback or approved recovery. |
+  | retired CI controller audit | RPO 0 after a two-copy fsync; RTO at most four hours for replica restore and queue/run, webhook, and Azure-evidence reconciliation. Protected delivery stays blocked until accepted orphans are terminal and post-mutation orphans have verified rollback or approved recovery. |
   | Telemetry and labs | Telemetry may lose at most five minutes or 1,000 safe envelopes per process. Labs claim no provider RTO/RPO; scheduled validation runs every 20 hours and never exceeds 24 hours, while a report triggers validation within 15 minutes. |
   | Regional DR | Cross-region Entra/Azure managed-service failover and provider SLA commitments are excluded; dependency behavior still fails closed. |
 
@@ -741,7 +745,7 @@
   | Approved machine clients/private networks | Security Reviewers and Platform Operations | Manifest attestation at most seven days old plus live DNS/TLS/denial probe on verification day. |
   | External bootstrap and final reviewed manifest | Platform Operations | Plan/state/assignment/controller/migration/provider/quota/capacity evidence at most seven days old; compare live target-RG resources on every protected build. |
   | AKS/ACR and platform controls | Platform Operations | Live capacity/OIDC/Workload-Identity/ALB/PDB/HPA/topology/private-DNS/migration/legacy-ingress preflight within 15 minutes of promotion. |
-  | Jenkins controller/cloud `azure` | Platform Operations | Check daily and on every protected build; provisioning principal must retain at least 30 valid days. |
+  | retired CI controller/cloud `azure` | Platform Operations | Check daily and on every protected build; provisioning principal must retain at least 30 valid days. |
   | ACI validator/publisher/deployer | Platform Operations | Smoke after credential/template change and within 24 hours before protected release. |
   | Redis/PostgreSQL/Key Vault/CSI/Gateway/Monitor/evidence | Platform Operations with Application Operations | Live identity/denial/readiness/version/immutable-write/exporter checks within 15 minutes of pilot opening and protected release. |
   | Lab providers/references | Learning Content Operations and Security Reviewers | Dual approvals and complete validation at most 24 hours old. |

@@ -1,8 +1,9 @@
 # GitHub Actions Azure delivery
 
-GitHub Actions is the CI/CD orchestrator. Jenkins files and controller plugins
-remain only as legacy migration material; no deployment job depends on a
-Jenkins controller or ACI callback.
+GitHub Actions is the sole CI/CD orchestrator. Repository workflows validate
+the source, build and scan immutable images, push them to ACR, and open the
+reviewed GitOps desired-state pull request. No controller plugin, ephemeral
+controller agent, or direct AKS deployment job is part of this path.
 
 ## Workflows
 
@@ -21,10 +22,13 @@ Jenkins controller or ACI callback.
   commit/trust/backend-bound plan; it never regenerates the reviewed plan. The
   Key Vault reachability probe is derived from the saved plan's
   `key_vault_target` output, so an unrelated accessible vault cannot satisfy the
-  private-data-plane gate. Initial
+  private-data-plane gate. The receipt's publisher OIDC subject is likewise
+  derived from the effective saved-plan output and must exactly match the
+  approved repository IDs and `TF_VAR_github_actions_environment`, preventing
+  ignored or higher-precedence tfvars from silently changing trust. Initial
   creation before the managed vault exists additionally requires
-  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to the external
-  a unique mode-`0700` directory under `${TMPDIR:-/tmp}`. Apply must set
+  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to a unique
+  mode-`0700` directory under `${TMPDIR:-/tmp}`. Apply must set
   `INFRASTRUCTURE_ARTIFACT_DIRECTORY` to that reviewed plan directory. The
   script rejects symlinks, foreign-owned or permissive directories, and any
   artifact directory inside the repository because binary plans can contain

@@ -7,7 +7,7 @@ manifest_digest_algorithm: sha256
 manifest_digest_scope: >-
   UTF-8 bytes of a mapping containing execution_rules and groups, serialized as
   recursively key-sorted compact JSON with no trailing newline.
-manifest_digest: ca2bd36fcc96fd5cefc6bdcd7ae9366d02085940888925df954e47f16501f66d
+manifest_digest: 6d83cef718fc6928e4404f27b2a4abf48995522c5fa1fe41e71639c3ef70d6d3
 
 execution_rules:
   setup_failure: failed_case
@@ -364,7 +364,7 @@ groups:
     criteria: [SC-040, SC-041]
     denominator: 12
     expectations: All normal, partial, rollback, and emergency gates and saved-data outcomes pass.
-    credential_types: [bff_client_certificate, gateway_private_core_tls, jenkins_cloud_credential]
+    credential_types: [bff_client_certificate, gateway_private_core_tls, github_actions_cloud_credential]
     case_suffixes: [normal, partial_convergence, rollback_injection, emergency]
     case_id_template: SC040.{credential_type}.{case_suffix}
 

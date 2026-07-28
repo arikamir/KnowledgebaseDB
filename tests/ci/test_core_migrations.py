@@ -39,18 +39,23 @@ def test_namespace_and_migrator_identity_are_dedicated() -> None:
     assert account["automountServiceAccountToken"] is False
 
 
-def test_deployer_rbac_has_only_the_exact_job_observation_surface() -> None:
-    role, binding = documents("deployer-rbac.yaml")
+def test_gitops_rbac_has_only_the_exact_job_observation_surface() -> None:
+    role, binding = documents("gitops-rbac.yaml")
     assert role["metadata"]["namespace"] == "career-migrations"
     assert role["rules"] == [
         {"apiGroups": ["batch"], "resources": ["jobs"], "verbs": ["create", "get", "watch", "delete"]},
         {"apiGroups": [""], "resources": ["pods"], "verbs": ["get", "list", "watch"]},
         {"apiGroups": [""], "resources": ["pods/log"], "verbs": ["get"]},
     ]
-    assert binding["subjects"] == [{
+    assert binding["roleRef"] == {
         "apiGroup": "rbac.authorization.k8s.io",
-        "kind": "Group",
-        "name": "jenkins-azure-aci-deployer",
+        "kind": "Role",
+        "name": role["metadata"]["name"],
+    }
+    assert binding["subjects"] == [{
+        "kind": "ServiceAccount",
+        "name": "argocd-application-controller",
+        "namespace": "argocd",
     }]
     serialized = json.dumps(role["rules"])
     for denied in ("pods/exec", "pods/attach", "pods/portforward", "secrets", "configmaps", "serviceaccounts"):
@@ -126,7 +131,7 @@ def test_admission_policy_makes_runner_image_target_and_sandbox_non_overridable(
 def test_kustomization_installs_guardrails_but_not_a_migration_job() -> None:
     kustomization = document("kustomization.yaml")
     assert set(kustomization["resources"]) == {
-        "namespace.yaml", "service-account.yaml", "deployer-rbac.yaml",
+        "namespace.yaml", "service-account.yaml", "gitops-rbac.yaml",
         "network-policy.yaml", "policy-parameters.yaml",
         "validating-admission-policy.yaml",
     }

@@ -31,7 +31,7 @@ def test_delivery_workflow_uses_oidc_and_protected_environments() -> None:
 
 
 def test_github_oidc_federation_is_environment_and_repository_scoped() -> None:
-    source = (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
+    source = (ROOT / "infra/azure/github-actions-identities.tf").read_text()
     assert "azurerm_federated_identity_credential" in source
     assert "https://token.actions.githubusercontent.com" in source
     assert "var.github_repository" in source
@@ -40,9 +40,9 @@ def test_github_oidc_federation_is_environment_and_repository_scoped() -> None:
     assert "environment:${var.github_actions_environment}" in source
 
 
-def test_actions_delivery_docs_replace_jenkins_as_authority() -> None:
+def test_actions_delivery_docs_define_github_actions_as_sole_authority() -> None:
     docs = (ROOT / "docs/github-actions-azure.md").read_text()
-    assert "GitHub Actions is the CI/CD orchestrator" in docs
+    assert "GitHub Actions is the sole CI/CD orchestrator" in docs
     assert ".github/workflows/delivery.yml" in docs
     assert "AZURE_PUBLISHER_CLIENT_ID" in docs
     assert "AZURE_DEPLOYER_CLIENT_ID" not in docs

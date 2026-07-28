@@ -1,4 +1,0 @@
-<?jelly escape-by-default='true'?>
-<div>
-  Trusted controller-side lifecycle audit, replicated fsync, protected scheduling guard, and orphan reconciliation.
-</div>

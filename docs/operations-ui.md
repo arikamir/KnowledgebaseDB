@@ -9,7 +9,7 @@ evidence.
 ## External bootstrap and prerequisites
 
 Only an authorized Platform Operations identity may run the reviewed locked
-Terraform plan/import and data-principal bootstrap. Jenkins cannot apply
+Terraform plan/import and data-principal bootstrap. GitHub Actions cannot apply
 Terraform or read its state. Run `scripts/azure/dry-run-platform-sequence.sh`
 first. During authorized T194, install the pinned Gateway API CRDs and ALB
 Controller, wait for its readiness attestation, then install the cluster-admin-
@@ -18,22 +18,14 @@ owned migration namespace/RBAC/admission guardrails. The sole
 provider/quota/capacity, state, identity-denial, ALB, and migration attestations.
 Missing, stale, or digest-drifted manifests block protected delivery.
 
-## Controller audit, backup, and orphan recovery
+## Workflow audit and recovery
 
-Install only the protected-revision, digest-verified controller audit plugin.
-Its listener creates and fsyncs `pending` before agent allocation, writes the
-normal run action and host-managed append-only replicated copy, advances stages
-monotonically, and finalizes exactly once. Check replicated-store integrity
-hourly. Back up the replicated volume encrypted; credentials and raw job output
-are excluded.
-
-For controller disk loss, restore the encrypted replica within four hours, then
-reconcile Jenkins queue/run state, source webhooks, and immutable Azure evidence.
-An accepted orphan is finalized from those authorities. A post-mutation orphan
-creates the recovery block and protected scheduling remains disabled until
-rollback is verified or a Delivery Recovery Operator and a distinct Platform
-Operations approver authorize and verify continuation. Repository omission or
-shadowing of audit calls never bypasses the installed listener.
+GitHub retains workflow run metadata while the delivery workflow publishes its
+nonsecret source revision, scan/SBOM results, immutable image digests, release
+bundle, and desired-state pull request as evidence. A failed or cancelled run
+cannot mutate the cluster because application delivery has no kubeconfig or AKS
+identity. Resume by starting a new run from a protected source revision; never
+reuse a partial release bundle.
 
 ## Delivery failure, notification, and recovery
 
@@ -44,13 +36,9 @@ Application and Platform Operations, require acknowledgement within 15 minutes,
 and escalate to an incident commander at 30 minutes. Retry a failed notification
 with the same deduplication key for up to 24 hours and retain every attempt.
 
-Promotion records an immutable snapshot and append-only forward/reverse mutation
-journal. Recovery runs in reverse dependency order. Each entry receives at most
-three verified compensation attempts after 0, 15, and 45 seconds, all within the
-20-minute attempt-wide deadline. Stop at the first unverified reverse entry.
-`rollback_failed` is immutable and quarantines the environment; the two-person
-recovery pair resumes at that entry and reverifies every later entry. Ordinary
-gates, identity checks, evidence, and the environment lock are never bypassed.
+Promotion is the merge of a reviewed digest-pinned release declaration. Argo CD
+reconciles that Git state. Recovery uses `.github/workflows/rollback.yml` to
+open a reviewed Git reversion; direct cluster changes are not authoritative.
 
 A digest published but never promoted remains `published_unpromoted`, cannot be
 selected by another build, and receives no release alias. Reuse requires a new
@@ -60,9 +48,9 @@ disposition evidence for 90 days and never delete promoted or held digests.
 
 ## Identity and certificate operations
 
-The validator and UI are identityless. Publisher has only exact ACR push and its
-evidence prefix; deployer has exact AKS delivery, its evidence prefix, and Reader
-only on the target resource group. The AKS kubelet has exact-registry `AcrPull`
+The validator and UI are identityless. The GitHub Actions publisher has only
+exact ACR push and its evidence prefix. No pipeline deployer identity exists.
+The AKS kubelet has exact-registry `AcrPull`
 and cannot push, administer, federate, assign roles, or become an application
 pod identity. ALB Controller has only exact AGC-resource-group configuration and
 association-subnet join. Gateway rotation has only named certificate-version and

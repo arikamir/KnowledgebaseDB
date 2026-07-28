@@ -517,7 +517,7 @@ direct personal identifiers.
   mutually denied core application-DML; lifecycle known-identity/status/
   reconciliation/outbox plus unclaimed-retention scheduling; retention audited
   claim/process-due procedure-only with no direct queue or learning-row grants;
-  and migration DDL/backfill roles. BFF/UI and Jenkins deployer have no
+  and migration DDL/backfill roles. BFF/UI and GitHub Actions deployer have no
   PostgreSQL access.
 - BFF Redis keys use a separate namespace and lifecycle; no domain migration is
   coupled to BFF deployment.
@@ -605,7 +605,7 @@ delete blob content or mutate the fixed time-based policy.
 Only the external Platform Operations finalization command emits this non-secret
 artifact after all Terraform, principals, denial checks, ALB Controller, and
 migration guardrails are live; the bootstrap/apply commands never emit it. Code
-review accepts it with the infrastructure change. The identityless Jenkins stage
+review accepts it with the infrastructure change. The identityless GitHub Actions stage
 validates schema and repository digest. A protected deployer stage compares
 target-resource-group IDs/tags with live resources without reading Terraform
 state. Missing fields, a configuration mismatch, or an attestation older than
@@ -620,12 +620,12 @@ detecting matching add/remove/rename/mode/content drift.
 
 ### DeliveryControlIdentity (configuration inventory)
 
-- `principal_object_id`, `principal_type`: `jenkins_local_user | entra_group`
-- `role`: `jenkins_credential_manager | evidence_hold_manager`
+- `principal_object_id`, `principal_type`: `github_actions_local_user | entra_group`
+- `role`: `github_actions_credential_manager | evidence_hold_manager`
 - `scope_resource_id`, `allowed_operations`, `denied_operations`
 - `configured_at`, `last_verified_at`, `status`: `active | quarantined | revoked`
 
-The Jenkins credential manager may update only the stable cloud `azure`
+The GitHub Actions credential manager may update only the stable cloud `azure`
 credential entry through the localhost API; it cannot read other credentials,
 configure jobs, or run builds. The evidence hold-manager principal is the
 configured Evidence Hold Managers Entra group; its custom role may
@@ -653,7 +653,7 @@ three declared template checks pass.
 - `failed_stage`, `terminal_reason`, `authoritative_evidence_path`
 - append-only event timestamps and one terminal-state constraint
 
-The trusted controller state is a Jenkins `RunAction` created by an
+The trusted controller state is a GitHub Actions `RunAction` created by an
 administrator-installed, digest-verified `RunListener` plugin with
 `result=pending`
 before any executor, node, agent, checkout, or workspace. Repository code cannot
@@ -664,7 +664,7 @@ available, the audit is copied into its EvidenceSet; otherwise the controller
 record is access-restricted and retained for 90 days.
 
 Before an ACI request, every accepted lifecycle transition is fsynced to both
-the Jenkins run record and a host-managed append-only replicated controller-audit
+the GitHub Actions run record and a host-managed append-only replicated controller-audit
 store. Loss or divergence of either copy disables protected scheduling. The
 replica provides zero accepted-transition RPO and a four-hour recovery target;
 restart or controller-disk recovery reconciles build IDs against queue/run,

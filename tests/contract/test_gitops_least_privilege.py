@@ -29,7 +29,7 @@ def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
 
 
 def test_publisher_federation_uses_immutable_repository_ids() -> None:
-    identities = (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
+    identities = (ROOT / "infra/azure/github-actions-identities.tf").read_text()
     variables = (ROOT / "infra/azure/variables.tf").read_text()
     documentation = (ROOT / "docs/github-actions-azure.md").read_text()
     assert "github_repository_owner_id" in variables
