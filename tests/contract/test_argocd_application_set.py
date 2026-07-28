@@ -13,7 +13,7 @@ def load(path: str):
     return yaml.safe_load((ROOT / path).read_text())
 
 
-def test_application_set_reads_main_release_declarations_and_only_targets_application_overlay():
+def test_application_set_reads_main_release_and_sequences_migration_before_services():
     application_set = load("deploy/argocd/applicationset.yaml")
     assert application_set["apiVersion"] == "argoproj.io/v1alpha1"
     assert application_set["kind"] == "ApplicationSet"
@@ -28,8 +28,12 @@ def test_application_set_reads_main_release_declarations_and_only_targets_applic
 
     template = application_set["spec"]["template"]
     assert template["spec"]["project"] == "career-agent"
-    assert template["spec"]["source"]["targetRevision"] == "main"
-    assert template["spec"]["source"]["path"] == "deploy/k8s/overlays/argocd-nonprod"
+    sources = template["spec"]["sources"]
+    assert [source["path"] for source in sources] == [
+        "deploy/k8s/overlays/argocd-nonprod",
+        "deploy/k8s/overlays/argocd-nonprod-migration",
+    ]
+    assert all(source["targetRevision"] == "main" for source in sources)
     assert template["spec"]["destination"] == {
         "server": "https://kubernetes.default.svc",
         "namespace": "career-agent",
@@ -47,7 +51,7 @@ def test_application_set_reads_main_release_declarations_and_only_targets_applic
         "ServerSideApply=true",
     ]
 
-    images = template["spec"]["source"]["kustomize"]["images"]
+    images = sources[0]["kustomize"]["images"]
     assert len(images) == 3
     assert {image.split("=", 1)[0] for image in images} == {
         "career-agent/ui",
@@ -55,17 +59,23 @@ def test_application_set_reads_main_release_declarations_and_only_targets_applic
         "career-agent/core",
     }
     assert all(".services." in image for image in images)
+    assert sources[1]["kustomize"]["images"] == [
+        "career-agent/core={{.services.core.image}}",
+    ]
     assert not any("infra/" in str(value) or "terraform" in str(value).lower() for value in template.values())
 
 
-def test_application_project_is_restricted_to_career_agent_application_resources():
+def test_application_project_is_restricted_to_services_and_migration_job():
     project = load("deploy/argocd/project.yaml")
     assert project["kind"] == "AppProject"
     assert project["spec"]["sourceRepos"] == ["https://github.com/arikamir/KnowledgebaseDB.git"]
-    assert project["spec"]["destinations"] == [{"server": "https://kubernetes.default.svc", "namespace": "career-agent"}]
+    assert project["spec"]["destinations"] == [
+        {"server": "https://kubernetes.default.svc", "namespace": "career-agent"},
+        {"server": "https://kubernetes.default.svc", "namespace": "career-migrations"},
+    ]
     assert project["spec"]["clusterResourceWhitelist"] == []
     assert {entry["kind"] for entry in project["spec"]["namespaceResourceWhitelist"]} == {
-        "Deployment", "Service", "HorizontalPodAutoscaler", "PodDisruptionBudget",
+        "Deployment", "Service", "HorizontalPodAutoscaler", "PodDisruptionBudget", "Job",
     }
 
 
@@ -96,3 +106,30 @@ def test_argocd_overlay_is_application_only_and_excludes_platform_resources():
     assert "kind: Secret" not in patch_text
     assert "namespace.yaml" not in patch_text
     assert "gateway" not in patch_text.lower()
+
+
+def test_core_migration_is_a_presync_hook_using_the_release_core_digest() -> None:
+    overlay = load("deploy/k8s/overlays/argocd-nonprod-migration/kustomization.yaml")
+    assert overlay["resources"] == ["core-migration-presync.yaml"]
+    job = load("deploy/k8s/overlays/argocd-nonprod-migration/core-migration-presync.yaml")
+    assert job["metadata"]["namespace"] == "career-migrations"
+    assert job["metadata"]["annotations"] == {
+        "argocd.argoproj.io/hook": "PreSync",
+        "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation,HookSucceeded",
+        "argocd.argoproj.io/sync-wave": "-10",
+    }
+    container = job["spec"]["template"]["spec"]["containers"][0]
+    assert container["image"] == "career-agent/core"
+    assert container["command"] == ["/app/scripts/run-migration.sh"]
+    assert container["env"] == [
+        {"name": "MIGRATION_TARGET", "value": "009_merge_learning_progress"},
+        {
+            "name": "DATABASE_URL",
+            "valueFrom": {
+                "configMapKeyRef": {
+                    "name": "core-migration-policy-v1",
+                    "key": "databaseUrl",
+                },
+            },
+        },
+    ]

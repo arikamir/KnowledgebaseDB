@@ -32,6 +32,7 @@ cannot target platform-owned resources.
 - [X] T008 [P] Add the application-only Kustomize overlay and patch UI, BFF, and Core pod specs to reference `career-agent-acr-pull` without creating or embedding secret data in `deploy/k8s/overlays/argocd-nonprod/kustomization.yaml` and `deploy/k8s/overlays/argocd-nonprod/application-images.yaml`.
 - [X] T009 [P] Restrict the Argo CD source repository, destination namespace, cluster-resource whitelist, and namespace-resource allowlist in `deploy/argocd/project.yaml`.
 - [X] T010 [P] Configure the fixed `main` Git file generator, missing-key failure mode, immutable image substitutions, application-only overlay, automated sync policy, and no-namespace-creation rule in `deploy/argocd/applicationset.yaml`.
+- [X] T010a [P] Add the bounded `career-migrations` `PreSync` Job as a second Application source, using the exact release Core digest and platform-owned migration guardrails so schema expansion must succeed before service rollout.
 - [X] T011 [P] Extend `tests/contract/test_argocd_application_set.py` to assert the fixed release path, three digest substitutions, `career-agent-acr-pull` reference, AppProject restrictions, and absence of gateway/namespace/platform resources.
 - [X] T012 Run `scripts/ci/validate-release-bundle.sh`, `scripts/ci/validate-gitops-release.sh`, `kubectl kustomize deploy/argocd`, `kubectl kustomize deploy/k8s/overlays/argocd-nonprod`, and the focused contract tests; record the expected output in `specs/006-argocd-gitops-delivery/quickstart.md`.
 

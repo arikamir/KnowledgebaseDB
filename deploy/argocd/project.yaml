@@ -7,15 +7,17 @@ metadata:
     app.kubernetes.io/part-of: career-agent-delivery
     gitops.knowledgebase.io/managed-by: platform-operations
 spec:
-  description: Application-only delivery for the DevOps Career Agent non-production services.
+  description: GitOps delivery for the DevOps Career Agent services and bounded pre-sync migration Job.
   sourceRepos:
     - https://github.com/arikamir/KnowledgebaseDB.git
   destinations:
     - server: https://kubernetes.default.svc
       namespace: career-agent
-  # The ApplicationSet must not be able to mutate cluster-scoped platform
-  # resources. The career-agent namespace is provisioned by infrastructure
-  # delivery before this project is installed.
+    - server: https://kubernetes.default.svc
+      namespace: career-migrations
+  # The ApplicationSet cannot mutate cluster-scoped platform resources. The
+  # application and migration namespaces, identities, admission policy, and
+  # runtime configuration are provisioned before this project is installed.
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
     - group: ""
@@ -26,5 +28,7 @@ spec:
       kind: HorizontalPodAutoscaler
     - group: policy
       kind: PodDisruptionBudget
+    - group: batch
+      kind: Job
   orphanedResources:
     warn: true

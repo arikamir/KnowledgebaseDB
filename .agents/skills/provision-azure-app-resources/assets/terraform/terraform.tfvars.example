@@ -1,8 +1,12 @@
 subscription_id = "00000000-0000-0000-0000-000000000000"
 delivery_operators_group_object_id = "00000000-0000-0000-0000-000000000000"
 security_reviewers_group_object_id = "00000000-0000-0000-0000-000000000000"
+github_repository                  = "owner/repository"
+github_repository_owner_id         = "12345678"
+github_repository_id               = "123456789"
 # location     = "israelcentral"
 # prefix       = "devopscareer"
 # environment  = "nonprod"
+# github_actions_environment = "nonprod"
 # node_vm_size = "Standard_B2s"
 # node_count   = 1

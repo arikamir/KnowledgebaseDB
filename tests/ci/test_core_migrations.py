@@ -95,7 +95,15 @@ def test_job_template_is_bounded_nonprivileged_and_expand_only() -> None:
     assert container["args"] == ["upgrade", "$(MIGRATION_TARGET)"]
     assert container["env"] == [
         {"name": "MIGRATION_TARGET", "value": "${MIGRATION_TARGET}"},
-        {"name": "DATABASE_URL", "value": "${MIGRATION_DATABASE_URL}"},
+        {
+            "name": "DATABASE_URL",
+            "valueFrom": {
+                "configMapKeyRef": {
+                    "name": "core-migration-policy-v1",
+                    "key": "databaseUrl",
+                },
+            },
+        },
     ]
     assert container["securityContext"] == {
         "allowPrivilegeEscalation": False,
@@ -123,7 +131,8 @@ def test_admission_policy_makes_runner_image_target_and_sandbox_non_overridable(
         "backoffLimit == 1", "ttlSecondsAfterFinished == 300", "envFrom",
         "hostNetwork", "hostPID", "hostIPC", "hostPath", "privileged",
         "allowPrivilegeEscalation", "readOnlyRootFilesystem", "MIGRATION_TARGET",
-        "DATABASE_URL", "params.data.databaseUrl",
+        "DATABASE_URL",
+        "core-migration-policy-v1", "configMapKeyRef",
     ):
         assert required in expressions
 

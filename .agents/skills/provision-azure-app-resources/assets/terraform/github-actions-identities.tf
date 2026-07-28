@@ -51,5 +51,13 @@ resource "azurerm_role_assignment" "publisher_exact_acr_push" {
   role_definition_name = "AcrPush"
   principal_id         = azurerm_user_assigned_identity.github_actions_publisher.principal_id
 }
+resource "azurerm_federated_identity_credential" "github_actions_publisher" {
+  name                = "github-actions-publisher-${var.environment}"
+  resource_group_name = azurerm_resource_group.app.name
+  parent_id           = azurerm_user_assigned_identity.github_actions_publisher.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_actions_environment}-publisher"
+}
 output "workload_identity_manifest" { value = { for name, identity in azurerm_user_assigned_identity.workload : name => { resource_id = identity.id, client_id = identity.client_id, principal_id = identity.principal_id, subject = local.workload_identity_subjects[name], contract = local.workload_identity_contract[name] } } }
-output "github_actions_delivery_identity_manifest" { value = { publisher = { resource_id = azurerm_user_assigned_identity.github_actions_publisher.id, client_id = azurerm_user_assigned_identity.github_actions_publisher.client_id }, validator = null, ui = null, contract = local.delivery_identity_contract } }
+output "github_actions_delivery_identity_manifest" { value = { publisher = { resource_id = azurerm_user_assigned_identity.github_actions_publisher.id, client_id = azurerm_user_assigned_identity.github_actions_publisher.client_id, subject = azurerm_federated_identity_credential.github_actions_publisher.subject }, issuer = "https://token.actions.githubusercontent.com", audience = "api://AzureADTokenExchange", validator = null, ui = null, contract = local.delivery_identity_contract } }

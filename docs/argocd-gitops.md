@@ -3,8 +3,9 @@
 Argo CD is the application release controller for the non-production AKS
 cluster. It is intentionally not an infrastructure controller:
 
-1. Platform Operations provisions the AKS cluster, the `argocd` and
-   `career-agent` namespaces, workload identities, the gateway, and the
+1. Platform Operations provisions the AKS cluster, the `argocd`,
+   `career-agent`, and `career-migrations` namespaces, workload identities,
+   migration admission guardrails/runtime configuration, the gateway, and the
    namespace-scoped `career-agent-acr-pull` imagePullSecret through Terraform
    and the platform bootstrap process.
 2. CI publishes the UI, BFF, and Core images to ACR, verifies the protected
@@ -16,8 +17,10 @@ cluster. It is intentionally not an infrastructure controller:
    declaration is merged to GitHub `main`; missing or stale review status blocks
    the merge.
 4. The `career-agent-services` ApplicationSet discovers that declaration and
-   generates an Argo CD `Application` for the application-only Kustomize
-   overlay.
+   generates one Argo CD `Application` with two sources. A bounded `PreSync`
+   Job runs the expand-only migration entrypoint from the exact Core digest in
+   `career-migrations`; only after it succeeds may Argo CD reconcile the UI,
+   BFF, and Core service overlay in `career-agent`.
 
 The application workflow never obtains AKS write credentials, runs Terraform,
 or applies platform manifests. Infrastructure workflow changes are separately
@@ -45,11 +48,12 @@ metadata and the kubeconfig refresh command. Do not widen the API to
 The `career-agent-acr-pull` Secret is platform-owned. The application overlay
 references its name, but Argo CD does not create or manage its credential data.
 
-The ApplicationSet generates an Argo CD `Application` for the application-only Kustomize
-overlay. It does not manage Terraform, the AKS namespace, Application
-Gateway, private load balancer, cluster controllers, or other platform
-resources. `CreateNamespace=false` is deliberate: a missing namespace is a
-platform readiness failure, not an application release opportunity.
+The ApplicationSet generates an Argo CD `Application` from a service source and
+a migration-hook source. It does not manage Terraform, namespaces, Application
+Gateway, private load balancer, cluster controllers, migration identity,
+admission policy, or other platform resources. `CreateNamespace=false` is
+deliberate: a missing namespace or migration prerequisite is a platform
+readiness failure, not an application release opportunity.
 
 Platform bootstrap remains responsible for materializing the reviewed,
 non-secret runtime identifiers and Key Vault references consumed by the
@@ -94,9 +98,9 @@ APPLY=true scripts/azure/apply-argocd-rbac.sh
 ```
 
 The Argo CD service account used for this installation must be allowed to
-create Applications only in the `career-agent` AppProject. The project allows
-only namespaced application resource kinds and has no cluster-resource
-whitelist.
+create Applications only in the `career-agent` AppProject. The project permits
+service resources in `career-agent` and only the bounded migration `Job` kind
+in `career-migrations`; it has no cluster-resource whitelist.
 
 ## Release declaration
 

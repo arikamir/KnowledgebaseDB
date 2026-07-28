@@ -33,18 +33,26 @@ spec:
         gitops.knowledgebase.io/release-manifest: deploy/argocd/environments/{{.environment}}/release.json
     spec:
       project: career-agent
-      source:
-        repoURL: https://github.com/arikamir/KnowledgebaseDB.git
-        targetRevision: main
-        path: deploy/k8s/overlays/argocd-nonprod
-        kustomize:
-          # The source manifests deliberately keep platform placeholders. The
-          # release declaration supplies immutable service images at render
-          # time; no mutable tag can become the deployment identity.
-          images:
-            - 'career-agent/ui={{.services.ui.image}}'
-            - 'career-agent/bff={{.services.bff.image}}'
-            - 'career-agent/core={{.services.core.image}}'
+      sources:
+        - repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+          targetRevision: main
+          path: deploy/k8s/overlays/argocd-nonprod
+          kustomize:
+            # The source manifests deliberately keep platform placeholders. The
+            # release declaration supplies immutable service images at render
+            # time; no mutable tag can become the deployment identity.
+            images:
+              - 'career-agent/ui={{.services.ui.image}}'
+              - 'career-agent/bff={{.services.bff.image}}'
+              - 'career-agent/core={{.services.core.image}}'
+        - repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+          targetRevision: main
+          path: deploy/k8s/overlays/argocd-nonprod-migration
+          kustomize:
+            # The PreSync Job runs the migration entrypoint from the exact Core
+            # digest before Argo CD is allowed to update any service workload.
+            images:
+              - 'career-agent/core={{.services.core.image}}'
       destination:
         server: https://kubernetes.default.svc
         namespace: career-agent

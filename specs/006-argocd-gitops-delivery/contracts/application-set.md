@@ -2,7 +2,8 @@
 
 **Source**: `deploy/argocd/applicationset.yaml`  
 **Project**: `deploy/argocd/project.yaml`  
-**Overlay**: `deploy/k8s/overlays/argocd-nonprod`
+**Sources**: `deploy/k8s/overlays/argocd-nonprod` and
+`deploy/k8s/overlays/argocd-nonprod-migration`
 
 ## Generator input
 
@@ -21,7 +22,9 @@ checks. The ApplicationSet does not read that branch before merge.
 ## Generated Application invariants
 
 1. `spec.project` is `career-agent`.
-2. The source path is `deploy/k8s/overlays/argocd-nonprod`.
+2. The service source is `deploy/k8s/overlays/argocd-nonprod`; the second source
+   is the bounded migration hook at
+   `deploy/k8s/overlays/argocd-nonprod-migration`.
 3. The destination is the in-cluster API server and namespace `career-agent`.
 4. Kustomize receives exactly three image substitutions: UI, BFF, and Core.
 5. Each substitution is an ACR `repository@sha256:<64-hex>` reference.
@@ -33,10 +36,16 @@ checks. The ApplicationSet does not read that branch before merge.
    namespace before the first sync.
 9. Cluster-scoped resources, gateway/route, private load balancer, Terraform,
    and platform controller paths are absent from the generated source.
+10. The migration source contains one `PreSync` Job in `career-migrations`.
+    It uses the exact declared Core digest, the platform-owned migrator service
+    account and immutable database endpoint reference, and must succeed before
+    service Deployments can change.
 
 ## AppProject invariants
 
 - The only source repository is the canonical GitHub repository.
-- The only destination is the existing `career-agent` namespace.
+- Destinations are limited to the existing `career-agent` and
+  `career-migrations` namespaces.
 - `clusterResourceWhitelist` is empty.
-- Namespace resources are explicitly allowlisted; orphan warnings are enabled.
+- Namespace resources are explicitly allowlisted; `career-migrations` receives
+  only the `Job` kind required by the hook. Orphan warnings are enabled.

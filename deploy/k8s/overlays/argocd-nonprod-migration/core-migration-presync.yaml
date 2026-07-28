@@ -1,11 +1,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: core-migration-${BUILD_ID}
+  name: core-migration-presync
   namespace: career-migrations
   labels:
     app.kubernetes.io/name: core-migration
     app.kubernetes.io/component: schema-migration
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   activeDeadlineSeconds: 900
   backoffLimit: 1
@@ -28,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: core-migration
-          image: ${CORE_MIGRATION_IMAGE}
+          image: career-agent/core
           imagePullPolicy: IfNotPresent
           command:
             - /app/scripts/run-migration.sh
@@ -37,7 +41,7 @@ spec:
             - $(MIGRATION_TARGET)
           env:
             - name: MIGRATION_TARGET
-              value: ${MIGRATION_TARGET}
+              value: 009_merge_learning_progress
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
