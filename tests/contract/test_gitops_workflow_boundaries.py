@@ -51,6 +51,12 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert "platform.tfplan.receipt.json" in lifecycle
     assert "shasum -a 256" in lifecycle
     assert "status --porcelain --untracked-files=all -- infra/azure" in lifecycle
+    assert 'trap on_exit EXIT' in lifecycle
+    assert 'write_scope "$action-failed"' in lifecycle
+    assert 'rm -f "$plan_path" "$receipt_path"' in lifecycle
+    assert 'mktemp "$artifact_directory/.platform.tfplan.' in lifecycle
+    assert 'mv "$temporary_plan" "$plan_path"' in lifecycle
+    assert 'mv "$temporary_receipt" "$receipt_path"' in lifecycle
     assert lifecycle.index('if [[ "$action" == "plan" ]]') < lifecycle.index("terraform -chdir=\"$terraform_directory\" plan")
     assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1
     assert "TF_VAR_github_repository_owner_id" in lifecycle

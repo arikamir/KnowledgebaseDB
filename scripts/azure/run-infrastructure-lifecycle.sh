@@ -12,7 +12,7 @@ case "$action" in
   *) usage ;;
 esac
 
-for command_name in az jq shasum terraform; do
+for command_name in az jq mktemp shasum terraform; do
   command -v "$command_name" >/dev/null || {
     echo "required command not found: $command_name" >&2
     exit 1
@@ -41,6 +41,9 @@ terraform_directory="$repository_root/infra/azure"
 artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-$repository_root/artifacts/infrastructure}"
 plan_path="$artifact_directory/platform.tfplan"
 receipt_path="$artifact_directory/platform.tfplan.receipt.json"
+scope_path="$artifact_directory/scope.json"
+temporary_plan=""
+temporary_receipt=""
 
 if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -- infra/azure)" ]]; then
   echo "infra/azure must have no staged, unstaged, or untracked changes" >&2
@@ -48,6 +51,33 @@ if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -
 fi
 
 mkdir -p "$artifact_directory"
+current_revision="$(git -C "$repository_root" rev-parse HEAD)"
+
+write_scope() {
+  local result="$1"
+  jq -n \
+    --arg actor "${USER:-private-platform-runner}" \
+    --arg revision "$current_revision" \
+    --arg result "$result" \
+    '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,evidenceLinks:["artifact://infrastructure/scope.json"]}' \
+    > "$scope_path"
+}
+
+on_exit() {
+  local status="$?"
+  [[ -z "$temporary_plan" ]] || rm -f "$temporary_plan"
+  [[ -z "$temporary_receipt" ]] || rm -f "$temporary_receipt"
+  if (( status != 0 )); then
+    write_scope "$action-failed" || true
+  fi
+}
+trap on_exit EXIT
+
+rm -f "$scope_path"
+write_scope "$action-started"
+if [[ "$action" == "plan" ]]; then
+  rm -f "$plan_path" "$receipt_path"
+fi
 az account show --output none
 
 # For an established environment this proves both data-plane authorization and
@@ -72,11 +102,11 @@ terraform -chdir="$terraform_directory" init -reconfigure \
   -backend-config="key=$TF_BACKEND_KEY"
 terraform -chdir="$terraform_directory" validate
 
-current_revision="$(git -C "$repository_root" rev-parse HEAD)"
-
 if [[ "$action" == "plan" ]]; then
-  terraform -chdir="$terraform_directory" plan -out="$plan_path"
-  plan_sha256="$(shasum -a 256 "$plan_path" | awk '{print $1}')"
+  temporary_plan="$(mktemp "$artifact_directory/.platform.tfplan.XXXXXX")"
+  temporary_receipt="$(mktemp "$artifact_directory/.platform.tfplan.receipt.XXXXXX")"
+  terraform -chdir="$terraform_directory" plan -out="$temporary_plan"
+  plan_sha256="$(shasum -a 256 "$temporary_plan" | awk '{print $1}')"
   jq -n \
     --arg revision "$current_revision" \
     --arg planSha256 "$plan_sha256" \
@@ -84,7 +114,11 @@ if [[ "$action" == "plan" ]]; then
     --arg ownerId "$TF_VAR_github_repository_owner_id" \
     --arg repositoryId "$TF_VAR_github_repository_id" \
     '{schemaVersion:1,sourceRevision:$revision,planSha256:$planSha256,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}}' \
-    > "$receipt_path"
+    > "$temporary_receipt"
+  mv "$temporary_plan" "$plan_path"
+  temporary_plan=""
+  mv "$temporary_receipt" "$receipt_path"
+  temporary_receipt=""
 else
   if [[ "${INFRASTRUCTURE_APPLY_APPROVED:-}" != "true" ]]; then
     echo "apply requires INFRASTRUCTURE_APPLY_APPROVED=true after plan review" >&2
@@ -113,11 +147,6 @@ else
   terraform -chdir="$terraform_directory" apply "$plan_path"
 fi
 
-jq -n \
-  --arg actor "${USER:-private-platform-runner}" \
-  --arg revision "$current_revision" \
-  --arg action "$action" \
-  '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:($action + "-completed"),evidenceLinks:["artifact://infrastructure/platform.tfplan","artifact://infrastructure/platform.tfplan.receipt.json"]}' \
-  > "$artifact_directory/scope.json"
+write_scope "$action-completed"
 
 echo "infrastructure $action completed from the private platform path"
