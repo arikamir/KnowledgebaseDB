@@ -21,6 +21,14 @@ output "aks_connection" {
 output "aks_oidc_issuer_url" { value = azurerm_kubernetes_cluster.app.oidc_issuer_url }
 output "kubelet_identity_object_id" { value = azurerm_kubernetes_cluster.app.kubelet_identity[0].object_id }
 output "key_vault_id" { value = azurerm_key_vault.app.id }
+output "key_vault_target" {
+  description = "Non-secret identity used by the private lifecycle runner to probe the exact planned vault."
+  value = {
+    name                = azurerm_key_vault.app.name
+    resource_group_name = azurerm_key_vault.app.resource_group_name
+    subscription_id     = var.subscription_id
+  }
+}
 output "managed_redis_id" { value = azurerm_managed_redis.bff.id }
 output "postgresql_id" { value = azurerm_postgresql_flexible_server.core.id }
 output "evidence_hold_authorization" {

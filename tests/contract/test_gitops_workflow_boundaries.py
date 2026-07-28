@@ -65,11 +65,24 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert "umask 077" in lifecycle
     assert 'write_scope "$action-started"' in lifecycle
     assert "backendResourceGroup" in lifecycle
+    assert "backendStorageAccount" in lifecycle
+    assert "backendContainer" in lifecycle
+    assert "backendKey" in lifecycle
     assert "TF_BACKEND_TENANT_ID" in lifecycle
     assert "TF_BACKEND_SUBSCRIPTION_ID" in lifecycle
     assert '-backend-config="tenant_id=$TF_BACKEND_TENANT_ID"' in lifecycle
     assert '-backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID"' in lifecycle
     assert "active Azure CLI tenant/subscription does not match" in lifecycle
+    assert "verify_planned_key_vault" in lifecycle
+    assert '.planned_values.outputs.key_vault_target.value' in lifecycle
+    assert '--name "$target_key_vault_name"' in lifecycle
+    assert 'az keyvault list --subscription "$target_subscription_id"' in lifecycle
+    assert '"$normalized_actual_key_vault_id" != "$normalized_target_key_vault_id"' in lifecycle
+    assert "KEY_VAULT_NAME" not in lifecycle
+    assert ".keyVaultId == $keyVaultId" in lifecycle
+    assert ".schemaVersion == 2" in lifecycle
+    assert ".backend == {" in lifecycle
+    assert lifecycle.index(".backend == {") < lifecycle.index('init -reconfigure')
     assert "githubTrust" in lifecycle
     assert lifecycle.index('if [[ "$action" == "plan" ]]') < lifecycle.index("terraform -chdir=\"$terraform_directory\" plan")
     assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1

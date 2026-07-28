@@ -24,6 +24,8 @@ scope_path="$artifact_directory/scope.json"
 temporary_plan=""
 temporary_receipt=""
 current_revision="$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
+target_key_vault_id=""
+target_key_vault_name=""
 
 write_scope() {
   local result="$1"
@@ -39,11 +41,12 @@ write_scope() {
       --arg backendStorageAccount "${TF_BACKEND_STORAGE_ACCOUNT:-}" \
       --arg backendContainer "${TF_BACKEND_CONTAINER:-}" \
       --arg backendKey "${TF_BACKEND_KEY:-}" \
-      --arg keyVaultName "${KEY_VAULT_NAME:-}" \
+      --arg keyVaultId "$target_key_vault_id" \
+      --arg keyVaultName "$target_key_vault_name" \
       --arg repository "${TF_VAR_github_repository:-}" \
       --arg ownerId "${TF_VAR_github_repository_owner_id:-}" \
       --arg repositoryId "${TF_VAR_github_repository_id:-}" \
-      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultName:$keyVaultName,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
+      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVault:{id:$keyVaultId,name:$keyVaultName},githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
       > "$scope_path"
   else
     printf '{"workflow":"private-platform-lifecycle","result":"%s"}\n' "$result" > "$scope_path"
@@ -87,7 +90,6 @@ required_variables=(
   TF_VAR_github_repository
   TF_VAR_github_repository_owner_id
   TF_VAR_github_repository_id
-  KEY_VAULT_NAME
 )
 for variable_name in "${required_variables[@]}"; do
   if [[ -z "${!variable_name:-}" ]]; then
@@ -108,55 +110,6 @@ fi
 
 if [[ "$action" == "plan" ]]; then
   rm -f "$plan_path" "$receipt_path"
-fi
-active_subscription_id="$(az account show --query id --output tsv)"
-active_tenant_id="$(az account show --query tenantId --output tsv)"
-if [[ "$active_subscription_id" != "$TF_BACKEND_SUBSCRIPTION_ID" || "$active_tenant_id" != "$TF_BACKEND_TENANT_ID" ]]; then
-  echo "active Azure CLI tenant/subscription does not match the required backend account" >&2
-  exit 1
-fi
-
-# For an established environment this proves both data-plane authorization and
-# private-network reachability. Initial creation has no vault to probe and
-# therefore requires a separate, explicit bootstrap approval.
-if az keyvault show --name "$KEY_VAULT_NAME" --query id --output tsv >/dev/null 2>&1; then
-  az keyvault key list \
-    --vault-name "$KEY_VAULT_NAME" \
-    --maxresults 1 \
-    --query 'length(@)' \
-    --output tsv >/dev/null
-elif [[ "${INFRASTRUCTURE_BOOTSTRAP_APPROVED:-}" != "true" ]]; then
-  echo "vault is absent or unreadable; initial creation requires INFRASTRUCTURE_BOOTSTRAP_APPROVED=true" >&2
-  exit 1
-fi
-
-terraform -chdir="$terraform_directory" fmt -check -recursive
-terraform -chdir="$terraform_directory" init -reconfigure \
-  -backend-config="tenant_id=$TF_BACKEND_TENANT_ID" \
-  -backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID" \
-  -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP" \
-  -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
-  -backend-config="container_name=$TF_BACKEND_CONTAINER" \
-  -backend-config="key=$TF_BACKEND_KEY"
-terraform -chdir="$terraform_directory" validate
-
-if [[ "$action" == "plan" ]]; then
-  temporary_plan="$(mktemp "$artifact_directory/.platform.tfplan.XXXXXX")"
-  temporary_receipt="$(mktemp "$artifact_directory/.platform.tfplan.receipt.XXXXXX")"
-  terraform -chdir="$terraform_directory" plan -out="$temporary_plan"
-  plan_sha256="$(shasum -a 256 "$temporary_plan" | awk '{print $1}')"
-  jq -n \
-    --arg revision "$current_revision" \
-    --arg planSha256 "$plan_sha256" \
-    --arg repository "$TF_VAR_github_repository" \
-    --arg ownerId "$TF_VAR_github_repository_owner_id" \
-    --arg repositoryId "$TF_VAR_github_repository_id" \
-    '{schemaVersion:1,sourceRevision:$revision,planSha256:$planSha256,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}}' \
-    > "$temporary_receipt"
-  mv "$temporary_plan" "$plan_path"
-  temporary_plan=""
-  mv "$temporary_receipt" "$receipt_path"
-  temporary_receipt=""
 else
   if [[ "${INFRASTRUCTURE_APPLY_APPROVED:-}" != "true" ]]; then
     echo "apply requires INFRASTRUCTURE_APPLY_APPROVED=true after plan review" >&2
@@ -174,14 +127,140 @@ else
   }
   jq -e \
     --arg revision "$current_revision" \
+    --arg backendTenantId "$TF_BACKEND_TENANT_ID" \
+    --arg backendSubscriptionId "$TF_BACKEND_SUBSCRIPTION_ID" \
+    --arg backendResourceGroup "$TF_BACKEND_RESOURCE_GROUP" \
+    --arg backendStorageAccount "$TF_BACKEND_STORAGE_ACCOUNT" \
+    --arg backendContainer "$TF_BACKEND_CONTAINER" \
+    --arg backendKey "$TF_BACKEND_KEY" \
     --arg repository "$TF_VAR_github_repository" \
     --arg ownerId "$TF_VAR_github_repository_owner_id" \
     --arg repositoryId "$TF_VAR_github_repository_id" \
-    '.sourceRevision == $revision and .githubTrust == {repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}' \
+    '.schemaVersion == 2
+      and .sourceRevision == $revision
+      and .backend == {
+        tenantId:$backendTenantId,
+        subscriptionId:$backendSubscriptionId,
+        resourceGroup:$backendResourceGroup,
+        storageAccount:$backendStorageAccount,
+        container:$backendContainer,
+        key:$backendKey
+      }
+      and .githubTrust == {repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}' \
     "$receipt_path" >/dev/null || {
-      echo "reviewed plan receipt does not match the current revision and trust tuple" >&2
+      echo "reviewed plan receipt does not match the current revision, backend, and trust tuple" >&2
       exit 1
     }
+fi
+active_subscription_id="$(az account show --query id --output tsv)"
+active_tenant_id="$(az account show --query tenantId --output tsv)"
+if [[ "$active_subscription_id" != "$TF_BACKEND_SUBSCRIPTION_ID" || "$active_tenant_id" != "$TF_BACKEND_TENANT_ID" ]]; then
+  echo "active Azure CLI tenant/subscription does not match the required backend account" >&2
+  exit 1
+fi
+
+terraform -chdir="$terraform_directory" fmt -check -recursive
+terraform -chdir="$terraform_directory" init -reconfigure \
+  -backend-config="tenant_id=$TF_BACKEND_TENANT_ID" \
+  -backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID" \
+  -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP" \
+  -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+  -backend-config="container_name=$TF_BACKEND_CONTAINER" \
+  -backend-config="key=$TF_BACKEND_KEY"
+terraform -chdir="$terraform_directory" validate
+
+verify_planned_key_vault() {
+  local candidate_plan="$1"
+  local target_key_vault
+  local target_subscription_id
+  local target_resource_group
+  local actual_key_vault_id
+  local normalized_actual_key_vault_id
+  local normalized_target_key_vault_id
+  local vault_inventory
+  target_key_vault="$(
+    terraform -chdir="$terraform_directory" show -json "$candidate_plan" |
+      jq -cer '.planned_values.outputs.key_vault_target.value
+        | select(
+            (.name | type == "string" and test("^[A-Za-z0-9-]{3,24}$"))
+            and (.resource_group_name | type == "string" and length > 0)
+            and (.subscription_id | type == "string" and test("^[0-9a-fA-F-]{36}$"))
+          )'
+  )"
+  target_key_vault_name="$(jq -r '.name' <<<"$target_key_vault")"
+  target_resource_group="$(jq -r '.resource_group_name' <<<"$target_key_vault")"
+  target_subscription_id="$(jq -r '.subscription_id' <<<"$target_key_vault")"
+  target_key_vault_id="/subscriptions/$target_subscription_id/resourceGroups/$target_resource_group/providers/Microsoft.KeyVault/vaults/$target_key_vault_name"
+
+  # The plan output binds this probe to the vault Terraform will manage. For
+  # an established environment this proves data-plane authorization and
+  # private-network reachability. Initial creation requires separate approval.
+  actual_key_vault_id=""
+  if actual_key_vault_id="$(
+    az keyvault show \
+      --name "$target_key_vault_name" \
+      --subscription "$target_subscription_id" \
+      --query id \
+      --output tsv 2>/dev/null
+  )"; then
+    normalized_actual_key_vault_id="$(tr '[:upper:]' '[:lower:]' <<<"$actual_key_vault_id")"
+    normalized_target_key_vault_id="$(tr '[:upper:]' '[:lower:]' <<<"$target_key_vault_id")"
+    if [[ "$normalized_actual_key_vault_id" != "$normalized_target_key_vault_id" ]]; then
+      echo "planned vault identity does not match the Azure resource" >&2
+      exit 1
+    fi
+    az keyvault key list \
+      --vault-name "$target_key_vault_name" \
+      --subscription "$target_subscription_id" \
+      --maxresults 1 \
+      --query 'length(@)' \
+      --output tsv >/dev/null
+  else
+    vault_inventory="$(az keyvault list --subscription "$target_subscription_id" --output json)"
+    if jq -e --arg targetId "$target_key_vault_id" \
+      'any(.[]; (.id | ascii_downcase) == ($targetId | ascii_downcase))' \
+      <<<"$vault_inventory" >/dev/null; then
+      echo "planned vault exists but its management metadata is unreadable" >&2
+      exit 1
+    fi
+    if [[ "${INFRASTRUCTURE_BOOTSTRAP_APPROVED:-}" != "true" ]]; then
+      echo "planned vault is absent; initial creation requires INFRASTRUCTURE_BOOTSTRAP_APPROVED=true" >&2
+      exit 1
+    fi
+  fi
+}
+
+if [[ "$action" == "plan" ]]; then
+  temporary_plan="$(mktemp "$artifact_directory/.platform.tfplan.XXXXXX")"
+  temporary_receipt="$(mktemp "$artifact_directory/.platform.tfplan.receipt.XXXXXX")"
+  terraform -chdir="$terraform_directory" plan -out="$temporary_plan"
+  verify_planned_key_vault "$temporary_plan"
+  plan_sha256="$(shasum -a 256 "$temporary_plan" | awk '{print $1}')"
+  jq -n \
+    --arg revision "$current_revision" \
+    --arg planSha256 "$plan_sha256" \
+    --arg backendTenantId "$TF_BACKEND_TENANT_ID" \
+    --arg backendSubscriptionId "$TF_BACKEND_SUBSCRIPTION_ID" \
+    --arg backendResourceGroup "$TF_BACKEND_RESOURCE_GROUP" \
+    --arg backendStorageAccount "$TF_BACKEND_STORAGE_ACCOUNT" \
+    --arg backendContainer "$TF_BACKEND_CONTAINER" \
+    --arg backendKey "$TF_BACKEND_KEY" \
+    --arg keyVaultId "$target_key_vault_id" \
+    --arg repository "$TF_VAR_github_repository" \
+    --arg ownerId "$TF_VAR_github_repository_owner_id" \
+    --arg repositoryId "$TF_VAR_github_repository_id" \
+    '{schemaVersion:2,sourceRevision:$revision,planSha256:$planSha256,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultId:$keyVaultId,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}}' \
+    > "$temporary_receipt"
+  mv "$temporary_plan" "$plan_path"
+  temporary_plan=""
+  mv "$temporary_receipt" "$receipt_path"
+  temporary_receipt=""
+else
+  verify_planned_key_vault "$plan_path"
+  jq -e --arg keyVaultId "$target_key_vault_id" '.keyVaultId == $keyVaultId' "$receipt_path" >/dev/null || {
+    echo "reviewed plan vault does not match its receipt" >&2
+    exit 1
+  }
   terraform -chdir="$terraform_directory" apply "$plan_path"
 fi
 

@@ -18,7 +18,10 @@ Jenkins controller or ACI callback.
   `scripts/azure/run-infrastructure-lifecycle.sh plan`, review its saved plan
   and SHA-256 receipt, then run it with `apply` and
   `INFRASTRUCTURE_APPLY_APPROVED=true`. Apply verifies and consumes that exact
-  commit/trust-bound plan; it never regenerates the reviewed plan. Initial
+  commit/trust/backend-bound plan; it never regenerates the reviewed plan. The
+  Key Vault reachability probe is derived from the saved plan's
+  `key_vault_target` output, so an unrelated accessible vault cannot satisfy the
+  private-data-plane gate. Initial
   creation before the managed vault exists additionally requires
   `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to the external
   `${TMPDIR:-/tmp}/knowledgebasedb-infrastructure` directory and the script
