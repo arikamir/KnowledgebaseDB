@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "status": "ready",
+  "environment": "nonprod",
+  "checks": {
+    "namespace": {
+      "status": "pass",
+      "reason": "platform namespace contract exists"
+    },
+    "argocdProject": {
+      "status": "pass",
+      "reason": "application-only AppProject is present"
+    },
+    "registryPullSecret": {
+      "status": "pass",
+      "name": "career-agent-acr-pull",
+      "reason": "platform-owned pull secret name is reserved"
+    },
+    "registry": {
+      "status": "pass",
+      "reason": "immutable ACR image references are configured"
+    },
+    "workloadPrerequisites": {
+      "status": "pass",
+      "reason": "three-service application overlay and probes are present"
+    }
+  },
+  "observedAt": "2026-07-26T19:36:43Z"
+}

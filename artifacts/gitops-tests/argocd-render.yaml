@@ -1,0 +1,91 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  labels:
+    app.kubernetes.io/part-of: career-agent-delivery
+    gitops.knowledgebase.io/managed-by: platform-operations
+  name: career-agent
+  namespace: argocd
+spec:
+  clusterResourceWhitelist: []
+  description: Application-only delivery for the DevOps Career Agent non-production
+    services.
+  destinations:
+  - namespace: career-agent
+    server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+  - group: ""
+    kind: Service
+  - group: apps
+    kind: Deployment
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: policy
+    kind: PodDisruptionBudget
+  orphanedResources:
+    warn: true
+  sourceRepos:
+  - https://github.com/arikamir/KnowledgebaseDB.git
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  labels:
+    app.kubernetes.io/part-of: career-agent-delivery
+    gitops.knowledgebase.io/managed-by: platform-operations
+  name: career-agent-services
+  namespace: argocd
+spec:
+  generators:
+  - git:
+      files:
+      - path: deploy/argocd/environments/nonprod/release.json
+      repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+      requeueAfterSeconds: 180
+      revision: main
+  goTemplate: true
+  goTemplateOptions:
+  - missingkey=error
+  template:
+    metadata:
+      annotations:
+        gitops.knowledgebase.io/release-manifest: deploy/argocd/environments/{{.environment}}/release.json
+        gitops.knowledgebase.io/source-revision: '{{.sourceRevision}}'
+      labels:
+        app.kubernetes.io/managed-by: argocd
+        app.kubernetes.io/part-of: career-agent
+        gitops.knowledgebase.io/environment: '{{.environment}}'
+        gitops.knowledgebase.io/release-version: '{{.releaseVersion}}'
+      name: career-agent-{{.environment}}
+    spec:
+      destination:
+        namespace: career-agent
+        server: https://kubernetes.default.svc
+      project: career-agent
+      revisionHistoryLimit: 10
+      source:
+        kustomize:
+          images:
+          - career-agent/ui={{.services.ui.image}}
+          - career-agent/bff={{.services.bff.image}}
+          - career-agent/core={{.services.core.image}}
+        path: deploy/k8s/overlays/argocd-nonprod
+        repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+        targetRevision: main
+      syncPolicy:
+        automated:
+          allowEmpty: false
+          prune: true
+          selfHeal: true
+        retry:
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+          limit: 5
+        syncOptions:
+        - CreateNamespace=false
+        - FailOnSharedResource=true
+        - PruneLast=true
+        - PrunePropagationPolicy=foreground
+        - ServerSideApply=true

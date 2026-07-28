@@ -1,0 +1,22 @@
+Manifest-Version: 1.0
+Group-Id: io.knowledgebasedb.jenkins
+Artifact-Id: controller-audit
+Short-Name: controller-audit
+Long-Name: KnowledgebaseDB Controller Audit
+Plugin-Version: 1.0.0
+Hudson-Version: 2.479.3
+Jenkins-Version: 2.479.3
+Plugin-Developers: 
+Support-Dynamic-Loading: true
+Plugin-ScmConnection: scm:git:https://github.com/jenkinsci/plugin-pom.gi
+ t/controller-audit
+Plugin-ScmTag: plugin-4.80
+Plugin-ScmUrl: https://github.com/jenkinsci/plugin-pom/controller-audit
+Plugin-GitHash: 85f6d98db09ec9fe50ff30ce62764c2ffe8976d5
+Implementation-Build: 85f6d98db09ec9fe50ff30ce62764c2ffe8976d5
+Libraries: /Users/arikamir/workspace/KnowledgebaseDB/jenkins-controller-
+ audit-plugin/src/main/resources,/Users/arikamir/workspace/Knowledgebase
+ DB/jenkins-controller-audit-plugin/target/classes
+Resource-Path: /Users/arikamir/workspace/KnowledgebaseDB/jenkins-control
+ ler-audit-plugin/src/main/webapp
+
