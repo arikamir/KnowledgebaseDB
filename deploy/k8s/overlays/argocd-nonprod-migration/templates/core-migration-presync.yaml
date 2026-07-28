@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: core-migration
+  generateName: core-migration-
   namespace: career-migrations
   labels:
     app.kubernetes.io/name: core-migration
@@ -9,6 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-10"
+    gitops.knowledgebase.io/source-revision: {{ .Values.sourceRevision | quote }}
 spec:
   activeDeadlineSeconds: 900
   backoffLimit: 1
@@ -30,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: core-migration
-          image: career-agent/core
+          image: {{ .Values.image | quote }}
           imagePullPolicy: IfNotPresent
           command:
             - /app/scripts/run-migration.sh

@@ -53,11 +53,13 @@ result, reason, and outcome. A failed rollout MUST include
 criterion. Evidence collectors MUST reject credential-shaped values before
 upload.
 
-The Argo PreSync migration hook MUST have a deterministic, source-revision
-specific name and MUST NOT set a successful-hook deletion policy or TTL. The
-collector MUST authenticate a retained Job against that revision, the
-release's exact Core digest, and the approved target, then persist only its
-structured status, safe reason, and available before/after head log lines.
+The Argo PreSync migration hook MUST use `generateName`, bind every attempt to
+the full source revision through a rendered annotation, and MUST NOT set a
+successful-hook deletion policy or TTL. This gives each bounded Argo retry a
+fresh Job without deleting evidence from earlier attempts. The collector MUST
+authenticate a retained Job against that revision, the release's exact Core
+digest, and the approved target, then persist only its structured status, safe
+reason, and available before/after head log lines.
 Failed, incomplete, and not-created migration outcomes MUST remain recordable;
 only a successful sync requires `Complete=True` and the approved final head.
 Cleanup is a separate, explicit operator action after both evidence files have

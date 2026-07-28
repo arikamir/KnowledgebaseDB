@@ -10,6 +10,8 @@ def test_validation_workflow_runs_on_all_refs_without_azure_credentials() -> Non
     assert "pull_request:" in source
     assert "workflow_dispatch:" in source
     assert "actions/checkout@v4" in source
+    assert "azure/setup-helm@v4" in source
+    assert "version: v4.2.0" in source
     assert "scripts/ci/validate-non-azure.sh" in source
     assert "id-token: write" not in source
     assert "azure/login" not in source

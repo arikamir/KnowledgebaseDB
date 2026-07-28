@@ -163,6 +163,10 @@ SHA-256. Failed, incomplete, and not-created hooks remain recordable; only a
 successful sync requires a completed migration and approved final head. Argo
 leaves a created hook in place; delete it only after both evidence artifacts
 have been uploaded and retention has been confirmed.
+The migration source is a Helm chart whose `generateName` creates a fresh
+retained Job for each bounded Argo retry. Every attempt carries the full
+release source revision annotation, which the collector authenticates along
+with the exact Core digest; retrying never requires deleting prior evidence.
 
 ## Azure Entra access
 

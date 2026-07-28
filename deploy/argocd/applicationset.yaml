@@ -48,14 +48,15 @@ spec:
         - repoURL: https://github.com/arikamir/KnowledgebaseDB.git
           targetRevision: main
           path: deploy/k8s/overlays/argocd-nonprod-migration
-          kustomize:
+          helm:
             # The PreSync Job runs the migration entrypoint from the exact Core
             # digest before Argo CD is allowed to update any service workload.
-            # A revision-specific name retains each completed Job until its
-            # evidence is collected without suppressing the next release hook.
-            nameSuffix: '-{{ trunc 12 .sourceRevision }}'
-            images:
-              - 'career-agent/core={{.services.core.image}}'
+            # generateName gives each Argo retry a fresh retained evidence
+            # object; the full source revision authenticates every attempt.
+            releaseName: core-migration-hook
+            valuesObject:
+              image: '{{.services.core.image}}'
+              sourceRevision: '{{.sourceRevision}}'
       destination:
         server: https://kubernetes.default.svc
         namespace: career-agent

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 
 import yaml
 
@@ -59,9 +60,8 @@ def test_application_set_reads_main_release_and_sequences_migration_before_servi
         "career-agent/core",
     }
     assert all(".services." in image for image in images)
-    assert sources[1]["kustomize"]["images"] == [
-        "career-agent/core={{.services.core.image}}",
-    ]
+    assert sources[1]["helm"]["valuesObject"]["image"] == "{{.services.core.image}}"
+    assert sources[1]["helm"]["valuesObject"]["sourceRevision"] == "{{.sourceRevision}}"
     assert not any("infra/" in str(value) or "terraform" in str(value).lower() for value in template.values())
 
 
@@ -109,21 +109,49 @@ def test_argocd_overlay_is_application_only_and_excludes_platform_resources():
 
 
 def test_core_migration_is_a_presync_hook_using_the_release_core_digest() -> None:
-    overlay = load("deploy/k8s/overlays/argocd-nonprod-migration/kustomization.yaml")
-    assert overlay["resources"] == ["core-migration-presync.yaml"]
-    job = load("deploy/k8s/overlays/argocd-nonprod-migration/core-migration-presync.yaml")
+    chart = ROOT / "deploy/k8s/overlays/argocd-nonprod-migration"
+    source_revision = "0123456789abcdef0123456789abcdef01234567"
+    image = (
+        "acrdevopscareeruaenonprod.azurecr.io/core@sha256:"
+        + "2" * 64
+    )
+    rendered = subprocess.run(
+        [
+            "helm",
+            "template",
+            "core-migration-hook",
+            str(chart),
+            "--set-string",
+            f"image={image}",
+            "--set-string",
+            f"sourceRevision={source_revision}",
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    job = yaml.safe_load(rendered.stdout)
     assert job["metadata"]["namespace"] == "career-migrations"
-    assert job["metadata"]["name"] == "core-migration"
+    assert job["metadata"]["generateName"] == "core-migration-"
+    assert "name" not in job["metadata"]
     assert job["metadata"]["annotations"] == {
         "argocd.argoproj.io/hook": "PreSync",
         "argocd.argoproj.io/sync-wave": "-10",
+        "gitops.knowledgebase.io/source-revision": source_revision,
     }
     assert "ttlSecondsAfterFinished" not in job["spec"]
     application_set = load("deploy/argocd/applicationset.yaml")
     migration_source = application_set["spec"]["template"]["spec"]["sources"][1]
-    assert migration_source["kustomize"]["nameSuffix"] == "-{{ trunc 12 .sourceRevision }}"
+    assert migration_source["helm"] == {
+        "releaseName": "core-migration-hook",
+        "valuesObject": {
+            "image": "{{.services.core.image}}",
+            "sourceRevision": "{{.sourceRevision}}",
+        },
+    }
     container = job["spec"]["template"]["spec"]["containers"][0]
-    assert container["image"] == "career-agent/core"
+    assert container["image"] == image
     assert container["command"] == ["/app/scripts/run-migration.sh"]
     assert container["env"] == [
         {"name": "MIGRATION_TARGET", "value": "009_merge_learning_progress"},

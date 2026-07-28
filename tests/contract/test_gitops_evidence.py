@@ -48,7 +48,7 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "rollback" in script
     assert "GITOPS_AFFECTED_SERVICE" in script
     assert "--migration-job must identify the retained Argo migration Job" in script
-    assert "migration Job does not match the release source revision" in script
+    assert "gitops.knowledgebase.io/source-revision" in script
     assert "migration did not reach the approved target" in script
     assert "a successful sync requires a completed migration Job" in script
     assert '"not-created"' in script
@@ -75,7 +75,7 @@ esac
     fake_kubectl.write_text(
         """#!/usr/bin/env bash
 case "$*" in
-  *"get job core-migration-0123456789ab -o json"*) printf '%s\\n' '{"metadata":{"name":"core-migration-0123456789ab","namespace":"career-migrations","annotations":{"argocd.argoproj.io/hook":"PreSync"}},"status":{"conditions":[{"type":"Complete","status":"True"}]},"spec":{"template":{"spec":{"containers":[{"name":"core-migration","image":"acrdevopscareeruaenonprod.azurecr.io/core@sha256:2222222222222222222222222222222222222222222222222222222222222222","env":[{"name":"MIGRATION_TARGET","value":"009_merge_learning_progress"}]}]}}}}' ;;
+  *"get job core-migration-0123456789ab -o json"*) printf '%s\\n' '{"metadata":{"name":"core-migration-0123456789ab","namespace":"career-migrations","annotations":{"argocd.argoproj.io/hook":"PreSync","gitops.knowledgebase.io/source-revision":"0123456789abcdef0123456789abcdef01234567"}},"status":{"conditions":[{"type":"Complete","status":"True"}]},"spec":{"template":{"spec":{"containers":[{"name":"core-migration","image":"acrdevopscareeruaenonprod.azurecr.io/core@sha256:2222222222222222222222222222222222222222222222222222222222222222","env":[{"name":"MIGRATION_TARGET","value":"009_merge_learning_progress"}]}]}}}}' ;;
   *"logs job/core-migration-0123456789ab -c core-migration"*) printf '%s\\n' 'MIGRATION_BEFORE_HEADS=007_learning_sessions,008_owned_progress' 'MIGRATION_AFTER_HEADS=009_merge_learning_progress' ;;
   *) exit 1 ;;
 esac

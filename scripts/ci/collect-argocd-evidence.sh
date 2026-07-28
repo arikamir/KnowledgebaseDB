@@ -149,17 +149,17 @@ if [[ ! "$DESIRED_STATE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 
 EXPECTED_CORE_IMAGE="$(jq -r '.services.core.image' "$RELEASE")"
-EXPECTED_MIGRATION_JOB="core-migration-$(jq -r '.sourceRevision[0:12]' "$RELEASE")"
-[[ "$MIGRATION_JOB" == "$EXPECTED_MIGRATION_JOB" ]] ||
-  fail "migration Job does not match the release source revision"
+EXPECTED_SOURCE_REVISION="$(jq -r '.sourceRevision' "$RELEASE")"
 MIGRATION_STATUS="not-created"
 MIGRATION_REASON="migration Job was not created or is no longer observable"
 MIGRATION_LOGS=""
 if MIGRATION_JOB_JSON="$(kubectl -n career-migrations get job "$MIGRATION_JOB" -o json 2>/dev/null)"; then
-  if ! jq -e --arg name "$MIGRATION_JOB" --arg image "$EXPECTED_CORE_IMAGE" '
+  if ! jq -e --arg name "$MIGRATION_JOB" --arg image "$EXPECTED_CORE_IMAGE" \
+      --arg revision "$EXPECTED_SOURCE_REVISION" '
     .metadata.name == $name and
     .metadata.namespace == "career-migrations" and
     .metadata.annotations["argocd.argoproj.io/hook"] == "PreSync" and
+    .metadata.annotations["gitops.knowledgebase.io/source-revision"] == $revision and
     (.spec.template.spec.containers | length) == 1 and
     .spec.template.spec.containers[0].name == "core-migration" and
     .spec.template.spec.containers[0].image == $image and
