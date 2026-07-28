@@ -20,7 +20,10 @@ Jenkins controller or ACI callback.
   `INFRASTRUCTURE_APPLY_APPROVED=true`. Apply verifies and consumes that exact
   commit/trust-bound plan; it never regenerates the reviewed plan. Initial
   creation before the managed vault exists additionally requires
-  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`.
+  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to the external
+  `${TMPDIR:-/tmp}/knowledgebasedb-infrastructure` directory and the script
+  rejects any artifact directory inside the repository because binary plans
+  can contain sensitive state-derived values.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow

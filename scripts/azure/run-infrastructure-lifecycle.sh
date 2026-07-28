@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 usage() {
   echo "usage: $0 plan|apply" >&2
@@ -12,7 +13,62 @@ case "$action" in
   *) usage ;;
 esac
 
-for command_name in az jq mktemp shasum terraform; do
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+terraform_directory="$repository_root/infra/azure"
+artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-${TMPDIR:-/tmp}/knowledgebasedb-infrastructure}"
+mkdir -p "$artifact_directory"
+artifact_directory="$(cd "$artifact_directory" && pwd)"
+plan_path="$artifact_directory/platform.tfplan"
+receipt_path="$artifact_directory/platform.tfplan.receipt.json"
+scope_path="$artifact_directory/scope.json"
+temporary_plan=""
+temporary_receipt=""
+current_revision="$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
+
+write_scope() {
+  local result="$1"
+  if command -v jq >/dev/null; then
+    jq -n \
+      --arg actor "${USER:-private-platform-runner}" \
+      --arg revision "$current_revision" \
+      --arg result "$result" \
+      --arg action "$action" \
+      --arg backendResourceGroup "${TF_BACKEND_RESOURCE_GROUP:-}" \
+      --arg backendStorageAccount "${TF_BACKEND_STORAGE_ACCOUNT:-}" \
+      --arg backendContainer "${TF_BACKEND_CONTAINER:-}" \
+      --arg backendKey "${TF_BACKEND_KEY:-}" \
+      --arg keyVaultName "${KEY_VAULT_NAME:-}" \
+      --arg repository "${TF_VAR_github_repository:-}" \
+      --arg ownerId "${TF_VAR_github_repository_owner_id:-}" \
+      --arg repositoryId "${TF_VAR_github_repository_id:-}" \
+      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultName:$keyVaultName,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
+      > "$scope_path"
+  else
+    printf '{"workflow":"private-platform-lifecycle","result":"%s"}\n' "$result" > "$scope_path"
+  fi
+}
+
+on_exit() {
+  local status="$?"
+  [[ -z "$temporary_plan" ]] || rm -f "$temporary_plan"
+  [[ -z "$temporary_receipt" ]] || rm -f "$temporary_receipt"
+  if (( status != 0 )); then
+    write_scope "$action-failed" || true
+  fi
+}
+trap on_exit EXIT
+
+rm -f "$scope_path"
+write_scope "$action-started"
+
+case "$artifact_directory/" in
+  "$repository_root/"*)
+    echo "infrastructure artifacts must be stored outside the repository worktree" >&2
+    exit 1
+    ;;
+esac
+
+for command_name in az git jq mktemp shasum terraform; do
   command -v "$command_name" >/dev/null || {
     echo "required command not found: $command_name" >&2
     exit 1
@@ -36,45 +92,11 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
-repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-terraform_directory="$repository_root/infra/azure"
-artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-$repository_root/artifacts/infrastructure}"
-plan_path="$artifact_directory/platform.tfplan"
-receipt_path="$artifact_directory/platform.tfplan.receipt.json"
-scope_path="$artifact_directory/scope.json"
-temporary_plan=""
-temporary_receipt=""
-
 if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -- infra/azure)" ]]; then
   echo "infra/azure must have no staged, unstaged, or untracked changes" >&2
   exit 1
 fi
 
-mkdir -p "$artifact_directory"
-current_revision="$(git -C "$repository_root" rev-parse HEAD)"
-
-write_scope() {
-  local result="$1"
-  jq -n \
-    --arg actor "${USER:-private-platform-runner}" \
-    --arg revision "$current_revision" \
-    --arg result "$result" \
-    '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,evidenceLinks:["artifact://infrastructure/scope.json"]}' \
-    > "$scope_path"
-}
-
-on_exit() {
-  local status="$?"
-  [[ -z "$temporary_plan" ]] || rm -f "$temporary_plan"
-  [[ -z "$temporary_receipt" ]] || rm -f "$temporary_receipt"
-  if (( status != 0 )); then
-    write_scope "$action-failed" || true
-  fi
-}
-trap on_exit EXIT
-
-rm -f "$scope_path"
-write_scope "$action-started"
 if [[ "$action" == "plan" ]]; then
   rm -f "$plan_path" "$receipt_path"
 fi
