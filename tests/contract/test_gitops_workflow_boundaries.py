@@ -50,7 +50,9 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert "INFRASTRUCTURE_BOOTSTRAP_APPROVED" in lifecycle
     assert "platform.tfplan.receipt.json" in lifecycle
     assert "shasum -a 256" in lifecycle
-    assert "status --porcelain --untracked-files=all -- infra/azure" in lifecycle
+    assert "status --porcelain --untracked-files=all" in lifecycle
+    assert "config/operational-alert-profile-v1.yaml" in lifecycle
+    assert "config/pilot-availability-profile-v1.yaml" in lifecycle
     assert 'trap on_exit EXIT' in lifecycle
     assert 'write_scope "$action-failed"' in lifecycle
     assert 'rm -f "$plan_path" "$receipt_path"' in lifecycle

@@ -96,8 +96,13 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
-if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -- infra/azure)" ]]; then
-  echo "infra/azure must have no staged, unstaged, or untracked changes" >&2
+terraform_source_paths=(
+  infra/azure
+  config/operational-alert-profile-v1.yaml
+  config/pilot-availability-profile-v1.yaml
+)
+if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -- "${terraform_source_paths[@]}")" ]]; then
+  echo "Terraform source inputs must have no staged, unstaged, or untracked changes" >&2
   exit 1
 fi
 
