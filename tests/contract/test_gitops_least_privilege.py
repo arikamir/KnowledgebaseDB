@@ -34,6 +34,9 @@ def test_publisher_federation_uses_immutable_repository_ids() -> None:
     documentation = (ROOT / "docs/github-actions-azure.md").read_text()
     assert "github_repository_owner_id" in variables
     assert "github_repository_id" in variables
+    for variable_name in ("github_repository", "github_repository_owner_id", "github_repository_id"):
+        variable_block = variables.split(f'variable "{variable_name}"', 1)[1].split("\n}", 1)[0]
+        assert "\n  default" not in variable_block
     assert "@${var.github_repository_owner_id}" in identities
     assert "@${var.github_repository_id}:environment:" in identities
     assert ":environment:infrastructure-plan" not in identities

@@ -23,10 +23,12 @@ The application workflow never obtains AKS write credentials, runs Terraform,
 or applies platform manifests. Infrastructure workflow changes are separately
 approved and must not publish or deploy application images.
 
-`.github/workflows/infrastructure.yml` owns Terraform plan/apply and emits a
-platform scope artifact. `.github/workflows/delivery.yml` owns image publication
-and the bot-branch desired-state pull request. `.github/workflows/rollback.yml`
-only prepares a reviewed Git declaration reversion. This ownership boundary is
+`.github/workflows/infrastructure.yml` owns credential-free Terraform
+validation. `scripts/azure/run-infrastructure-lifecycle.sh` owns reviewed
+plan/apply on the private-network platform runner and emits the platform scope
+artifact. `.github/workflows/delivery.yml` owns image publication and the
+bot-branch desired-state pull request. `.github/workflows/rollback.yml` only
+prepares a reviewed Git declaration reversion. This ownership boundary is
 checked by `tests/contract/test_gitops_workflow_boundaries.py`.
 
 ## AKS operator connectivity

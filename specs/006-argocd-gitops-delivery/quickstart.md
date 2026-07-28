@@ -65,10 +65,12 @@ data-service hostnames, tenant, origin, and contract range). Do not commit the
 rendered files or any credential material. This step is platform bootstrap,
 not application release delivery.
 
-Use `.github/workflows/infrastructure.yml` for the separately approved
-Terraform/platform lifecycle and `.github/workflows/delivery.yml` for ACR
-publication plus the reviewed release PR. The application workflow never
-obtains an AKS kubeconfig or infrastructure identity. A rollback uses
+Use `.github/workflows/infrastructure.yml` for identityless Terraform
+validation and `scripts/azure/run-infrastructure-lifecycle.sh` on the approved
+private-network runner for reviewed plan/apply. Use
+`.github/workflows/delivery.yml` for ACR publication plus the reviewed release
+PR. The application workflow never obtains an AKS kubeconfig or infrastructure
+identity. A rollback uses
 `.github/workflows/rollback.yml` to open a reviewed Git reversion; direct Argo
 CD rollback is not authoritative.
 

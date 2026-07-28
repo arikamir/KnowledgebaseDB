@@ -103,11 +103,12 @@ scripts/ci/
 └── check-release-version-uniqueness.sh
 
 scripts/azure/
-└── apply-argocd-rbac.sh       # platform-owned OIDC/RBAC bootstrap
+├── apply-argocd-rbac.sh       # platform-owned OIDC/RBAC bootstrap
+└── run-infrastructure-lifecycle.sh # private-network Terraform plan/apply
 
 .github/workflows/
 ├── delivery.yml               # publish and reviewed desired-state PR
-├── infrastructure.yml        # Terraform-only workflow
+├── infrastructure.yml        # identityless Terraform validation
 └── rollback.yml               # reviewed declaration-reversion workflow
 
 infra/azure/                   # Terraform-owned platform and identities

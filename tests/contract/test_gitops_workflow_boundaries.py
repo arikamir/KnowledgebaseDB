@@ -42,6 +42,16 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     ):
         assert forbidden not in text
 
+    lifecycle = (ROOT / "scripts/azure/run-infrastructure-lifecycle.sh").read_text()
+    assert "az keyvault key list" in lifecycle
+    assert "terraform -chdir=\"$terraform_directory\" plan" in lifecycle
+    assert "terraform -chdir=\"$terraform_directory\" apply" in lifecycle
+    assert "INFRASTRUCTURE_APPLY_APPROVED" in lifecycle
+    assert "TF_VAR_github_repository_owner_id" in lifecycle
+    assert "TF_VAR_github_repository_id" in lifecycle
+    for forbidden in ("docker build", "argocd app sync", "promote.sh"):
+        assert forbidden not in lifecycle
+
 
 def test_scope_fixture_is_auditable() -> None:
     evidence = json.loads((ROOT / "tests/contract/fixtures/gitops/workflow-scope.json").read_text())

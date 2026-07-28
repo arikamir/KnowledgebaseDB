@@ -107,8 +107,10 @@ branch and reconciles the SemVer/digest-pinned release declaration for the
 three application services. Terraform and platform bootstrap remain separate
 from this application release path.
 
-Use `.github/workflows/infrastructure.yml` for the separately approved
-Terraform/platform lifecycle, `.github/workflows/delivery.yml` for a protected
+Use `.github/workflows/infrastructure.yml` for credential-free Terraform
+validation and `scripts/azure/run-infrastructure-lifecycle.sh` from the approved
+private-network platform runner for reviewed plan/apply. Use
+`.github/workflows/delivery.yml` for a protected
 SemVer-tagged image release and approved-automated-review desired-state PR, and
 `.github/workflows/rollback.yml` for a reviewed declaration reversion. The
 application workflow has no AKS or Terraform credentials.

@@ -14,7 +14,9 @@ Jenkins controller or ACI callback.
 - `.github/workflows/infrastructure.yml` performs identityless Terraform
   formatting and schema validation. Full plan/apply remains on the approved
   private-network platform path because the state contains private Key Vault
-  data-plane resources that GitHub-hosted runners cannot safely refresh.
+  data-plane resources that GitHub-hosted runners cannot safely refresh. Run
+  `scripts/azure/run-infrastructure-lifecycle.sh plan`, review its saved plan,
+  then run it with `apply` and `INFRASTRUCTURE_APPLY_APPROVED=true`.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
@@ -89,6 +91,9 @@ updated. The Terraform owner/repository names and IDs must reproduce that
 prefix exactly. Re-check it after a repository transfer or rename and update
 Azure trust before running delivery again.
 
-The first Azure apply after creating the GitHub repository must include
-`github_repository = "owner/name"`. Do not place a client secret, kubeconfig,
-registry password, or Azure access token in GitHub secrets.
+Every plan/apply must provide the coupled trust tuple
+`TF_VAR_github_repository`, `TF_VAR_github_repository_owner_id`, and
+`TF_VAR_github_repository_id`. Obtain all three from the repository and its
+versioned OIDC `sub_claim_prefix`; none has a repository-specific Terraform
+default. Do not place a client secret, kubeconfig, registry password, or Azure
+access token in GitHub secrets.

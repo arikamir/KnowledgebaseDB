@@ -27,7 +27,7 @@ APPLY=true scripts/azure/apply-argocd-rbac.sh      # platform-approved apply
 | Entra group/app role | Argo CD capability | Boundary |
 | --- | --- | --- |
 | `career-agent-application-release` | Read/sync the nonprod application and approve the Git release PR | No Terraform, Azure, namespace, gateway, or cluster-resource mutation |
-| `career-agent-infrastructure-admin` | Run the separately approved infrastructure workflow | Not used for routine application release |
+| `career-agent-infrastructure-admin` | Run the separately approved private-network infrastructure lifecycle | Not used for routine application release |
 | `career-agent-observability-readonly` | View health, events, sync, and evidence | No sync, Git write, rollback, or infrastructure mutation |
 
 The default Argo CD role is read-only. Privileged actions require an active,

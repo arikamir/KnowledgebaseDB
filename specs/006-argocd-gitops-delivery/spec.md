@@ -28,7 +28,7 @@ As a platform operator, I want infrastructure provisioning and application relea
 **Acceptance Scenarios**:
 
 1. **Given** the platform is already provisioned, **When** an application release is requested, **Then** the release workflow changes only application workloads and configuration and does not plan, apply, or delete infrastructure resources.
-2. **Given** an infrastructure change is requested, **When** the infrastructure workflow runs, **Then** it produces a reviewable infrastructure plan and does not deploy a new application image as a side effect.
+2. **Given** an infrastructure change is requested, **When** identityless validation passes and the private-network infrastructure lifecycle runner executes, **Then** it produces a reviewable infrastructure plan and does not deploy a new application image as a side effect.
 3. **Given** either workflow fails, **When** an operator reviews its result, **Then** the workflow identifies its own scope, actor, inputs, outcome, and evidence without relying on the other workflow's logs.
 
 ### User Story 2 - Reconcile CI artifacts through Argo CD (Priority: P1)
@@ -125,7 +125,7 @@ As a delivery operator, I want to authenticate through the organization's Azure 
 
 ### Key Entities
 
-- **Infrastructure Stack**: The Azure resources, cluster prerequisites, identities, networking, secrets, and policies managed by the infrastructure workflow.
+- **Infrastructure Stack**: The Azure resources, cluster prerequisites, identities, networking, secrets, and policies validated by the infrastructure workflow and managed by the private-network lifecycle runner.
 - **Release Bundle**: The CI-produced package of immutable service image references, source revision, contract/version metadata, validation evidence, and release identity.
 - **Release Declaration**: The Git-tracked, SemVer 2.0.0 environment record consumed by the ApplicationSet, binding the UI, BFF, and Core immutable image references to one source revision.
 - **Release Version**: The SemVer 2.0.0 version assigned to a release bundle, including optional prerelease and build metadata and its ordering rules.
