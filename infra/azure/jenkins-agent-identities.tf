@@ -36,13 +36,6 @@ resource "azurerm_user_assigned_identity" "jenkins_deployer" {
   tags                = local.tags
 }
 
-resource "azurerm_user_assigned_identity" "github_actions_plan" {
-  name                = "id-${local.stem}-github-actions-plan"
-  location            = azurerm_resource_group.app.location
-  resource_group_name = azurerm_resource_group.app.name
-  tags                = local.tags
-}
-
 resource "azurerm_role_assignment" "publisher_exact_acr_push" {
   scope                = azurerm_container_registry.app.id
   role_definition_name = "AcrPush"
@@ -61,18 +54,6 @@ resource "azurerm_role_assignment" "deployer_target_rg_reader" {
   principal_id         = azurerm_user_assigned_identity.jenkins_deployer.principal_id
 }
 
-resource "azurerm_role_assignment" "plan_target_rg_reader" {
-  scope                = azurerm_resource_group.app.id
-  role_definition_name = "Reader"
-  principal_id         = azurerm_user_assigned_identity.github_actions_plan.principal_id
-}
-
-resource "azuread_app_role_assignment" "github_actions_plan_directory_read" {
-  app_role_id         = data.azuread_service_principal.microsoft_graph.app_role_ids["Directory.Read.All"]
-  principal_object_id = azurerm_user_assigned_identity.github_actions_plan.principal_id
-  resource_object_id  = data.azuread_service_principal.microsoft_graph.object_id
-}
-
 # The delivery identities retain their least-privilege RBAC scopes while the
 # orchestrator moves from Jenkins to GitHub Actions. OIDC subjects are bound
 # to protected environments, not arbitrary branches or pull requests.
@@ -83,24 +64,6 @@ resource "azurerm_federated_identity_credential" "github_actions_publisher" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_actions_environment}-publisher"
-}
-
-resource "azurerm_federated_identity_credential" "github_actions_plan" {
-  name                = "github-actions-plan-${var.environment}"
-  resource_group_name = azurerm_resource_group.app.name
-  parent_id           = azurerm_user_assigned_identity.github_actions_plan.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:infrastructure-plan"
-}
-
-resource "azurerm_federated_identity_credential" "github_actions_deployer" {
-  name                = "github-actions-deployer-${var.environment}"
-  resource_group_name = azurerm_resource_group.app.name
-  parent_id           = azurerm_user_assigned_identity.jenkins_deployer.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:infrastructure-apply"
 }
 
 output "jenkins_delivery_identity_manifest" {
@@ -119,16 +82,6 @@ output "github_actions_delivery_identity_manifest" {
     publisher = {
       client_id = azurerm_user_assigned_identity.jenkins_publisher.client_id
       subject   = azurerm_federated_identity_credential.github_actions_publisher.subject
-    }
-    deployer = {
-      client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id
-      subject   = azurerm_federated_identity_credential.github_actions_deployer.subject
-    }
-    plan = {
-      client_id                 = azurerm_user_assigned_identity.github_actions_plan.client_id
-      subject                   = azurerm_federated_identity_credential.github_actions_plan.subject
-      graph_application_roles   = ["Directory.Read.All"]
-      application_resource_role = "Reader"
     }
     issuer   = "https://token.actions.githubusercontent.com"
     audience = "api://AzureADTokenExchange"

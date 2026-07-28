@@ -11,9 +11,10 @@ Jenkins controller or ACI callback.
 - `.github/workflows/delivery.yml` runs validation, digest-pinned image build /
   scan / publication and produces a validated non-production GitOps release
   bundle; the application hand-off is a reviewed desired-state pull request.
-- `.github/workflows/infrastructure.yml` is the only workflow with the
-  infrastructure-admin Azure identity. It runs Terraform plan/apply for
-  `infra/azure` and never builds, publishes, or reconciles application images.
+- `.github/workflows/infrastructure.yml` performs identityless Terraform
+  formatting and schema validation. Full plan/apply remains on the approved
+  private-network platform path because the state contains private Key Vault
+  data-plane resources that GitHub-hosted runners cannot safely refresh.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
@@ -28,16 +29,11 @@ these repository/environment values before enabling the workflows:
 
 - application-release secrets: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
   and `AZURE_PUBLISHER_CLIENT_ID`;
-- infrastructure-only secrets: `AZURE_INFRASTRUCTURE_PLAN_CLIENT_ID` for the
-  read-only plan identity and `AZURE_INFRASTRUCTURE_CLIENT_ID` for the
-  apply-only identity;
 - variables: `ACR_LOGIN_SERVER`, `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`,
-  `EVIDENCE_STORAGE_ACCOUNT`, the three service smoke URLs, and the non-secret
-  remote-state coordinates `TF_BACKEND_RESOURCE_GROUP`,
-  `TF_BACKEND_STORAGE_ACCOUNT`, `TF_BACKEND_CONTAINER`, and `TF_BACKEND_KEY`;
+  `EVIDENCE_STORAGE_ACCOUNT`, and the three service smoke URLs;
 - environments: `nonprod-publisher`, `nonprod-release`,
-  `infrastructure-plan`, `infrastructure-apply`, and `nonprod-recovery`, with
-  required reviewers configured on release/apply/recovery environments.
+  and `nonprod-recovery`, with required reviewers configured on release and
+  recovery environments.
 
 Configure the repository branch/tag rules so that `main` requires the
 `ai/review` status check and protected `v*` tags cannot be created or moved by an
@@ -67,19 +63,12 @@ merge-enabled runs it remains armed through proof recheck and merge completion.
 The gate also requires the head SHA output by the PR-creation job, preventing a
 push between jobs from substituting a different release or rollback head.
 
-Terraform creates separate publisher and infrastructure federated credentials
-bound to the repository and protected environment subjects. The application
+Terraform creates a publisher federated credential bound to the repository and
+protected environment subject. The application
 publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
-permission. Pull requests receive no Azure token. The infrastructure identity
-uses a separate read-only identity for `infrastructure-plan` and a write-capable
-identity for `infrastructure-apply`; apply remains gated by its protected
-environment and neither identity is referenced by delivery jobs. Platform
-bootstrap must grant the plan identity read access to the remote Terraform
-state and Microsoft Graph `Directory.Read.All` application access so Terraform
-can refresh Entra resources, while preserving read-only access everywhere.
-Plans disable state locking so this identity does not need lease/write access. Pushes to
-`main` produce plans only; an apply requires an explicit `workflow_dispatch`
-request with `action=apply` plus the protected apply-environment approval.
+permission. Pull requests and infrastructure validation receive no Azure or
+Microsoft Graph token. Platform operators run full plan/apply only from the
+private-network execution path with its separately approved identity.
 OIDC subjects include the immutable GitHub owner and repository IDs configured
 by `github_repository_owner_id` and `github_repository_id`, matching GitHub's
 ID-bound subject format even when repository visibility changes. Do not infer

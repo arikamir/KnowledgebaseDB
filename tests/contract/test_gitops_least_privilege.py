@@ -28,7 +28,7 @@ def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
     assert "curl -sSfL https://raw.githubusercontent.com/aquasecurity" not in workflow
 
 
-def test_github_federation_uses_immutable_repository_ids() -> None:
+def test_publisher_federation_uses_immutable_repository_ids() -> None:
     identities = (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
     variables = (ROOT / "infra/azure/variables.tf").read_text()
     documentation = (ROOT / "docs/github-actions-azure.md").read_text()
@@ -36,14 +36,9 @@ def test_github_federation_uses_immutable_repository_ids() -> None:
     assert "github_repository_id" in variables
     assert "@${var.github_repository_owner_id}" in identities
     assert "@${var.github_repository_id}:environment:" in identities
-    assert ":environment:infrastructure-plan" in identities
-    assert ":environment:infrastructure-apply" in identities
-    assert 'resource "azurerm_user_assigned_identity" "github_actions_plan"' in identities
-    assert "parent_id           = azurerm_user_assigned_identity.github_actions_plan.id" in identities
-    assert "principal_id         = azurerm_user_assigned_identity.github_actions_plan.principal_id" in identities
-    assert "role_definition_name = \"Reader\"" in identities
-    assert 'resource "azuread_app_role_assignment" "github_actions_plan_directory_read"' in identities
-    assert 'app_role_ids["Directory.Read.All"]' in identities
+    assert ":environment:infrastructure-plan" not in identities
+    assert ":environment:infrastructure-apply" not in identities
+    assert "github_actions_plan" not in identities
     assert "Directory.ReadWrite.All" not in identities
     assert "Application.ReadWrite.All" not in identities
     assert "sub_claim_prefix" in documentation

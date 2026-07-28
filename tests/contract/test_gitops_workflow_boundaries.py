@@ -23,32 +23,23 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     workflow = yaml.safe_load(workflow_path.read_text())
     text = workflow_path.read_text().lower()
     assert workflow["permissions"] == {"contents": "read"}
-    assert workflow["jobs"]["validate"]["if"] == "github.event_name == 'pull_request'"
     assert "environment" not in workflow["jobs"]["validate"]
     assert workflow["jobs"]["validate"]["permissions"] == {"contents": "read"}
-    assert workflow["jobs"]["plan"]["environment"] == "infrastructure-plan"
-    assert workflow["jobs"]["plan"]["if"] == "github.event_name != 'pull_request'"
-    assert workflow["jobs"]["plan"]["permissions"] == {"contents": "read", "id-token": "write"}
-    assert workflow["jobs"]["apply"]["environment"] == "infrastructure-apply"
-    assert workflow["jobs"]["apply"]["permissions"] == {"contents": "read", "id-token": "write"}
+    assert set(workflow["jobs"]) == {"validate"}
     validate_steps = {step.get("name"): step for step in workflow["jobs"]["validate"]["steps"] if "name" in step}
-    plan_steps = {step.get("name"): step for step in workflow["jobs"]["plan"]["steps"] if "name" in step}
-    plan_login = plan_steps["Azure OIDC login for authenticated platform plan"]
-    assert "AZURE_INFRASTRUCTURE_PLAN_CLIENT_ID" in plan_login["with"]["client-id"]
-    plan_command = plan_steps["Create platform plan"]["run"]
-    for variable in (
-        "TF_BACKEND_RESOURCE_GROUP",
-        "TF_BACKEND_STORAGE_ACCOUNT",
-        "TF_BACKEND_CONTAINER",
-        "TF_BACKEND_KEY",
-    ):
-        assert f"vars.{variable}" in plan_command
-    assert "terraform plan -lock=false" in plan_command
-    assert workflow["jobs"]["apply"]["if"] == "github.event_name == 'workflow_dispatch' && inputs.action == 'apply'"
-    assert "terraform init -backend=false" in validate_steps["Validate Terraform only"]["run"]
+    assert "terraform init -backend=false" in validate_steps["Validate Terraform without credentials"]["run"]
     assert "validation-completed" in text
     assert "terraform" in text
-    for forbidden in ("build-publish", "promote.sh", "docker build", "argocd app sync"):
+    for forbidden in (
+        "id-token: write",
+        "azure/login",
+        "terraform plan",
+        "terraform apply",
+        "build-publish",
+        "promote.sh",
+        "docker build",
+        "argocd app sync",
+    ):
         assert forbidden not in text
 
 
