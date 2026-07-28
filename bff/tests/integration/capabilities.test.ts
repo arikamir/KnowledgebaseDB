@@ -25,7 +25,7 @@ describe("BFF capabilities", () => {
         contractVersion: "1.3.0",
         acceptedBffContractRange: ">=1.1.0 <2.0.0",
         apiSchemaVersion: "1.0.0",
-        guidanceTopicCatalogVersion: "1.0.0",
+        guidanceTopicCatalogVersion: "2.0.0",
         compatible: true,
       },
       featureFlags: {},

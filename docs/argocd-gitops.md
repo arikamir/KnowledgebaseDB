@@ -103,6 +103,12 @@ cluster-resource whitelist. Because AppProject kind allowlists span every
 destination, the platform-owned `core-migration-argocd-boundary-v1` admission
 policy independently denies every non-Job create, update, or delete attempted
 by the Argo CD application controller in `career-migrations`.
+Before installing the migration base, the platform renderer must resolve
+`POSTGRES_PRIVATE_ENDPOINT_IP` and `ENTRA_TOKEN_ENDPOINT_CIDR`. The latter is a
+reviewed HTTPS egress range derived from the current Azure
+`AzureActiveDirectory` service tag and maintained with the platform network
+configuration; it is the only public token-exchange path admitted for the
+migration workload identity.
 
 ## Release declaration
 

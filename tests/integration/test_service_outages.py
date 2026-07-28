@@ -144,7 +144,7 @@ EXPECTED_COUNTS = {
     "sc032_idempotency": 81,
     "sc036_sc048_controller_audit": 10,
     "sc039_agent_identity_isolation": 17,
-    "sc040_sc041_rotation": 12,
+    "sc040_sc041_rotation": 8,
     "sc042_evidence_retention": 20,
 }
 
@@ -165,7 +165,10 @@ EVIDENCE_OWNERS = {
     "sc032_idempotency": ["tests/integration/test_idempotency.py"],
     "sc036_sc048_controller_audit": ["tests/ci/test_github_actions_delivery.py"],
     "sc039_agent_identity_isolation": ["tests/contract/test_gitops_least_privilege.py"],
-    "sc040_sc041_rotation": ["tests/contract/test_bff_certificate_rotation_policy.py"],
+    "sc040_sc041_rotation": [
+        "tests/contract/test_bff_certificate_rotation_policy.py",
+        "tests/contract/test_gateway_certificate_rotation_foundation.py",
+    ],
     "sc042_evidence_retention": ["tests/ci/test_delivery_evidence_retention.py"],
 }
 

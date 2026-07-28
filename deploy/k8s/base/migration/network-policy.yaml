@@ -30,3 +30,11 @@ spec:
       ports:
         - port: 5432
           protocol: TCP
+    - to:
+        # Platform rendering resolves this from the reviewed
+        # AzureActiveDirectory service-tag egress range.
+        - ipBlock:
+            cidr: ${ENTRA_TOKEN_ENDPOINT_CIDR}
+      ports:
+        - port: 443
+          protocol: TCP

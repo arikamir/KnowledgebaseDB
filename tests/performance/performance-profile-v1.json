@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "profileId": "performance-profile-v1",
   "status": "approved",
-  "approvedOn": "2026-07-13",
+  "approvedOn": "2026-07-28",
   "approvalAuthority": "Feature specification owner",
   "fixtureDigestAlgorithm": "sha256",
   "fixtureDigestScope": "UTF-8 bytes of the fixtures array serialized as recursively key-sorted compact JSON with no trailing newline",
-  "fixtureDigest": "e924f7dec679a4cb837628fb7ec4cf1d6ee576734dd26a3f1ac83ffff5127755",
+  "fixtureDigest": "7c82845f2c1a2dd428a55e1b646d5152183916605a0e9b47ca9cfc262c350e20",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "cb75f1d03f59c9bdc734be7192164db2975a7f077ede64a5212363ee3a1578e3",
+  "profileDigest": "2c133ec2b24dd97392f3ca8b59a7d7347a34f5403a527b9db230dd325715487f",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
@@ -19,7 +19,7 @@
     },
     "coreContract": {
       "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
-      "digest": "74eb81eed70e24183862bd187ab9f9bfa778d2992efeae54b397e2d36df19497"
+      "digest": "ecd043b615b2edbeb2b9e206d5989c1495b8981ed47a578bd36edcac917bdb1b"
     },
     "generatedMapper": {
       "source": "The generated digest-pinned BFF-to-core mapper for the two bound contracts",
@@ -192,7 +192,7 @@
       "caseId": "guidance-advanced-github_actions-001",
       "scenario": "guidance",
       "request": {
-        "topic": "github_actions",
+        "topic": "github-actions",
         "employeeProfile": {
           "role": "Senior DevOps Engineer",
           "experienceLevel": "advanced",

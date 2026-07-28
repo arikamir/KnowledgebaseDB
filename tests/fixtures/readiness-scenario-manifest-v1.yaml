@@ -1,13 +1,13 @@
 schema_version: 1
 manifest_id: readiness-scenario-manifest-v1
 status: approved
-approved_on: 2026-07-13
+approved_on: 2026-07-28
 approval_authority: Feature specification owner
 manifest_digest_algorithm: sha256
 manifest_digest_scope: >-
   UTF-8 bytes of a mapping containing execution_rules and groups, serialized as
   recursively key-sorted compact JSON with no trailing newline.
-manifest_digest: 6d83cef718fc6928e4404f27b2a4abf48995522c5fa1fe41e71639c3ef70d6d3
+manifest_digest: 4114f8b798adb59bf670c3555a466046a79a4ff90fa9c8978f8d25de1cc84804
 
 execution_rules:
   setup_failure: failed_case
@@ -362,9 +362,9 @@ groups:
 
   sc040_sc041_rotation:
     criteria: [SC-040, SC-041]
-    denominator: 12
-    expectations: All normal, partial, rollback, and emergency gates and saved-data outcomes pass.
-    credential_types: [bff_client_certificate, gateway_private_core_tls, github_actions_cloud_credential]
+    denominator: 8
+    expectations: All normal, partial, rollback, and emergency certificate gates and saved-data outcomes pass; secretless GitHub OIDC lifecycle is covered by SC-039.
+    credential_types: [bff_client_certificate, gateway_private_core_tls]
     case_suffixes: [normal, partial_convergence, rollback_injection, emergency]
     case_id_template: SC040.{credential_type}.{case_suffix}
 

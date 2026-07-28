@@ -62,7 +62,7 @@ def test_gitops_rbac_has_only_the_exact_job_observation_surface() -> None:
         assert denied not in serialized
 
 
-def test_only_migrator_jobs_can_reach_postgresql_and_dns() -> None:
+def test_only_migrator_jobs_can_reach_postgresql_dns_and_entra_token_exchange() -> None:
     policy = document("network-policy.yaml")
     assert policy["metadata"]["namespace"] == "career-migrations"
     assert policy["spec"]["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "core-migration"}
@@ -72,6 +72,8 @@ def test_only_migrator_jobs_can_reach_postgresql_and_dns() -> None:
     assert egress[0]["ports"] == [{"port": 53, "protocol": "UDP"}, {"port": 53, "protocol": "TCP"}]
     assert egress[1]["ports"] == [{"port": 5432, "protocol": "TCP"}]
     assert egress[1]["to"] == [{"ipBlock": {"cidr": "${POSTGRES_PRIVATE_ENDPOINT_IP}/32"}}]
+    assert egress[2]["ports"] == [{"port": 443, "protocol": "TCP"}]
+    assert egress[2]["to"] == [{"ipBlock": {"cidr": "${ENTRA_TOKEN_ENDPOINT_CIDR}"}}]
 
 
 def test_job_template_is_bounded_nonprivileged_and_expand_only() -> None:

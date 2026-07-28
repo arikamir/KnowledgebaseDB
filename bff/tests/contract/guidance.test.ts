@@ -42,7 +42,7 @@ describe("guidance contract mapping", () => {
   });
 
   it("treats a catalog mismatch as compatibility, not as a topic error", () => {
-    expect(guidanceCatalogCompatible("1.0.0")).toBe(true);
-    expect(guidanceCatalogCompatible("2.0.0")).toBe(false);
+    expect(guidanceCatalogCompatible("2.0.0")).toBe(true);
+    expect(guidanceCatalogCompatible("1.0.0")).toBe(false);
   });
 });
