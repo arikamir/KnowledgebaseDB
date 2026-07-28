@@ -50,7 +50,7 @@ receipt_path="$artifact_directory/platform.tfplan.receipt.json"
 scope_path="$artifact_directory/scope.json"
 temporary_plan=""
 temporary_receipt=""
-current_revision="$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || printf 'unknown')"
+current_revision=""
 target_key_vault_id=""
 target_key_vault_name=""
 planned_github_trust=""
@@ -95,7 +95,6 @@ on_exit() {
 trap on_exit EXIT
 
 rm -f "$scope_path"
-write_scope "$action-started"
 
 case "$artifact_directory/" in
   "$repository_root/"*)
@@ -110,6 +109,16 @@ for command_name in az git jq shasum terraform; do
     exit 1
   }
 done
+
+if ! current_revision="$(git -C "$repository_root" rev-parse --verify 'HEAD^{commit}' 2>/dev/null)"; then
+  echo "infrastructure lifecycle requires a resolvable Git source revision" >&2
+  exit 1
+fi
+if [[ ! "$current_revision" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "infrastructure lifecycle requires a canonical 40-character Git source revision" >&2
+  exit 1
+fi
+write_scope "$action-started"
 
 required_variables=(
   TF_BACKEND_TENANT_ID

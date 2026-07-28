@@ -98,9 +98,11 @@ APPLY=true scripts/azure/apply-argocd-rbac.sh
 ```
 
 The Argo CD service account used for this installation must be allowed to
-create Applications only in the `career-agent` AppProject. The project permits
-service resources in `career-agent` and only the bounded migration `Job` kind
-in `career-migrations`; it has no cluster-resource whitelist.
+create Applications only in the `career-agent` AppProject. The project has no
+cluster-resource whitelist. Because AppProject kind allowlists span every
+destination, the platform-owned `core-migration-argocd-boundary-v1` admission
+policy independently denies every non-Job create, update, or delete attempted
+by the Argo CD application controller in `career-migrations`.
 
 ## Release declaration
 

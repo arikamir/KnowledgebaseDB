@@ -7,3 +7,4 @@ resources:
   - network-policy.yaml
   - policy-parameters.yaml
   - validating-admission-policy.yaml
+  - argocd-boundary-policy.yaml

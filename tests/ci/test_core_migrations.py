@@ -137,12 +137,33 @@ def test_admission_policy_makes_runner_image_target_and_sandbox_non_overridable(
         assert required in expressions
 
 
+def test_admission_policy_limits_argocd_to_job_mutations_in_migration_namespace() -> None:
+    policy, binding = documents("argocd-boundary-policy.yaml")
+    assert policy["spec"]["failurePolicy"] == "Fail"
+    assert policy["spec"]["matchConstraints"]["resourceRules"] == [{
+        "apiGroups": ["*"],
+        "apiVersions": ["*"],
+        "operations": ["CREATE", "UPDATE", "DELETE"],
+        "resources": ["*"],
+        "scope": "Namespaced",
+    }]
+    expression = policy["spec"]["validations"][0]["expression"]
+    assert "system:serviceaccount:argocd:argocd-application-controller" in expression
+    assert "request.operation == 'DELETE'" in expression
+    assert "oldObject.kind == 'Job'" in expression
+    assert "object.kind == 'Job'" in expression
+    assert binding["spec"]["validationActions"] == ["Deny"]
+    assert binding["spec"]["matchResources"]["namespaceSelector"]["matchLabels"] == {
+        "knowledgebase.io/migration-guardrails": "enforced",
+    }
+
+
 def test_kustomization_installs_guardrails_but_not_a_migration_job() -> None:
     kustomization = document("kustomization.yaml")
     assert set(kustomization["resources"]) == {
         "namespace.yaml", "service-account.yaml", "gitops-rbac.yaml",
         "network-policy.yaml", "policy-parameters.yaml",
-        "validating-admission-policy.yaml",
+        "validating-admission-policy.yaml", "argocd-boundary-policy.yaml",
     }
     assert "job-template.yaml" not in kustomization["resources"]
 

@@ -42,7 +42,10 @@ are infrastructure-owned. An allowlist plus restricted service and
 migration-hook source paths makes the boundary enforceable both in the
 repository and at the Argo CD API. Argo CD hooks provide a fail-closed sequence:
 the expand-only migration from the exact release Core digest completes before
-service Deployments are reconciled.
+service Deployments are reconciled. Since AppProject resource allowlists apply
+to every destination, a platform-owned admission policy additionally denies
+all non-Job mutations by the Argo CD application controller in
+`career-migrations`.
 
 **Alternatives considered**:
 

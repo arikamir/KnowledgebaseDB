@@ -47,5 +47,8 @@ checks. The ApplicationSet does not read that branch before merge.
 - Destinations are limited to the existing `career-agent` and
   `career-migrations` namespaces.
 - `clusterResourceWhitelist` is empty.
-- Namespace resources are explicitly allowlisted; `career-migrations` receives
-  only the `Job` kind required by the hook. Orphan warnings are enabled.
+- Namespace resources are explicitly allowlisted and orphan warnings are
+  enabled. Because this allowlist is shared across destinations, the
+  platform-owned `core-migration-argocd-boundary-v1` admission policy is a
+  mandatory second layer: it denies every non-Job create, update, or delete by
+  the Argo CD application controller in `career-migrations`.

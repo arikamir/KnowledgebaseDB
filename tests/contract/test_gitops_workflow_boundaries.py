@@ -97,6 +97,9 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1
     assert "TF_VAR_github_repository_owner_id" in lifecycle
     assert "TF_VAR_github_repository_id" in lifecycle
+    assert "rev-parse --verify 'HEAD^{commit}'" in lifecycle
+    assert "requires a resolvable Git source revision" in lifecycle
+    assert "printf 'unknown'" not in lifecycle
     for forbidden in ("docker build", "argocd app sync", "promote.sh"):
         assert forbidden not in lifecycle
 
