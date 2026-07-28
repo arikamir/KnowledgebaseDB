@@ -51,6 +51,9 @@ spec:
           kustomize:
             # The PreSync Job runs the migration entrypoint from the exact Core
             # digest before Argo CD is allowed to update any service workload.
+            # A revision-specific name retains each completed Job until its
+            # evidence is collected without suppressing the next release hook.
+            nameSuffix: '-{{ trunc 12 .sourceRevision }}'
             images:
               - 'career-agent/core={{.services.core.image}}'
       destination:

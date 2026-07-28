@@ -134,7 +134,7 @@ actionable failure reason and next action with diagnosis visibility (target: two
 minutes), and drift detection (target: five minutes).
 
 Use `scripts/ci/collect-argocd-evidence.sh` after a release or reconciliation
-to produce a schema-v2 record linking the CI run, desired-state revision, generated Application, image
+to produce a schema-v3 record linking the CI run, desired-state revision, generated Application, image
 digests, readiness result, automated-review status, and timing fields. Failed syncs must
 include an affected service and next action. `scripts/ci/prepare-gitops-rollback.sh`
 creates an auditable rollback intent; only the resulting reviewed PR changes
@@ -149,6 +149,12 @@ independently retained release or rollback scope artifact; mismatched receipts
 are rejected. The collector uses `gh` with an authenticated GitHub token to
 recheck the PR head, `ai/review` status, and approved review or exact-marker
 reaction before writing the retained record.
+Pass the completed `core-migration-*` PreSync Job as `--migration-job` and a
+protected artifact path as `--migration-log-output`. The collector verifies the
+Job's release digest, target, and completion status and writes only the
+structured before/after schema-head log lines plus their SHA-256. Argo leaves
+the uniquely named hook in place; delete it only after both evidence artifacts
+have been uploaded and retention has been confirmed.
 
 ## Azure Entra access
 

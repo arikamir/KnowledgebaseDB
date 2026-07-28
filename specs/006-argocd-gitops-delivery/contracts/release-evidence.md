@@ -15,8 +15,8 @@ GitHub Actions run
 
 ## Required evidence fields
 
-- schema version `2` (the version that introduces the vendor-neutral
-  `automatedReview` record)
+- schema version `3` (the version that adds retained Argo migration evidence
+  to the vendor-neutral `automatedReview` record)
 - CI run ID and repository/branch
 - event type (`release`, `sync`, or `rollback`) and actor type (`automation` or `human`)
 - source revision and release version
@@ -30,6 +30,8 @@ GitHub Actions run
 - protected source tag, normalized release version, and approved automated-review result
 - readiness result and elapsed-time fields for merge-to-sync, failure
   diagnosis, and drift detection
+- retained migration Job name/status, exact release image, target, before/after
+  schema heads, and the path and SHA-256 of the redacted structured migration log
 
 The evidence record MUST include an `automationIdentity` when `actorType` is
 `automation`, or a `humanAction` identity record when `actorType` is `human`.
@@ -50,6 +52,14 @@ result, reason, and outcome. A failed rollout MUST include
 `nextActionVisibleAt` are required when measuring the two-minute diagnosis
 criterion. Evidence collectors MUST reject credential-shaped values before
 upload.
+
+The Argo PreSync migration hook MUST have a deterministic, source-revision
+specific name and MUST NOT set a successful-hook deletion policy or TTL. The
+collector MUST authenticate a completed retained Job against that revision,
+the release's exact Core digest, and the approved target, then persist only the
+structured before/after head log lines. Cleanup is a separate, explicit
+operator action after both evidence files have been uploaded to the protected
+evidence store.
 
 Evidence is uploaded to the existing protected delivery evidence store or GitHub
 Actions artifacts according to retention policy. Logs must redact tokens,

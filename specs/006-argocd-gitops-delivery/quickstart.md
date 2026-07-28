@@ -117,6 +117,8 @@ CD rollback is not authoritative.
      --automated-review-evidence artifacts/automated-review-evidence.json \
      --review-pull-request "$REVIEW_PULL_REQUEST" \
      --review-head-revision "$REVIEW_HEAD_REVISION" \
+     --migration-job "$MIGRATION_JOB" \
+     --migration-log-output artifacts/core-migration.log \
      --output artifacts/argocd-evidence.json
    ```
 
@@ -124,6 +126,9 @@ CD rollback is not authoritative.
    set the expected PR and head from the independently retained release or
    rollback scope artifact. The collector does not accept caller-supplied
    reviewer or pass-status values and rejects a receipt for another PR/head.
+   Set `MIGRATION_JOB` to the completed retained `core-migration-*` PreSync
+   Job for this sync. Confirm the evidence JSON and structured migration log
+   are uploaded before explicitly deleting that Job.
 
 ## 4. Verify drift and recovery
 

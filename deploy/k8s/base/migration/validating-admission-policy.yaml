@@ -17,7 +17,7 @@ spec:
   validations:
     - expression: params != null && 'coreRepository' in params.data && 'databaseUrl' in params.data
       message: Immutable migration policy parameters are required.
-    - expression: object.metadata.namespace == 'career-migrations' && object.metadata.name.startsWith('core-migration-')
+    - expression: object.metadata.namespace == 'career-migrations' && ((has(object.metadata.name) && object.metadata.name.startsWith('core-migration-')) || (has(object.metadata.generateName) && object.metadata.generateName == 'core-migration-'))
       message: Migration Jobs require the dedicated namespace and name prefix.
     - expression: object.spec.template.spec.serviceAccountName == 'core-migrator'
       message: Migration Jobs require the core-migrator service account.
@@ -33,8 +33,8 @@ spec:
       message: Environment sources are prohibited.
     - expression: '!has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(volume, volume.name == "azure-identity-token" && has(volume.projected) && volume.projected.sources.all(source, has(source.serviceAccountToken) && source.serviceAccountToken.audience == "api://AzureADTokenExchange" && source.serviceAccountToken.path == "azure-identity-token"))'
       message: Only the Workload Identity projected token volume is allowed.
-    - expression: object.spec.activeDeadlineSeconds == 900 && object.spec.backoffLimit == 1 && object.spec.ttlSecondsAfterFinished == 300
-      message: Deadline, retry, and cleanup bounds are fixed.
+    - expression: object.spec.activeDeadlineSeconds == 900 && object.spec.backoffLimit == 1 && ((has(object.metadata.annotations) && 'argocd.argoproj.io/hook' in object.metadata.annotations && object.metadata.annotations['argocd.argoproj.io/hook'] == 'PreSync' && !has(object.spec.ttlSecondsAfterFinished)) || ((!has(object.metadata.annotations) || !('argocd.argoproj.io/hook' in object.metadata.annotations)) && object.spec.ttlSecondsAfterFinished == 300))
+      message: Argo migration hooks must be retained for evidence; directly submitted Jobs require bounded cleanup.
     - expression: object.spec.template.spec.restartPolicy == 'Never' && object.spec.template.spec.hostNetwork == false && object.spec.template.spec.hostPID == false && object.spec.template.spec.hostIPC == false
       message: hostNetwork, hostPID, hostIPC, and restart access are prohibited.
     - expression: '!has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(volume, !has(volume.hostPath))'

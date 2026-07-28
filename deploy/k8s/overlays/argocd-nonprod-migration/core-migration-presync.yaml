@@ -1,19 +1,17 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: core-migration-presync
+  name: core-migration
   namespace: career-migrations
   labels:
     app.kubernetes.io/name: core-migration
     app.kubernetes.io/component: schema-migration
   annotations:
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
     argocd.argoproj.io/sync-wave: "-10"
 spec:
   activeDeadlineSeconds: 900
   backoffLimit: 1
-  ttlSecondsAfterFinished: 300
   template:
     metadata:
       labels:

@@ -27,6 +27,8 @@ ROLLBACK_REASON=""
 ROLLBACK_ACTOR=""
 ROLLBACK_APPROVAL="passed"
 ROLLBACK_OUTCOME="reconciled"
+MIGRATION_JOB=""
+MIGRATION_LOG_OUTPUT=""
 
 fail() { printf 'argocd evidence: %s\n' "$1" >&2; exit 2; }
 while (($#)); do
@@ -55,16 +57,23 @@ while (($#)); do
     --rollback-actor) ROLLBACK_ACTOR="${2:-}"; shift 2 ;;
     --rollback-approval) ROLLBACK_APPROVAL="${2:-}"; shift 2 ;;
     --rollback-outcome) ROLLBACK_OUTCOME="${2:-}"; shift 2 ;;
+    --migration-job) MIGRATION_JOB="${2:-}"; shift 2 ;;
+    --migration-log-output) MIGRATION_LOG_OUTPUT="${2:-}"; shift 2 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
 [[ -f "$RELEASE" && -n "$OUTPUT" ]] || fail "--release and --output are required"
+[[ "$MIGRATION_JOB" =~ ^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
+  fail "--migration-job must identify the retained Argo migration Job"
+[[ -n "$MIGRATION_LOG_OUTPUT" && "$MIGRATION_LOG_OUTPUT" != "$OUTPUT" ]] ||
+  fail "--migration-log-output must be distinct from --output"
 [[ -f "$AUTOMATED_REVIEW_EVIDENCE" ]] || fail "--automated-review-evidence must be a receipt produced by the current-head gate"
 [[ "$EXPECTED_REVIEW_PR" =~ ^[1-9][0-9]*$ ]] || fail "--review-pull-request must identify the release or rollback pull request"
 [[ "$EXPECTED_REVIEW_HEAD" =~ ^[0-9a-f]{40}$ ]] || fail "--review-head-revision must identify the independently recorded reviewed head"
 [[ "$ACTOR_TYPE" == automation || "$ACTOR_TYPE" == human ]] || fail "actor type is invalid"
 [[ "$EVENT_TYPE" == release || "$EVENT_TYPE" == sync || "$EVENT_TYPE" == rollback ]] || fail "event type is invalid"
 command -v gh >/dev/null 2>&1 || fail "gh CLI is required to authenticate automated review evidence"
+command -v kubectl >/dev/null 2>&1 || fail "kubectl is required to authenticate migration evidence"
 if ! jq -e --arg repository "$REPOSITORY" --arg approvedReviewers "$APPROVED_REVIEWERS" \
   --argjson expectedPullRequest "$EXPECTED_REVIEW_PR" --arg expectedHead "$EXPECTED_REVIEW_HEAD" '
   ($approvedReviewers | split(",")) as $approved |
@@ -139,12 +148,52 @@ if [[ ! "$DESIRED_STATE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   DESIRED_STATE_REVISION="$(jq -r '.sourceRevision' "$RELEASE")"
 fi
 
+EXPECTED_CORE_IMAGE="$(jq -r '.services.core.image' "$RELEASE")"
+EXPECTED_MIGRATION_JOB="core-migration-$(jq -r '.sourceRevision[0:12]' "$RELEASE")"
+[[ "$MIGRATION_JOB" == "$EXPECTED_MIGRATION_JOB" ]] ||
+  fail "migration Job does not match the release source revision"
+MIGRATION_JOB_JSON="$(kubectl -n career-migrations get job "$MIGRATION_JOB" -o json)" ||
+  fail "unable to read the retained migration Job"
+if ! jq -e --arg name "$MIGRATION_JOB" --arg image "$EXPECTED_CORE_IMAGE" '
+  .metadata.name == $name and
+  .metadata.namespace == "career-migrations" and
+  .metadata.annotations["argocd.argoproj.io/hook"] == "PreSync" and
+  any(.status.conditions[]?; .type == "Complete" and .status == "True") and
+  (any(.status.conditions[]?; .type == "Failed" and .status == "True") | not) and
+  (.spec.template.spec.containers | length) == 1 and
+  .spec.template.spec.containers[0].name == "core-migration" and
+  .spec.template.spec.containers[0].image == $image and
+  ([.spec.template.spec.containers[0].env[]? | select(.name == "MIGRATION_TARGET") | .value] == ["009_merge_learning_progress"])
+' <<<"$MIGRATION_JOB_JSON" >/dev/null; then
+  fail "migration Job is not a completed hook for this release"
+fi
+MIGRATION_LOGS="$(kubectl -n career-migrations logs "job/$MIGRATION_JOB" -c core-migration)" ||
+  fail "unable to read migration Job logs"
+MIGRATION_BEFORE="$(sed -n 's/^MIGRATION_BEFORE_HEADS=//p' <<<"$MIGRATION_LOGS" | tail -1)"
+MIGRATION_AFTER="$(sed -n 's/^MIGRATION_AFTER_HEADS=//p' <<<"$MIGRATION_LOGS" | tail -1)"
+[[ "$MIGRATION_BEFORE" =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] ||
+  fail "migration before-head evidence is missing or malformed"
+[[ "$MIGRATION_AFTER" == "009_merge_learning_progress" ]] ||
+  fail "migration did not reach the approved target"
+mkdir -p "$(dirname "$MIGRATION_LOG_OUTPUT")"
+umask 077
+printf 'MIGRATION_BEFORE_HEADS=%s\nMIGRATION_AFTER_HEADS=%s\n' \
+  "$MIGRATION_BEFORE" "$MIGRATION_AFTER" > "$MIGRATION_LOG_OUTPUT"
+if command -v sha256sum >/dev/null 2>&1; then
+  MIGRATION_LOG_SHA256="$(sha256sum "$MIGRATION_LOG_OUTPUT" | awk '{print $1}')"
+else
+  MIGRATION_LOG_SHA256="$(shasum -a 256 "$MIGRATION_LOG_OUTPUT" | awk '{print $1}')"
+fi
+
 base="$(jq -c --arg observed "$OBSERVED_AT" --arg revision "$DESIRED_STATE_REVISION" \
   --arg repository "$REPOSITORY" --arg branch "$BRANCH" --arg status "$SYNC_STATUS" --arg health "$HEALTH" \
   --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg reviewObserved "$AUTOMATED_REVIEW_OBSERVED_AT" \
   --arg reviewHead "$AUTOMATED_REVIEW_HEAD" --argjson reviewPr "$AUTOMATED_REVIEW_PR" --arg reviewProof "$AUTOMATED_REVIEW_PROOF" \
-  --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" \
-  '{schemaVersion:2,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
+  --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" --arg migrationJob "$MIGRATION_JOB" \
+  --arg migrationImage "$EXPECTED_CORE_IMAGE" --arg migrationTarget "$MIGRATION_AFTER" \
+  --arg migrationBefore "$MIGRATION_BEFORE" --arg migrationAfter "$MIGRATION_AFTER" \
+  --arg migrationLog "$MIGRATION_LOG_OUTPUT" --arg migrationLogSha256 "$MIGRATION_LOG_SHA256" \
+  '{schemaVersion:3,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},migration:{jobName:$migrationJob,namespace:"career-migrations",status:"succeeded",image:$migrationImage,target:$migrationTarget,beforeHeads:($migrationBefore|split(",")),afterHeads:($migrationAfter|split(",")),logs:{path:$migrationLog,sha256:$migrationLogSha256},observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
 
 if [[ "$ACTOR_TYPE" == human ]]; then
   base="$(jq --arg tenant "$HUMAN_TENANT" --arg subject "$HUMAN_SUBJECT" --arg role "$HUMAN_ROLE" --arg auth "$HUMAN_AUTH" --arg observed "$OBSERVED_AT" \

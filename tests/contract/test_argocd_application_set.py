@@ -113,11 +113,15 @@ def test_core_migration_is_a_presync_hook_using_the_release_core_digest() -> Non
     assert overlay["resources"] == ["core-migration-presync.yaml"]
     job = load("deploy/k8s/overlays/argocd-nonprod-migration/core-migration-presync.yaml")
     assert job["metadata"]["namespace"] == "career-migrations"
+    assert job["metadata"]["name"] == "core-migration"
     assert job["metadata"]["annotations"] == {
         "argocd.argoproj.io/hook": "PreSync",
-        "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation,HookSucceeded",
         "argocd.argoproj.io/sync-wave": "-10",
     }
+    assert "ttlSecondsAfterFinished" not in job["spec"]
+    application_set = load("deploy/argocd/applicationset.yaml")
+    migration_source = application_set["spec"]["template"]["spec"]["sources"][1]
+    assert migration_source["kustomize"]["nameSuffix"] == "-{{ trunc 12 .sourceRevision }}"
     container = job["spec"]["template"]["spec"]["containers"][0]
     assert container["image"] == "career-agent/core"
     assert container["command"] == ["/app/scripts/run-migration.sh"]
