@@ -67,6 +67,12 @@ resource "azurerm_role_assignment" "plan_target_rg_reader" {
   principal_id         = azurerm_user_assigned_identity.github_actions_plan.principal_id
 }
 
+resource "azuread_app_role_assignment" "github_actions_plan_directory_read" {
+  app_role_id         = data.azuread_service_principal.microsoft_graph.app_role_ids["Directory.Read.All"]
+  principal_object_id = azurerm_user_assigned_identity.github_actions_plan.principal_id
+  resource_object_id  = data.azuread_service_principal.microsoft_graph.object_id
+}
+
 # The delivery identities retain their least-privilege RBAC scopes while the
 # orchestrator moves from Jenkins to GitHub Actions. OIDC subjects are bound
 # to protected environments, not arbitrary branches or pull requests.
@@ -119,8 +125,10 @@ output "github_actions_delivery_identity_manifest" {
       subject   = azurerm_federated_identity_credential.github_actions_deployer.subject
     }
     plan = {
-      client_id = azurerm_user_assigned_identity.github_actions_plan.client_id
-      subject   = azurerm_federated_identity_credential.github_actions_plan.subject
+      client_id                 = azurerm_user_assigned_identity.github_actions_plan.client_id
+      subject                   = azurerm_federated_identity_credential.github_actions_plan.subject
+      graph_application_roles   = ["Directory.Read.All"]
+      application_resource_role = "Reader"
     }
     issuer   = "https://token.actions.githubusercontent.com"
     audience = "api://AzureADTokenExchange"

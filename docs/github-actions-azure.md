@@ -75,8 +75,9 @@ uses a separate read-only identity for `infrastructure-plan` and a write-capable
 identity for `infrastructure-apply`; apply remains gated by its protected
 environment and neither identity is referenced by delivery jobs. Platform
 bootstrap must grant the plan identity read access to the remote Terraform
-state while preserving read-only access to application resources. Plans disable
-state locking so this identity does not need lease/write access. Pushes to
+state and Microsoft Graph `Directory.Read.All` application access so Terraform
+can refresh Entra resources, while preserving read-only access everywhere.
+Plans disable state locking so this identity does not need lease/write access. Pushes to
 `main` produce plans only; an apply requires an explicit `workflow_dispatch`
 request with `action=apply` plus the protected apply-environment approval.
 OIDC subjects include the immutable GitHub owner and repository IDs configured
