@@ -42,6 +42,11 @@ artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-$repository_root/artifa
 plan_path="$artifact_directory/platform.tfplan"
 receipt_path="$artifact_directory/platform.tfplan.receipt.json"
 
+if [[ -n "$(git -C "$repository_root" status --porcelain --untracked-files=all -- infra/azure)" ]]; then
+  echo "infra/azure must have no staged, unstaged, or untracked changes" >&2
+  exit 1
+fi
+
 mkdir -p "$artifact_directory"
 az account show --output none
 
