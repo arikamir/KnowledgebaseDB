@@ -157,6 +157,9 @@ recheck the PR head, `ai/review` status, and approved review or exact-marker
 reaction before writing the retained record.
 Pass the release-scoped `core-migration-*` PreSync Job name as
 `--migration-job` and a protected artifact path as `--migration-log-output`.
+If Argo fails before Kubernetes creates the generated Job, pass the literal
+`--migration-job not-created`; the collector accepts that sentinel only for a
+non-successful sync and records a null Job name without invoking `kubectl`.
 The collector verifies the release identity and writes only the structured
 status, safe reason, and available before/after schema-head lines plus their
 SHA-256. Failed, incomplete, and not-created hooks remain recordable; only a

@@ -27,6 +27,7 @@ def test_evidence_schema_is_closed_and_redaction_aware() -> None:
     assert migration["allOf"][0]["then"]["properties"]["afterHeads"] == {
         "const": ["009_merge_learning_progress"]
     }
+    assert migration["allOf"][1]["then"]["properties"]["jobName"] == {"type": "null"}
 
 
 def test_collector_requires_release_and_contains_audit_fields() -> None:
@@ -47,7 +48,7 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "humanAction" in script
     assert "rollback" in script
     assert "GITOPS_AFFECTED_SERVICE" in script
-    assert "--migration-job must identify the retained Argo migration Job" in script
+    assert "--migration-job must identify the retained Argo migration Job or not-created" in script
     assert "gitops.knowledgebase.io/source-revision" in script
     assert "migration did not reach the approved target" in script
     assert "a successful sync requires a completed migration Job" in script
@@ -177,7 +178,7 @@ esac
             "--output",
             str(output),
             "--migration-job",
-            "core-migration-0123456789ab",
+            "not-created",
             "--migration-log-output",
             str(migration_log),
         ],
@@ -189,15 +190,40 @@ esac
     )
     assert result.returncode == 0, result.stderr
     evidence = json.loads(output.read_text())
+    assert evidence["migration"]["jobName"] is None
     assert evidence["migration"]["status"] == "not-created"
     assert evidence["migration"]["beforeHeads"] == []
     assert evidence["migration"]["afterHeads"] == []
     assert evidence["migration"]["safeReason"] == (
-        "migration Job was not created or is no longer observable"
+        "migration Job was not created"
     )
     assert evidence["sync"]["affectedService"] == "core-migration"
     assert "MIGRATION_STATUS=not-created" in migration_log.read_text()
     assert len(evidence["migration"]["logs"]["sha256"]) == 64
+
+
+def test_collector_rejects_not_created_sentinel_for_successful_sync(
+    tmp_path: Path,
+) -> None:
+    result = subprocess.run(
+        [
+            str(ROOT / "scripts/ci/collect-argocd-evidence.sh"),
+            "--release",
+            str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
+            "--output",
+            str(tmp_path / "evidence.json"),
+            "--migration-job",
+            "not-created",
+            "--migration-log-output",
+            str(tmp_path / "migration.log"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "not-created is valid only when sync did not succeed" in result.stderr
 
 
 def test_collector_rejects_unapproved_reviewer_receipt(tmp_path: Path) -> None:

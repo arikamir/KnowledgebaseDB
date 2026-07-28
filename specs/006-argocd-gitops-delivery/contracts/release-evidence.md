@@ -62,6 +62,9 @@ digest, and the approved target, then persist only its structured status, safe
 reason, and available before/after head log lines.
 Failed, incomplete, and not-created migration outcomes MUST remain recordable;
 only a successful sync requires `Complete=True` and the approved final head.
+When Argo fails before creating the generated Job, the collector MUST accept
+the explicit `not-created` sentinel only for a non-successful sync and MUST
+record a null Job name without fabricating or querying a Kubernetes object.
 Cleanup is a separate, explicit operator action after both evidence files have
 been uploaded to the protected evidence store. The Delivery Operations group
 MUST retain a conditioned exact-path writer for the `migration`, `sync`,

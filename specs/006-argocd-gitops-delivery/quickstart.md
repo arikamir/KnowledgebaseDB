@@ -127,8 +127,10 @@ CD rollback is not authoritative.
    rollback scope artifact. The collector does not accept caller-supplied
    reviewer or pass-status values and rejects a receipt for another PR/head.
    Set `MIGRATION_JOB` to the completed retained `core-migration-*` PreSync
-   Job for this sync. Confirm the evidence JSON and structured migration log
-   are uploaded before explicitly deleting that Job.
+   Job for this sync. If Argo fails before creating a Job, set it to the
+   literal `not-created`; that sentinel is rejected for a successful sync and
+   produces a null evidence Job name. Confirm the evidence JSON and structured
+   migration log are uploaded before explicitly deleting a created Job.
 
 ## 4. Verify drift and recovery
 

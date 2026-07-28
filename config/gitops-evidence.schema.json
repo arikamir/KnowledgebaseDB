@@ -176,10 +176,25 @@
               "afterHeads": {"const": ["009_merge_learning_progress"]}
             }
           }
+        },
+        {
+          "if": {"properties": {"status": {"const": "not-created"}}},
+          "then": {"properties": {"jobName": {"type": "null"}}},
+          "else": {
+            "properties": {
+              "jobName": {
+                "type": "string",
+                "pattern": "^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            }
+          }
         }
       ],
       "properties": {
-        "jobName": {"type": "string", "pattern": "^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"},
+        "jobName": {
+          "type": ["string", "null"],
+          "pattern": "^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
         "namespace": {"const": "career-migrations"},
         "status": {"enum": ["succeeded", "failed", "incomplete", "not-created"]},
         "safeReason": {"type": "string", "minLength": 1},

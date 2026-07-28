@@ -12,6 +12,7 @@ WORKLOAD_IDENTITIES = (INFRA / "identity.tf").read_text()
 DELIVERY_IDENTITIES = (INFRA / "github-actions-identities.tf").read_text()
 IDENTITIES = WORKLOAD_IDENTITIES + DELIVERY_IDENTITIES
 ASSET_IDENTITIES = (PROVISION / "assets/terraform/github-actions-identities.tf").read_text()
+ASSET_EVIDENCE = (PROVISION / "assets/terraform/delivery-evidence-storage.tf").read_text()
 
 WORKLOADS = {
     "bff", "core", "lifecycle", "retention", "lab-revalidation", "migration",
@@ -89,6 +90,15 @@ def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() 
     assert "delivery_operators_group_object_id" in source
     assert "security_reviewers_group_object_id" in source
     assert 'principal_type       = "Group"' in source
+
+
+def test_provisioning_asset_preserves_the_post_sync_evidence_writer() -> None:
+    for stage in ("migration", "sync", "verification", "rollback", "final"):
+        assert f'"{stage}"' in ASSET_EVIDENCE
+    assert 'resource "azurerm_role_assignment" "operator_evidence_prefix"' in ASSET_EVIDENCE
+    assert "var.delivery_operators_group_object_id" in ASSET_EVIDENCE
+    assert "local.operator_evidence_condition" in ASSET_EVIDENCE
+    assert "deployer_evidence" not in ASSET_EVIDENCE
 
 
 def test_provision_skill_and_assets_describe_complete_three_service_agc_topology() -> None:
