@@ -145,7 +145,7 @@ if [[ -z "$github_repository_owner" || -z "$github_repository_name" || "$github_
   echo "TF_VAR_github_repository must contain exactly one owner/name pair" >&2
   exit 1
 fi
-expected_publisher_subject="repo:${github_repository_owner}@${TF_VAR_github_repository_owner_id}/${github_repository_name}@${TF_VAR_github_repository_id}:environment:${TF_VAR_github_actions_environment}-publisher"
+expected_publisher_subject="repo:${github_repository_owner}/${github_repository_name}:environment:${TF_VAR_github_actions_environment}-publisher"
 
 terraform_source_paths=(
   infra/azure

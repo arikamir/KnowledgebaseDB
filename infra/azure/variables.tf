@@ -302,7 +302,7 @@ variable "github_repository" {
 }
 
 variable "github_repository_owner_id" {
-  description = "Immutable owner ID from the repository OIDC sub_claim_prefix; do not infer it from use_default."
+  description = "Immutable GitHub owner ID retained in reviewed infrastructure receipts; it is metadata, not part of GitHub's emitted OIDC subject."
   type        = string
   validation {
     condition     = can(regex("^[1-9][0-9]*$", var.github_repository_owner_id))
@@ -311,7 +311,7 @@ variable "github_repository_owner_id" {
 }
 
 variable "github_repository_id" {
-  description = "Immutable repository ID from the repository OIDC sub_claim_prefix; do not infer it from use_default."
+  description = "Immutable GitHub repository ID retained in reviewed infrastructure receipts; it is metadata, not part of GitHub's emitted OIDC subject."
   type        = string
   validation {
     condition     = can(regex("^[1-9][0-9]*$", var.github_repository_id))

@@ -22,10 +22,11 @@ controller agent, or direct AKS deployment job is part of this path.
   commit/trust/backend-bound plan; it never regenerates the reviewed plan. The
   Key Vault reachability probe is derived from the saved plan's
   `key_vault_target` output, so an unrelated accessible vault cannot satisfy the
-  private-data-plane gate. The receipt's publisher OIDC subject is likewise
-  derived from the effective saved-plan output and must exactly match the
-  approved repository IDs and `TF_VAR_github_actions_environment`, preventing
-  ignored or higher-precedence tfvars from silently changing trust. Initial
+  private-data-plane gate. The receipt records the effective publisher OIDC
+  subject together with the immutable owner/repository IDs and must exactly
+  match `TF_VAR_github_repository`, both ID values, and
+  `TF_VAR_github_actions_environment`, preventing ignored or
+  higher-precedence tfvars from silently changing trust. Initial
   creation before the managed vault exists additionally requires
   `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to a unique
   mode-`0700` directory under `${TMPDIR:-/tmp}`. Apply must set
@@ -87,31 +88,20 @@ publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
 permission. Pull requests and infrastructure validation receive no Azure or
 Microsoft Graph token. Platform operators run full plan/apply only from the
 private-network execution path with its separately approved identity.
-OIDC subjects include the immutable GitHub owner and repository IDs configured
-by `github_repository_owner_id` and `github_repository_id`, matching GitHub's
-ID-bound subject format even when repository visibility changes. Do not infer
-the subject format from `use_default`: GitHub's immutable-default rollout can
-leave that field set while emitting an ID-bound subject. Before applying the
-Azure credentials, query the current-version repository endpoint and treat its
-`sub_claim_prefix` as authoritative:
-
-```bash
-gh api repos/OWNER/REPOSITORY/actions/oidc/customization/sub \
-  -H 'X-GitHub-Api-Version: 2026-03-10'
-```
-
-For this repository the verified response prefix is
-`repo:arikamir@10241590/KnowledgebaseDB@1305159236`; Azure's failed-token
-diagnostic reported the same prefix before the federated credentials were
-updated. The Terraform owner/repository names and IDs must reproduce that
-prefix exactly. Re-check it after a repository transfer or rename and update
-Azure trust before running delivery again.
+The federated credential must match the subject GitHub emits for an
+environment-bound job:
+`repo:OWNER/REPOSITORY:environment:ENVIRONMENT`. For this repository's
+publisher job, that is
+`repo:arikamir/KnowledgebaseDB:environment:nonprod-publisher`. Numeric owner and
+repository IDs are retained as reviewed receipt metadata so a rename or
+transfer is explicit, but GitHub does not include those IDs in the emitted
+subject and Azure trust must not insert them.
 
 Every plan/apply must provide the coupled trust tuple
 `TF_VAR_github_repository`, `TF_VAR_github_repository_owner_id`, and
-`TF_VAR_github_repository_id`. Obtain all three from the repository and its
-versioned OIDC `sub_claim_prefix`; none has a repository-specific Terraform
-default. The private lifecycle also requires `TF_BACKEND_TENANT_ID` and
+`TF_VAR_github_repository_id`. Obtain the repository name and numeric IDs from
+GitHub's repository API; none has a repository-specific Terraform default.
+The private lifecycle also requires `TF_BACKEND_TENANT_ID` and
 `TF_BACKEND_SUBSCRIPTION_ID`, verifies they match the active Azure CLI account,
 and passes them explicitly to backend initialization. Do not place a client
 secret, kubeconfig, registry password, or Azure access token in GitHub secrets.

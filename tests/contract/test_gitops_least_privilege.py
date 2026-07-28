@@ -28,8 +28,9 @@ def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
     assert "curl -sSfL https://raw.githubusercontent.com/aquasecurity" not in workflow
 
 
-def test_publisher_federation_uses_immutable_repository_ids() -> None:
+def test_publisher_federation_uses_github_emitted_subject_and_retains_ids_as_metadata() -> None:
     identities = (ROOT / "infra/azure/github-actions-identities.tf").read_text()
+    outputs = (ROOT / "infra/azure/outputs.tf").read_text()
     variables = (ROOT / "infra/azure/variables.tf").read_text()
     documentation = (ROOT / "docs/github-actions-azure.md").read_text()
     assert "github_repository_owner_id" in variables
@@ -37,16 +38,18 @@ def test_publisher_federation_uses_immutable_repository_ids() -> None:
     for variable_name in ("github_repository", "github_repository_owner_id", "github_repository_id"):
         variable_block = variables.split(f'variable "{variable_name}"', 1)[1].split("\n}", 1)[0]
         assert "\n  default" not in variable_block
-    assert "@${var.github_repository_owner_id}" in identities
-    assert "@${var.github_repository_id}:environment:" in identities
+    assert "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher" in identities
+    assert "@${var.github_repository_owner_id}" not in identities
+    assert "@${var.github_repository_id}" not in identities
+    assert "owner_id      = var.github_repository_owner_id" in outputs
+    assert "repository_id = var.github_repository_id" in outputs
     assert ":environment:infrastructure-plan" not in identities
     assert ":environment:infrastructure-apply" not in identities
     assert "github_actions_plan" not in identities
     assert "Directory.ReadWrite.All" not in identities
     assert "Application.ReadWrite.All" not in identities
-    assert "sub_claim_prefix" in documentation
-    assert "repo:arikamir@10241590/KnowledgebaseDB@1305159236" in documentation
-    assert "X-GitHub-Api-Version: 2026-03-10" in documentation
+    assert "repo:arikamir/KnowledgebaseDB:environment:nonprod-publisher" in documentation
+    assert "numeric owner and\nrepository ids are retained as reviewed receipt metadata" in documentation.lower()
 
 
 def test_argocd_application_set_has_no_platform_paths() -> None:

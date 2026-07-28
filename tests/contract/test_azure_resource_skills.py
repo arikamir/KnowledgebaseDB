@@ -60,8 +60,9 @@ def test_provisioning_asset_federates_the_publisher_to_the_protected_environment
     variables = (PROVISION / "assets/terraform/variables.tf").read_text()
     assert 'resource "azurerm_federated_identity_credential" "github_actions_publisher"' in ASSET_IDENTITIES
     assert "https://token.actions.githubusercontent.com" in ASSET_IDENTITIES
-    assert "@${var.github_repository_owner_id}" in ASSET_IDENTITIES
-    assert "@${var.github_repository_id}:environment:${var.github_actions_environment}-publisher" in ASSET_IDENTITIES
+    assert "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher" in ASSET_IDENTITIES
+    assert "@${var.github_repository_owner_id}" not in ASSET_IDENTITIES
+    assert "@${var.github_repository_id}" not in ASSET_IDENTITIES
     for variable_name in (
         "github_repository",
         "github_repository_owner_id",

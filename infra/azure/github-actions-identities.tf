@@ -48,7 +48,7 @@ resource "azurerm_federated_identity_credential" "github_actions_publisher" {
   parent_id           = azurerm_user_assigned_identity.github_actions_publisher.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${split("/", var.github_repository)[0]}@${var.github_repository_owner_id}/${split("/", var.github_repository)[1]}@${var.github_repository_id}:environment:${var.github_actions_environment}-publisher"
+  subject             = "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher"
 }
 
 output "github_actions_delivery_identity_manifest" {

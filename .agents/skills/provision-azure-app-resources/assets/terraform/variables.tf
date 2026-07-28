@@ -56,7 +56,7 @@ variable "github_repository" {
 }
 
 variable "github_repository_owner_id" {
-  description = "Immutable numeric owner ID from the repository OIDC subject customization."
+  description = "Immutable numeric owner ID retained in reviewed infrastructure receipts; not part of GitHub's emitted OIDC subject."
   type        = string
   validation {
     condition     = can(regex("^[1-9][0-9]*$", var.github_repository_owner_id))
@@ -65,7 +65,7 @@ variable "github_repository_owner_id" {
 }
 
 variable "github_repository_id" {
-  description = "Immutable numeric repository ID from the repository OIDC subject customization."
+  description = "Immutable numeric repository ID retained in reviewed infrastructure receipts; not part of GitHub's emitted OIDC subject."
   type        = string
   validation {
     condition     = can(regex("^[1-9][0-9]*$", var.github_repository_id))
@@ -74,7 +74,7 @@ variable "github_repository_id" {
 }
 
 variable "github_actions_environment" {
-  description = "Protected GitHub environment prefix used for the publisher OIDC subject."
+  description = "Protected GitHub environment name prefix used for the publisher OIDC subject."
   type        = string
   default     = "nonprod"
   validation {
