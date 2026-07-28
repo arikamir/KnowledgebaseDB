@@ -47,6 +47,11 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert "terraform -chdir=\"$terraform_directory\" plan" in lifecycle
     assert "terraform -chdir=\"$terraform_directory\" apply" in lifecycle
     assert "INFRASTRUCTURE_APPLY_APPROVED" in lifecycle
+    assert "INFRASTRUCTURE_BOOTSTRAP_APPROVED" in lifecycle
+    assert "platform.tfplan.receipt.json" in lifecycle
+    assert "shasum -a 256" in lifecycle
+    assert lifecycle.index('if [[ "$action" == "plan" ]]') < lifecycle.index("terraform -chdir=\"$terraform_directory\" plan")
+    assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1
     assert "TF_VAR_github_repository_owner_id" in lifecycle
     assert "TF_VAR_github_repository_id" in lifecycle
     for forbidden in ("docker build", "argocd app sync", "promote.sh"):

@@ -15,8 +15,12 @@ Jenkins controller or ACI callback.
   formatting and schema validation. Full plan/apply remains on the approved
   private-network platform path because the state contains private Key Vault
   data-plane resources that GitHub-hosted runners cannot safely refresh. Run
-  `scripts/azure/run-infrastructure-lifecycle.sh plan`, review its saved plan,
-  then run it with `apply` and `INFRASTRUCTURE_APPLY_APPROVED=true`.
+  `scripts/azure/run-infrastructure-lifecycle.sh plan`, review its saved plan
+  and SHA-256 receipt, then run it with `apply` and
+  `INFRASTRUCTURE_APPLY_APPROVED=true`. Apply verifies and consumes that exact
+  commit/trust-bound plan; it never regenerates the reviewed plan. Initial
+  creation before the managed vault exists additionally requires
+  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
