@@ -55,11 +55,13 @@ upload.
 
 The Argo PreSync migration hook MUST have a deterministic, source-revision
 specific name and MUST NOT set a successful-hook deletion policy or TTL. The
-collector MUST authenticate a completed retained Job against that revision,
-the release's exact Core digest, and the approved target, then persist only the
-structured before/after head log lines. Cleanup is a separate, explicit
-operator action after both evidence files have been uploaded to the protected
-evidence store.
+collector MUST authenticate a retained Job against that revision, the
+release's exact Core digest, and the approved target, then persist only its
+structured status, safe reason, and available before/after head log lines.
+Failed, incomplete, and not-created migration outcomes MUST remain recordable;
+only a successful sync requires `Complete=True` and the approved final head.
+Cleanup is a separate, explicit operator action after both evidence files have
+been uploaded to the protected evidence store.
 
 Evidence is uploaded to the existing protected delivery evidence store or GitHub
 Actions artifacts according to retention policy. Logs must redact tokens,

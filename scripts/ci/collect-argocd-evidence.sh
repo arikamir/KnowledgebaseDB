@@ -152,33 +152,60 @@ EXPECTED_CORE_IMAGE="$(jq -r '.services.core.image' "$RELEASE")"
 EXPECTED_MIGRATION_JOB="core-migration-$(jq -r '.sourceRevision[0:12]' "$RELEASE")"
 [[ "$MIGRATION_JOB" == "$EXPECTED_MIGRATION_JOB" ]] ||
   fail "migration Job does not match the release source revision"
-MIGRATION_JOB_JSON="$(kubectl -n career-migrations get job "$MIGRATION_JOB" -o json)" ||
-  fail "unable to read the retained migration Job"
-if ! jq -e --arg name "$MIGRATION_JOB" --arg image "$EXPECTED_CORE_IMAGE" '
-  .metadata.name == $name and
-  .metadata.namespace == "career-migrations" and
-  .metadata.annotations["argocd.argoproj.io/hook"] == "PreSync" and
-  any(.status.conditions[]?; .type == "Complete" and .status == "True") and
-  (any(.status.conditions[]?; .type == "Failed" and .status == "True") | not) and
-  (.spec.template.spec.containers | length) == 1 and
-  .spec.template.spec.containers[0].name == "core-migration" and
-  .spec.template.spec.containers[0].image == $image and
-  ([.spec.template.spec.containers[0].env[]? | select(.name == "MIGRATION_TARGET") | .value] == ["009_merge_learning_progress"])
-' <<<"$MIGRATION_JOB_JSON" >/dev/null; then
-  fail "migration Job is not a completed hook for this release"
+MIGRATION_STATUS="not-created"
+MIGRATION_REASON="migration Job was not created or is no longer observable"
+MIGRATION_LOGS=""
+if MIGRATION_JOB_JSON="$(kubectl -n career-migrations get job "$MIGRATION_JOB" -o json 2>/dev/null)"; then
+  if ! jq -e --arg name "$MIGRATION_JOB" --arg image "$EXPECTED_CORE_IMAGE" '
+    .metadata.name == $name and
+    .metadata.namespace == "career-migrations" and
+    .metadata.annotations["argocd.argoproj.io/hook"] == "PreSync" and
+    (.spec.template.spec.containers | length) == 1 and
+    .spec.template.spec.containers[0].name == "core-migration" and
+    .spec.template.spec.containers[0].image == $image and
+    ([.spec.template.spec.containers[0].env[]? | select(.name == "MIGRATION_TARGET") | .value] == ["009_merge_learning_progress"])
+  ' <<<"$MIGRATION_JOB_JSON" >/dev/null; then
+    fail "migration Job is not an authenticated hook for this release"
+  fi
+  if jq -e 'any(.status.conditions[]?; .type == "Failed" and .status == "True")' \
+      <<<"$MIGRATION_JOB_JSON" >/dev/null; then
+    MIGRATION_STATUS="failed"
+    MIGRATION_REASON="migration Job reported a failed terminal condition"
+  elif jq -e 'any(.status.conditions[]?; .type == "Complete" and .status == "True")' \
+      <<<"$MIGRATION_JOB_JSON" >/dev/null; then
+    MIGRATION_STATUS="succeeded"
+    MIGRATION_REASON="migration Job completed"
+  else
+    MIGRATION_STATUS="incomplete"
+    MIGRATION_REASON="migration Job did not reach a terminal condition"
+  fi
+  MIGRATION_LOGS="$(kubectl -n career-migrations logs "job/$MIGRATION_JOB" -c core-migration 2>/dev/null || true)"
 fi
-MIGRATION_LOGS="$(kubectl -n career-migrations logs "job/$MIGRATION_JOB" -c core-migration)" ||
-  fail "unable to read migration Job logs"
+if [[ "$SYNC_STATUS" == "Synced" && "$MIGRATION_STATUS" != "succeeded" ]]; then
+  fail "a successful sync requires a completed migration Job"
+fi
 MIGRATION_BEFORE="$(sed -n 's/^MIGRATION_BEFORE_HEADS=//p' <<<"$MIGRATION_LOGS" | tail -1)"
 MIGRATION_AFTER="$(sed -n 's/^MIGRATION_AFTER_HEADS=//p' <<<"$MIGRATION_LOGS" | tail -1)"
-[[ "$MIGRATION_BEFORE" =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] ||
-  fail "migration before-head evidence is missing or malformed"
-[[ "$MIGRATION_AFTER" == "009_merge_learning_progress" ]] ||
-  fail "migration did not reach the approved target"
+if [[ -n "$MIGRATION_BEFORE" && ! "$MIGRATION_BEFORE" =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]]; then
+  fail "migration before-head evidence is malformed"
+fi
+if [[ -n "$MIGRATION_AFTER" && "$MIGRATION_AFTER" != "009_merge_learning_progress" ]]; then
+  fail "migration after-head evidence is malformed"
+fi
+if [[ "$MIGRATION_STATUS" == "succeeded" ]]; then
+  [[ "$MIGRATION_BEFORE" =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] ||
+    fail "successful migration before-head evidence is missing"
+  [[ "$MIGRATION_AFTER" == "009_merge_learning_progress" ]] ||
+    fail "migration did not reach the approved target"
+fi
 mkdir -p "$(dirname "$MIGRATION_LOG_OUTPUT")"
 umask 077
-printf 'MIGRATION_BEFORE_HEADS=%s\nMIGRATION_AFTER_HEADS=%s\n' \
-  "$MIGRATION_BEFORE" "$MIGRATION_AFTER" > "$MIGRATION_LOG_OUTPUT"
+{
+  printf 'MIGRATION_STATUS=%s\n' "$MIGRATION_STATUS"
+  [[ -z "$MIGRATION_BEFORE" ]] || printf 'MIGRATION_BEFORE_HEADS=%s\n' "$MIGRATION_BEFORE"
+  [[ -z "$MIGRATION_AFTER" ]] || printf 'MIGRATION_AFTER_HEADS=%s\n' "$MIGRATION_AFTER"
+  printf 'MIGRATION_SAFE_REASON=%s\n' "$MIGRATION_REASON"
+} > "$MIGRATION_LOG_OUTPUT"
 if command -v sha256sum >/dev/null 2>&1; then
   MIGRATION_LOG_SHA256="$(sha256sum "$MIGRATION_LOG_OUTPUT" | awk '{print $1}')"
 else
@@ -190,10 +217,11 @@ base="$(jq -c --arg observed "$OBSERVED_AT" --arg revision "$DESIRED_STATE_REVIS
   --arg reviewer "$AUTOMATED_REVIEWER" --arg reviewCheck "$AUTOMATED_REVIEW_CHECK" --arg reviewObserved "$AUTOMATED_REVIEW_OBSERVED_AT" \
   --arg reviewHead "$AUTOMATED_REVIEW_HEAD" --argjson reviewPr "$AUTOMATED_REVIEW_PR" --arg reviewProof "$AUTOMATED_REVIEW_PROOF" \
   --arg readiness "$READINESS_STATUS" --arg event "$EVENT_TYPE" --arg migrationJob "$MIGRATION_JOB" \
-  --arg migrationImage "$EXPECTED_CORE_IMAGE" --arg migrationTarget "$MIGRATION_AFTER" \
+  --arg migrationImage "$EXPECTED_CORE_IMAGE" --arg migrationTarget "009_merge_learning_progress" \
+  --arg migrationStatus "$MIGRATION_STATUS" --arg migrationReason "$MIGRATION_REASON" \
   --arg migrationBefore "$MIGRATION_BEFORE" --arg migrationAfter "$MIGRATION_AFTER" \
   --arg migrationLog "$MIGRATION_LOG_OUTPUT" --arg migrationLogSha256 "$MIGRATION_LOG_SHA256" \
-  '{schemaVersion:3,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},migration:{jobName:$migrationJob,namespace:"career-migrations",status:"succeeded",image:$migrationImage,target:$migrationTarget,beforeHeads:($migrationBefore|split(",")),afterHeads:($migrationAfter|split(",")),logs:{path:$migrationLog,sha256:$migrationLogSha256},observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
+  '{schemaVersion:3,environment:"nonprod",ciRunId:.ciRun.id,sourceTag:.sourceTag,releaseVersion:.releaseVersion,sourceRevision:.sourceRevision,desiredStateRevision:$revision,applicationName:"career-agent-nonprod",repository:$repository,branch:$branch,actorType:"automation",eventType:$event,automationIdentity:"",imageDigests:{ui:.services.ui.image,bff:.services.bff.image,core:.services.core.image},automatedReview:{reviewer:$reviewer,status:"passed",statusCheck:$reviewCheck,headRevision:$reviewHead,pullRequest:$reviewPr,proof:$reviewProof,observedAt:$reviewObserved},validationEvidence:.validationEvidence,readiness:{status:$readiness,observedAt:$observed},migration:{jobName:$migrationJob,namespace:"career-migrations",status:$migrationStatus,safeReason:$migrationReason,image:$migrationImage,target:$migrationTarget,beforeHeads:(if ($migrationBefore|length) == 0 then [] else ($migrationBefore|split(",")) end),afterHeads:(if ($migrationAfter|length) == 0 then [] else ($migrationAfter|split(",")) end),logs:{path:$migrationLog,sha256:$migrationLogSha256},observedAt:$observed},sync:{status:$status,health:$health,observedAt:$observed},timing:{mergedAt:$observed,syncStartedAt:$observed}}' "$RELEASE")"
 
 if [[ "$ACTOR_TYPE" == human ]]; then
   base="$(jq --arg tenant "$HUMAN_TENANT" --arg subject "$HUMAN_SUBJECT" --arg role "$HUMAN_ROLE" --arg auth "$HUMAN_AUTH" --arg observed "$OBSERVED_AT" \

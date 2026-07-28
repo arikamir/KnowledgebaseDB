@@ -17,6 +17,16 @@ def test_evidence_schema_is_closed_and_redaction_aware() -> None:
     assert "automatedReview" in schema["required"]
     assert "timing" in schema["required"]
     assert "migration" in schema["required"]
+    migration = schema["$defs"]["migration"]
+    assert migration["properties"]["status"]["enum"] == [
+        "succeeded",
+        "failed",
+        "incomplete",
+        "not-created",
+    ]
+    assert migration["allOf"][0]["then"]["properties"]["afterHeads"] == {
+        "const": ["009_merge_learning_progress"]
+    }
 
 
 def test_collector_requires_release_and_contains_audit_fields() -> None:
@@ -40,6 +50,8 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "--migration-job must identify the retained Argo migration Job" in script
     assert "migration Job does not match the release source revision" in script
     assert "migration did not reach the approved target" in script
+    assert "a successful sync requires a completed migration Job" in script
+    assert '"not-created"' in script
     assert "kubectl delete" not in script
 
 
@@ -116,6 +128,75 @@ esac
         "008_owned_progress",
     ]
     assert evidence["migration"]["afterHeads"] == ["009_merge_learning_progress"]
+    assert len(evidence["migration"]["logs"]["sha256"]) == 64
+
+
+def test_collector_records_failed_sync_when_migration_job_was_not_created(
+    tmp_path: Path,
+) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text(
+        """#!/usr/bin/env bash
+case "$*" in
+  *"pulls/46 --jq .head.sha"*) printf '%s\\n' '0123456789abcdef0123456789abcdef01234567' ;;
+  *"commits/0123456789abcdef0123456789abcdef01234567/status"*) printf '%s\\n' 'success' ;;
+  *"issues/comments/5085272253 --jq .body"*) printf '%s\\n\\n%s\\n' '@codex review' '<!-- ai-review-head:0123456789abcdef0123456789abcdef01234567 -->' ;;
+  *"issues/comments/5085272253/reactions"*) printf '%s\\n' '[[{"content":"+1","user":{"login":"chatgpt-codex-connector[bot]"}}]]' ;;
+  *) exit 1 ;;
+esac
+"""
+    )
+    fake_gh.chmod(0o755)
+    fake_kubectl = fake_bin / "kubectl"
+    fake_kubectl.write_text("#!/usr/bin/env bash\nexit 1\n")
+    fake_kubectl.chmod(0o755)
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_bin}:{env['PATH']}"
+    env["GITOPS_AFFECTED_SERVICE"] = "core-migration"
+    env["GITOPS_FAILURE_REASON"] = "PreSync migration Job was not created"
+    env["GITOPS_NEXT_ACTION"] = "inspect Argo CD hook events"
+    output = tmp_path / "failed-evidence.json"
+    migration_log = tmp_path / "failed-migration.log"
+    result = subprocess.run(
+        [
+            str(ROOT / "scripts/ci/collect-argocd-evidence.sh"),
+            "--release",
+            str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
+            "--automated-review-evidence",
+            str(ROOT / "tests/contract/fixtures/gitops/valid-automated-review-evidence.json"),
+            "--review-pull-request",
+            "46",
+            "--review-head-revision",
+            "0123456789abcdef0123456789abcdef01234567",
+            "--sync-status",
+            "Failed",
+            "--health",
+            "Degraded",
+            "--output",
+            str(output),
+            "--migration-job",
+            "core-migration-0123456789ab",
+            "--migration-log-output",
+            str(migration_log),
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    evidence = json.loads(output.read_text())
+    assert evidence["migration"]["status"] == "not-created"
+    assert evidence["migration"]["beforeHeads"] == []
+    assert evidence["migration"]["afterHeads"] == []
+    assert evidence["migration"]["safeReason"] == (
+        "migration Job was not created or is no longer observable"
+    )
+    assert evidence["sync"]["affectedService"] == "core-migration"
+    assert "MIGRATION_STATUS=not-created" in migration_log.read_text()
     assert len(evidence["migration"]["logs"]["sha256"]) == 64
 
 

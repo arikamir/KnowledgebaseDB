@@ -155,11 +155,13 @@ independently retained release or rollback scope artifact; mismatched receipts
 are rejected. The collector uses `gh` with an authenticated GitHub token to
 recheck the PR head, `ai/review` status, and approved review or exact-marker
 reaction before writing the retained record.
-Pass the completed `core-migration-*` PreSync Job as `--migration-job` and a
-protected artifact path as `--migration-log-output`. The collector verifies the
-Job's release digest, target, and completion status and writes only the
-structured before/after schema-head log lines plus their SHA-256. Argo leaves
-the uniquely named hook in place; delete it only after both evidence artifacts
+Pass the release-scoped `core-migration-*` PreSync Job name as
+`--migration-job` and a protected artifact path as `--migration-log-output`.
+The collector verifies the release identity and writes only the structured
+status, safe reason, and available before/after schema-head lines plus their
+SHA-256. Failed, incomplete, and not-created hooks remain recordable; only a
+successful sync requires a completed migration and approved final head. Argo
+leaves a created hook in place; delete it only after both evidence artifacts
 have been uploaded and retention has been confirmed.
 
 ## Azure Entra access
