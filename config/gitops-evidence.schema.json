@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v2.json",
+  "$id": "https://knowledgebasedb.example/schemas/gitops-evidence-v3.json",
   "title": "Career Agent GitOps release evidence",
   "type": "object",
   "additionalProperties": false,
@@ -21,6 +21,7 @@
     "automatedReview",
     "validationEvidence",
     "readiness",
+    "migration",
     "sync",
     "timing"
   ],
@@ -62,7 +63,7 @@
     }
   ],
   "properties": {
-    "schemaVersion": {"const": 2},
+    "schemaVersion": {"const": 3},
     "environment": {"const": "nonprod"},
     "ciRunId": {"type": "string", "minLength": 1},
     "sourceTag": {
@@ -85,6 +86,7 @@
     "rollback": {"$ref": "#/$defs/rollback"},
     "validationEvidence": {"$ref": "#/$defs/validationEvidence"},
     "readiness": {"$ref": "#/$defs/readiness"},
+    "migration": {"$ref": "#/$defs/migration"},
     "imageDigests": {
       "type": "object",
       "additionalProperties": false,
@@ -159,6 +161,63 @@
         "status": {"enum": ["ready", "blocked"]},
         "observedAt": {"type": "string", "format": "date-time"},
         "failureReason": {"type": "string", "minLength": 1}
+      }
+    },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jobName", "namespace", "status", "safeReason", "image", "target", "beforeHeads", "afterHeads", "logs", "observedAt"],
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "succeeded"}}},
+          "then": {
+            "properties": {
+              "beforeHeads": {"minItems": 1},
+              "afterHeads": {"const": ["009_merge_learning_progress"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "not-created"}}},
+          "then": {"properties": {"jobName": {"type": "null"}}},
+          "else": {
+            "properties": {
+              "jobName": {
+                "type": "string",
+                "pattern": "^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "jobName": {
+          "type": ["string", "null"],
+          "pattern": "^core-migration-[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "namespace": {"const": "career-migrations"},
+        "status": {"enum": ["succeeded", "failed", "incomplete", "not-created"]},
+        "safeReason": {"type": "string", "minLength": 1},
+        "image": {"$ref": "#/$defs/image"},
+        "target": {"const": "009_merge_learning_progress"},
+        "beforeHeads": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+        },
+        "afterHeads": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[a-z0-9_]+$"}
+        },
+        "logs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "observedAt": {"type": "string", "format": "date-time"}
       }
     },
     "rollback": {

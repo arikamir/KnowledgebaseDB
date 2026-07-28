@@ -1,8 +1,9 @@
 # GitHub Actions Azure delivery
 
-GitHub Actions is the CI/CD orchestrator. Jenkins files and controller plugins
-remain only as legacy migration material; no deployment job depends on a
-Jenkins controller or ACI callback.
+GitHub Actions is the sole CI/CD orchestrator. Repository workflows validate
+the source, build and scan immutable images, push them to ACR, and open the
+reviewed GitOps desired-state pull request. No controller plugin, ephemeral
+controller agent, or direct AKS deployment job is part of this path.
 
 ## Workflows
 
@@ -11,9 +12,28 @@ Jenkins controller or ACI callback.
 - `.github/workflows/delivery.yml` runs validation, digest-pinned image build /
   scan / publication and produces a validated non-production GitOps release
   bundle; the application hand-off is a reviewed desired-state pull request.
-- `.github/workflows/infrastructure.yml` is the only workflow with the
-  infrastructure-admin Azure identity. It runs Terraform plan/apply for
-  `infra/azure` and never builds, publishes, or reconciles application images.
+- `.github/workflows/infrastructure.yml` performs identityless Terraform
+  formatting and schema validation. Full plan/apply remains on the approved
+  private-network platform path because the state contains private Key Vault
+  data-plane resources that GitHub-hosted runners cannot safely refresh. Run
+  `scripts/azure/run-infrastructure-lifecycle.sh plan`, review its saved plan
+  and SHA-256 receipt, then run it with `apply` and
+  `INFRASTRUCTURE_APPLY_APPROVED=true`. Apply verifies and consumes that exact
+  commit/trust/backend-bound plan; it never regenerates the reviewed plan. The
+  Key Vault reachability probe is derived from the saved plan's
+  `key_vault_target` output, so an unrelated accessible vault cannot satisfy the
+  private-data-plane gate. The receipt records the effective publisher OIDC
+  subject together with the immutable owner/repository IDs and must exactly
+  match `TF_VAR_github_repository`, both ID values, and
+  `TF_VAR_github_actions_environment`, preventing ignored or
+  higher-precedence tfvars from silently changing trust. Initial
+  creation before the managed vault exists additionally requires
+  `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to a unique
+  mode-`0700` directory under `${TMPDIR:-/tmp}`. Apply must set
+  `INFRASTRUCTURE_ARTIFACT_DIRECTORY` to that reviewed plan directory. The
+  script rejects symlinks, foreign-owned or permissive directories, and any
+  artifact directory inside the repository because binary plans can contain
+  sensitive state-derived values.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
@@ -28,12 +48,11 @@ these repository/environment values before enabling the workflows:
 
 - application-release secrets: `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
   and `AZURE_PUBLISHER_CLIENT_ID`;
-- infrastructure-only secret: `AZURE_INFRASTRUCTURE_CLIENT_ID`;
 - variables: `ACR_LOGIN_SERVER`, `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`,
   `EVIDENCE_STORAGE_ACCOUNT`, and the three service smoke URLs;
 - environments: `nonprod-publisher`, `nonprod-release`,
-  `infrastructure-plan`, `infrastructure-apply`, and `nonprod-recovery`, with
-  required reviewers configured on release/apply/recovery environments.
+  and `nonprod-recovery`, with required reviewers configured on release and
+  recovery environments.
 
 Configure the repository branch/tag rules so that `main` requires the
 `ai/review` status check and protected `v*` tags cannot be created or moved by an
@@ -63,12 +82,26 @@ merge-enabled runs it remains armed through proof recheck and merge completion.
 The gate also requires the head SHA output by the PR-creation job, preventing a
 push between jobs from substituting a different release or rollback head.
 
-Terraform creates separate publisher and infrastructure federated credentials
-bound to the repository and protected environment subjects. The application
+Terraform creates a publisher federated credential bound to the repository and
+protected environment subject. The application
 publisher can log in to ACR only; it has no AKS, Terraform, or platform-admin
-permission. Pull requests receive no Azure token. The infrastructure identity
-is gated by `infrastructure-apply` and is never referenced by delivery jobs.
+permission. Pull requests and infrastructure validation receive no Azure or
+Microsoft Graph token. Platform operators run full plan/apply only from the
+private-network execution path with its separately approved identity.
+The federated credential must match the subject GitHub emits for an
+environment-bound job:
+`repo:OWNER/REPOSITORY:environment:ENVIRONMENT`. For this repository's
+publisher job, that is
+`repo:arikamir/KnowledgebaseDB:environment:nonprod-publisher`. Numeric owner and
+repository IDs are retained as reviewed receipt metadata so a rename or
+transfer is explicit, but GitHub does not include those IDs in the emitted
+subject and Azure trust must not insert them.
 
-The first Azure apply after creating the GitHub repository must include
-`github_repository = "owner/name"`. Do not place a client secret, kubeconfig,
-registry password, or Azure access token in GitHub secrets.
+Every plan/apply must provide the coupled trust tuple
+`TF_VAR_github_repository`, `TF_VAR_github_repository_owner_id`, and
+`TF_VAR_github_repository_id`. Obtain the repository name and numeric IDs from
+GitHub's repository API; none has a repository-specific Terraform default.
+The private lifecycle also requires `TF_BACKEND_TENANT_ID` and
+`TF_BACKEND_SUBSCRIPTION_ID`, verifies they match the active Azure CLI account,
+and passes them explicitly to backend initialization. Do not place a client
+secret, kubeconfig, registry password, or Azure access token in GitHub secrets.

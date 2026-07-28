@@ -138,6 +138,7 @@ plan, cloud-resource mutation, or platform repair is part of the transition.
 | Identity | Scope | Must not have |
 | --- | --- | --- |
 | GitHub publisher workload identity | Push to ACR and write release evidence/PR | AKS write, Terraform state, Key Vault secret values |
+| Delivery Operations group | Publish exact-path post-sync migration, sync, verification, rollback, and final evidence | CI/pre-promotion evidence writes, blob list/delete, retention or authorization changes |
 | Platform bootstrap identity | Provision/rotate `career-agent-acr-pull` and other prerequisites | Routine application release mutation |
 | Argo CD repository/controller identity | Read protected Git and reconcile the AppProject destination | Cluster-wide resources, Terraform, human impersonation |
 | Application-release Entra role | Review/merge release declaration and request sync/rollback | Infrastructure administration |

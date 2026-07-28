@@ -29,9 +29,10 @@ require a GitHub or AKS-hosted runner.
 ### 2. Run static checks first
 
 The runner validates the nonprod release declaration and release-bundle
-contract, renders both Argo CD and application-only Kustomize trees, produces a
-static readiness record, and runs the feature contract tests. Static rendering
-does not contact Azure or mutate Kubernetes.
+contract, renders the Argo CD and application-only Kustomize trees plus the
+retry-safe migration Helm hook, produces a static readiness record, and runs
+the feature contract tests. Static rendering does not contact Azure or mutate
+Kubernetes.
 
 ### 3. Prepare a live workstation session
 

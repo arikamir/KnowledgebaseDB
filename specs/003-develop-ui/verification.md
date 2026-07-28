@@ -5,7 +5,7 @@
 GitHub Actions is the authoritative CI/CD implementation. Validation is defined
 in `.github/workflows/ci.yml`; protected publication, promotion, and recovery
 are defined in `.github/workflows/delivery.yml`. Azure access uses short-lived
-GitHub OIDC tokens and environment protection. Jenkins artifacts are historical
+GitHub OIDC tokens and environment protection. GitHub Actions artifacts are historical
 and are not a runtime dependency.
 
 Status: **awaiting authorized Platform Operations execution**
@@ -42,14 +42,14 @@ missing row blocks all later rows and leaves T194 incomplete.
 3. Pinned ALB Controller installation and AGC/subnet attestation: not executed
 4. Migration admission/RBAC/network guardrails installation: not executed
 5. Every T176 identity/RBAC positive and negative boundary: not executed
-6. Jenkins controller plugin/cloud/templates/credentials/jobs configuration: not executed
+6. retired CI controller plugin/cloud/templates/credentials/jobs configuration: not executed
 7. Sole `PLATFORM_FINALIZATION_AUTHORIZED=T194` manifest finalization: not executed
 8. Reviewed `config/platform-bootstrap-nonprod.json` digest/preflight: not executed
 
 ## Required live suites
 
 - T180 platform sequence and finalization: not executed
-- T182 Jenkins controller/ACI/evidence/protected delivery: not executed
+- T182 retired CI controller/ACI/evidence/protected delivery: not executed
 - T193 per-actor live identity boundary harness: not executed
 - Externally dependent T156 readiness cases: not executed
 - Protected Gateway/UI/BFF and private-core checks: not executed

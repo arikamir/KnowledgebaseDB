@@ -295,10 +295,27 @@ variable "pilot_public_url" {
 variable "github_repository" {
   description = "Owner/name of the GitHub repository trusted by Actions delivery identities."
   type        = string
-  default     = "arikamir/KnowledgebaseDB"
   validation {
     condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
     error_message = "github_repository must be in owner/name form."
+  }
+}
+
+variable "github_repository_owner_id" {
+  description = "Immutable GitHub owner ID retained in reviewed infrastructure receipts; it is metadata, not part of GitHub's emitted OIDC subject."
+  type        = string
+  validation {
+    condition     = can(regex("^[1-9][0-9]*$", var.github_repository_owner_id))
+    error_message = "github_repository_owner_id must be a positive numeric GitHub owner ID."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID retained in reviewed infrastructure receipts; it is metadata, not part of GitHub's emitted OIDC subject."
+  type        = string
+  validation {
+    condition     = can(regex("^[1-9][0-9]*$", var.github_repository_id))
+    error_message = "github_repository_id must be a positive numeric GitHub repository ID."
   }
 }
 

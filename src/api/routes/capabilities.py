@@ -13,7 +13,7 @@ def capabilities() -> dict[str, object]:
     return {
         "contract_version": "1.0.0",
         "contract_digest": CORE_CONTRACT_DIGEST,
-        "catalog_version": "1.0.0",
+        "catalog_version": "2.0.0",
         "supported_contract_versions": ["1.0.0"],
         "supported_mutations": mutations,
     }

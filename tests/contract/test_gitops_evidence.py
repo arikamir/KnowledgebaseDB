@@ -11,16 +11,28 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_evidence_schema_is_closed_and_redaction_aware() -> None:
     schema = json.loads((ROOT / "config/gitops-evidence.schema.json").read_text())
-    assert schema["$id"].endswith("gitops-evidence-v2.json")
-    assert schema["properties"]["schemaVersion"] == {"const": 2}
+    assert schema["$id"].endswith("gitops-evidence-v3.json")
+    assert schema["properties"]["schemaVersion"] == {"const": 3}
     assert schema["additionalProperties"] is False
     assert "automatedReview" in schema["required"]
     assert "timing" in schema["required"]
+    assert "migration" in schema["required"]
+    migration = schema["$defs"]["migration"]
+    assert migration["properties"]["status"]["enum"] == [
+        "succeeded",
+        "failed",
+        "incomplete",
+        "not-created",
+    ]
+    assert migration["allOf"][0]["then"]["properties"]["afterHeads"] == {
+        "const": ["009_merge_learning_progress"]
+    }
+    assert migration["allOf"][1]["then"]["properties"]["jobName"] == {"type": "null"}
 
 
 def test_collector_requires_release_and_contains_audit_fields() -> None:
     script = (ROOT / "scripts/ci/collect-argocd-evidence.sh").read_text()
-    assert "schemaVersion:2" in script
+    assert "schemaVersion:3" in script
     assert "--automated-review-evidence must be a receipt produced by the current-head gate" in script
     assert "--automated-reviewer" not in script
     assert "--automated-review-status" not in script
@@ -36,6 +48,12 @@ def test_collector_requires_release_and_contains_audit_fields() -> None:
     assert "humanAction" in script
     assert "rollback" in script
     assert "GITOPS_AFFECTED_SERVICE" in script
+    assert "--migration-job must identify the retained Argo migration Job or not-created" in script
+    assert "gitops.knowledgebase.io/source-revision" in script
+    assert "migration did not reach the approved target" in script
+    assert "a successful sync requires a completed migration Job" in script
+    assert '"not-created"' in script
+    assert "kubectl delete" not in script
 
 
 def test_collector_consumes_successful_gate_receipt(tmp_path: Path) -> None:
@@ -54,6 +72,17 @@ esac
 """
     )
     fake_gh.chmod(0o755)
+    fake_kubectl = fake_bin / "kubectl"
+    fake_kubectl.write_text(
+        """#!/usr/bin/env bash
+case "$*" in
+  *"get job core-migration-0123456789ab -o json"*) printf '%s\\n' '{"metadata":{"name":"core-migration-0123456789ab","namespace":"career-migrations","annotations":{"argocd.argoproj.io/hook":"PreSync","gitops.knowledgebase.io/source-revision":"0123456789abcdef0123456789abcdef01234567"}},"status":{"conditions":[{"type":"Complete","status":"True"}]},"spec":{"template":{"spec":{"containers":[{"name":"core-migration","image":"acrdevopscareeruaenonprod.azurecr.io/core@sha256:2222222222222222222222222222222222222222222222222222222222222222","env":[{"name":"MIGRATION_TARGET","value":"009_merge_learning_progress"}]}]}}}}' ;;
+  *"logs job/core-migration-0123456789ab -c core-migration"*) printf '%s\\n' 'MIGRATION_BEFORE_HEADS=007_learning_sessions,008_owned_progress' 'MIGRATION_AFTER_HEADS=009_merge_learning_progress' ;;
+  *) exit 1 ;;
+esac
+"""
+    )
+    fake_kubectl.chmod(0o755)
     env = os.environ.copy()
     env["PATH"] = f"{fake_bin}:{env['PATH']}"
     output = tmp_path / "evidence.json"
@@ -70,6 +99,10 @@ esac
             "0123456789abcdef0123456789abcdef01234567",
             "--output",
             str(output),
+            "--migration-job",
+            "core-migration-0123456789ab",
+            "--migration-log-output",
+            str(tmp_path / "migration.log"),
         ],
         cwd=ROOT,
         env=env,
@@ -79,7 +112,7 @@ esac
     )
     assert result.returncode == 0, result.stderr
     evidence = json.loads(output.read_text())
-    assert evidence["schemaVersion"] == 2
+    assert evidence["schemaVersion"] == 3
     assert evidence["automatedReview"] == {
         "reviewer": "chatgpt-codex-connector[bot]",
         "status": "passed",
@@ -89,6 +122,108 @@ esac
         "proof": "no-findings-reaction",
         "observedAt": "2026-07-26T20:35:51Z",
     }
+    assert evidence["migration"]["jobName"] == "core-migration-0123456789ab"
+    assert evidence["migration"]["status"] == "succeeded"
+    assert evidence["migration"]["beforeHeads"] == [
+        "007_learning_sessions",
+        "008_owned_progress",
+    ]
+    assert evidence["migration"]["afterHeads"] == ["009_merge_learning_progress"]
+    assert len(evidence["migration"]["logs"]["sha256"]) == 64
+
+
+def test_collector_records_failed_sync_when_migration_job_was_not_created(
+    tmp_path: Path,
+) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text(
+        """#!/usr/bin/env bash
+case "$*" in
+  *"pulls/46 --jq .head.sha"*) printf '%s\\n' '0123456789abcdef0123456789abcdef01234567' ;;
+  *"commits/0123456789abcdef0123456789abcdef01234567/status"*) printf '%s\\n' 'success' ;;
+  *"issues/comments/5085272253 --jq .body"*) printf '%s\\n\\n%s\\n' '@codex review' '<!-- ai-review-head:0123456789abcdef0123456789abcdef01234567 -->' ;;
+  *"issues/comments/5085272253/reactions"*) printf '%s\\n' '[[{"content":"+1","user":{"login":"chatgpt-codex-connector[bot]"}}]]' ;;
+  *) exit 1 ;;
+esac
+"""
+    )
+    fake_gh.chmod(0o755)
+    fake_kubectl = fake_bin / "kubectl"
+    fake_kubectl.write_text("#!/usr/bin/env bash\nexit 1\n")
+    fake_kubectl.chmod(0o755)
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_bin}:{env['PATH']}"
+    env["GITOPS_AFFECTED_SERVICE"] = "core-migration"
+    env["GITOPS_FAILURE_REASON"] = "PreSync migration Job was not created"
+    env["GITOPS_NEXT_ACTION"] = "inspect Argo CD hook events"
+    output = tmp_path / "failed-evidence.json"
+    migration_log = tmp_path / "failed-migration.log"
+    result = subprocess.run(
+        [
+            str(ROOT / "scripts/ci/collect-argocd-evidence.sh"),
+            "--release",
+            str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
+            "--automated-review-evidence",
+            str(ROOT / "tests/contract/fixtures/gitops/valid-automated-review-evidence.json"),
+            "--review-pull-request",
+            "46",
+            "--review-head-revision",
+            "0123456789abcdef0123456789abcdef01234567",
+            "--sync-status",
+            "Failed",
+            "--health",
+            "Degraded",
+            "--output",
+            str(output),
+            "--migration-job",
+            "not-created",
+            "--migration-log-output",
+            str(migration_log),
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    evidence = json.loads(output.read_text())
+    assert evidence["migration"]["jobName"] is None
+    assert evidence["migration"]["status"] == "not-created"
+    assert evidence["migration"]["beforeHeads"] == []
+    assert evidence["migration"]["afterHeads"] == []
+    assert evidence["migration"]["safeReason"] == (
+        "migration Job was not created"
+    )
+    assert evidence["sync"]["affectedService"] == "core-migration"
+    assert "MIGRATION_STATUS=not-created" in migration_log.read_text()
+    assert len(evidence["migration"]["logs"]["sha256"]) == 64
+
+
+def test_collector_rejects_not_created_sentinel_for_successful_sync(
+    tmp_path: Path,
+) -> None:
+    result = subprocess.run(
+        [
+            str(ROOT / "scripts/ci/collect-argocd-evidence.sh"),
+            "--release",
+            str(ROOT / "tests/contract/fixtures/gitops/release-manifest.json"),
+            "--output",
+            str(tmp_path / "evidence.json"),
+            "--migration-job",
+            "not-created",
+            "--migration-log-output",
+            str(tmp_path / "migration.log"),
+        ],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "not-created is valid only when sync did not succeed" in result.stderr
 
 
 def test_collector_rejects_unapproved_reviewer_receipt(tmp_path: Path) -> None:
@@ -111,6 +246,10 @@ def test_collector_rejects_unapproved_reviewer_receipt(tmp_path: Path) -> None:
             "0123456789abcdef0123456789abcdef01234567",
             "--output",
             str(tmp_path / "evidence.json"),
+            "--migration-job",
+            "core-migration-test-42",
+            "--migration-log-output",
+            str(tmp_path / "migration.log"),
         ],
         cwd=ROOT,
         text=True,
@@ -135,6 +274,10 @@ def test_collector_rejects_receipt_for_another_review_head(tmp_path: Path) -> No
             "abcdef0123456789abcdef0123456789abcdef01",
             "--output",
             str(tmp_path / "evidence.json"),
+            "--migration-job",
+            "core-migration-test-42",
+            "--migration-log-output",
+            str(tmp_path / "migration.log"),
         ],
         cwd=ROOT,
         text=True,

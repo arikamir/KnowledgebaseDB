@@ -36,7 +36,7 @@ QUESTION_PRIORITY = [
 
 TRACKS: dict[str, list[str]] = {
     "general": ["Linux", "Docker", "Kubernetes"],
-    "delivery": ["Jenkins", "Docker", "Kubernetes"],
+    "delivery": ["GitHub Actions", "Docker", "Kubernetes"],
     "platform": ["Docker", "Kubernetes", "Argo CD"],
     "cloud": ["Terraform", "AWS", "Kubernetes"],
     "windows": ["Windows Administration", "MSI", "Azure DevOps"],
@@ -213,7 +213,7 @@ class RoadmapService:
             return "cloud"
         if any(_matches(term, haystack) for term in ["kubernetes", "argocd", "helm", "docker", "openshift"]):
             return "platform"
-        if any(_matches(term, haystack) for term in ["jenkins", "azure devops", "gitlab ci", "cicd"]):
+        if any(_matches(term, haystack) for term in ["github actions", "azure devops", "gitlab ci", "cicd"]):
             return "delivery"
         return "general"
 

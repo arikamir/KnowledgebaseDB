@@ -154,7 +154,7 @@ def test_gateway_alb_and_kubelet_contracts_are_exact_and_mutually_denied() -> No
         assert denied in identities
     assert "gateway_certificate_versions" in gateway and "gateway_named_dns_records" in gateway
     assert 'role_definition_name = "AcrPull"' in aks
-    delivery = read(INFRA / "jenkins-agent-identities.tf")
+    delivery = read(INFRA / "github-actions-identities.tf")
     for denied in ("acr-push-delete-import-admin", "role-assignment", "federation", "application-pod-assumption"):
         assert denied in delivery
 

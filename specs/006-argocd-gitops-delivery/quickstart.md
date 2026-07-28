@@ -65,10 +65,12 @@ data-service hostnames, tenant, origin, and contract range). Do not commit the
 rendered files or any credential material. This step is platform bootstrap,
 not application release delivery.
 
-Use `.github/workflows/infrastructure.yml` for the separately approved
-Terraform/platform lifecycle and `.github/workflows/delivery.yml` for ACR
-publication plus the reviewed release PR. The application workflow never
-obtains an AKS kubeconfig or infrastructure identity. A rollback uses
+Use `.github/workflows/infrastructure.yml` for identityless Terraform
+validation and `scripts/azure/run-infrastructure-lifecycle.sh` on the approved
+private-network runner for reviewed plan/apply. Use
+`.github/workflows/delivery.yml` for ACR publication plus the reviewed release
+PR. The application workflow never obtains an AKS kubeconfig or infrastructure
+identity. A rollback uses
 `.github/workflows/rollback.yml` to open a reviewed Git reversion; direct Argo
 CD rollback is not authoritative.
 
@@ -115,6 +117,8 @@ CD rollback is not authoritative.
      --automated-review-evidence artifacts/automated-review-evidence.json \
      --review-pull-request "$REVIEW_PULL_REQUEST" \
      --review-head-revision "$REVIEW_HEAD_REVISION" \
+     --migration-job "$MIGRATION_JOB" \
+     --migration-log-output artifacts/core-migration.log \
      --output artifacts/argocd-evidence.json
    ```
 
@@ -122,6 +126,11 @@ CD rollback is not authoritative.
    set the expected PR and head from the independently retained release or
    rollback scope artifact. The collector does not accept caller-supplied
    reviewer or pass-status values and rejects a receipt for another PR/head.
+   Set `MIGRATION_JOB` to the completed retained `core-migration-*` PreSync
+   Job for this sync. If Argo fails before creating a Job, set it to the
+   literal `not-created`; that sentinel is rejected for a successful sync and
+   produces a null evidence Job name. Confirm the evidence JSON and structured
+   migration log are uploaded before explicitly deleting a created Job.
 
 ## 4. Verify drift and recovery
 

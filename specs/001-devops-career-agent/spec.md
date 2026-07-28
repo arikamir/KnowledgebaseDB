@@ -3,7 +3,7 @@
 **Feature Branch**: `001-devops-career-agent`  
 **Created**: 2026-07-08  
 **Status**: Draft  
-**Input**: User description: "create an AI agent that will assist an employee with advancing his or her career path in DevOps, the main technologies to focus on are Jenkins, Azure DevOps and GitLab CI for CICD orchestration, Kubernetes, ArgoCD, HELM, DotNet, MSI and Advanced Installer, Windows administration, Opeshift, Linux, Docker, Docker-Compose, managing certificates, managing secrets using hashicorp vault, Ansible, Terraform, VMWare, AWS, MLOPS, SecOps and more can be added in the future"
+**Input**: User description: "create an AI agent that will assist an employee with advancing his or her career path in DevOps, the main technologies to focus on are GitHub Actions, Azure DevOps and GitLab CI for CICD orchestration, Kubernetes, ArgoCD, HELM, DotNet, MSI and Advanced Installer, Windows administration, Opeshift, Linux, Docker, Docker-Compose, managing certificates, managing secrets using hashicorp vault, Ansible, Terraform, VMWare, AWS, MLOPS, SecOps and more can be added in the future"
 
 ## Clarifications
 

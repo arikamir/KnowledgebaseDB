@@ -22,11 +22,86 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     workflow_path = ROOT / ".github/workflows/infrastructure.yml"
     workflow = yaml.safe_load(workflow_path.read_text())
     text = workflow_path.read_text().lower()
-    assert workflow["jobs"]["plan"]["environment"] == "infrastructure-plan"
-    assert workflow["jobs"]["apply"]["environment"] == "infrastructure-apply"
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "environment" not in workflow["jobs"]["validate"]
+    assert workflow["jobs"]["validate"]["permissions"] == {"contents": "read"}
+    assert set(workflow["jobs"]) == {"validate"}
+    validate_steps = {step.get("name"): step for step in workflow["jobs"]["validate"]["steps"] if "name" in step}
+    assert "terraform init -backend=false" in validate_steps["Validate Terraform without credentials"]["run"]
+    assert "validation-completed" in text
     assert "terraform" in text
-    for forbidden in ("build-publish", "promote.sh", "docker build", "argocd app sync"):
+    for forbidden in (
+        "id-token: write",
+        "azure/login",
+        "terraform plan",
+        "terraform apply",
+        "build-publish",
+        "promote.sh",
+        "docker build",
+        "argocd app sync",
+    ):
         assert forbidden not in text
+
+    lifecycle = (ROOT / "scripts/azure/run-infrastructure-lifecycle.sh").read_text()
+    assert "az keyvault key list" in lifecycle
+    assert "terraform -chdir=\"$terraform_directory\" plan" in lifecycle
+    assert "terraform -chdir=\"$terraform_directory\" apply" in lifecycle
+    assert "INFRASTRUCTURE_APPLY_APPROVED" in lifecycle
+    assert "INFRASTRUCTURE_BOOTSTRAP_APPROVED" in lifecycle
+    assert "platform.tfplan.receipt.json" in lifecycle
+    assert "shasum -a 256" in lifecycle
+    assert "status --porcelain --untracked-files=all" in lifecycle
+    assert "config/operational-alert-profile-v1.yaml" in lifecycle
+    assert "config/pilot-availability-profile-v1.yaml" in lifecycle
+    assert 'trap on_exit EXIT' in lifecycle
+    assert 'write_scope "$action-failed"' in lifecycle
+    assert 'rm -f "$plan_path" "$receipt_path"' in lifecycle
+    assert 'mktemp "$artifact_directory/.platform.tfplan.' in lifecycle
+    assert 'mv "$temporary_plan" "$plan_path"' in lifecycle
+    assert 'mv "$temporary_receipt" "$receipt_path"' in lifecycle
+    assert 'mktemp -d "${TMPDIR:-/tmp}/knowledgebasedb-infrastructure.' in lifecycle
+    assert "apply requires INFRASTRUCTURE_ARTIFACT_DIRECTORY" in lifecycle
+    assert "must not be a symbolic link" in lifecycle
+    assert "owned by the current user with mode 0700" in lifecycle
+    assert "infrastructure artifact directory: $artifact_directory" in lifecycle
+    assert 'pwd -P' in lifecycle
+    assert "artifacts must be stored outside the repository worktree" in lifecycle
+    assert "umask 077" in lifecycle
+    assert 'write_scope "$action-started"' in lifecycle
+    assert "backendResourceGroup" in lifecycle
+    assert "backendStorageAccount" in lifecycle
+    assert "backendContainer" in lifecycle
+    assert "backendKey" in lifecycle
+    assert "TF_BACKEND_TENANT_ID" in lifecycle
+    assert "TF_BACKEND_SUBSCRIPTION_ID" in lifecycle
+    assert '-backend-config="tenant_id=$TF_BACKEND_TENANT_ID"' in lifecycle
+    assert '-backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID"' in lifecycle
+    assert "active Azure CLI tenant/subscription does not match" in lifecycle
+    assert "verify_planned_key_vault" in lifecycle
+    assert '.planned_values.outputs.key_vault_target.value' in lifecycle
+    assert '--name "$target_key_vault_name"' in lifecycle
+    assert 'az keyvault list --subscription "$target_subscription_id"' in lifecycle
+    assert '"$normalized_actual_key_vault_id" != "$normalized_target_key_vault_id"' in lifecycle
+    assert "KEY_VAULT_NAME" not in lifecycle
+    assert ".keyVaultId == $keyVaultId" in lifecycle
+    assert ".schemaVersion == 3" in lifecycle
+    assert "verify_planned_github_trust" in lifecycle
+    assert ".planned_values.outputs.github_actions_publisher_trust.value" in lifecycle
+    assert "TF_VAR_github_actions_environment" in lifecycle
+    assert "effective planned GitHub publisher trust does not match" in lifecycle
+    assert ".githubTrust == $githubTrust" in lifecycle
+    assert ".backend == {" in lifecycle
+    assert lifecycle.index(".backend == {") < lifecycle.index('init -reconfigure')
+    assert "githubTrust" in lifecycle
+    assert lifecycle.index('if [[ "$action" == "plan" ]]') < lifecycle.index("terraform -chdir=\"$terraform_directory\" plan")
+    assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1
+    assert "TF_VAR_github_repository_owner_id" in lifecycle
+    assert "TF_VAR_github_repository_id" in lifecycle
+    assert "rev-parse --verify 'HEAD^{commit}'" in lifecycle
+    assert "requires a resolvable Git source revision" in lifecycle
+    assert "printf 'unknown'" not in lifecycle
+    for forbidden in ("docker build", "argocd app sync", "promote.sh"):
+        assert forbidden not in lifecycle
 
 
 def test_scope_fixture_is_auditable() -> None:

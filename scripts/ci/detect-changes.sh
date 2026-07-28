@@ -119,7 +119,7 @@ else
         bff=true ;;
       src/*|alembic/*|pyproject.toml)
         core=true ;;
-      scripts/ci/*|Dockerfile|compose.yaml|Jenkinsfile|.github/*)
+      scripts/ci/*|Dockerfile|compose.yaml|.github/workflows/delivery.yml|.github/*)
         all_services ;;
       infra/*|deploy/*)
         all_services; infrastructure=true ;;

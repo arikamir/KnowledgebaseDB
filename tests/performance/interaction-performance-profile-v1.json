@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "profileId": "interaction-performance-profile-v1",
   "status": "approved",
-  "approvedOn": "2026-07-16",
+  "approvedOn": "2026-07-28",
   "approvalAuthority": "Feature specification owner",
   "fixtureDigestAlgorithm": "sha256",
   "fixtureDigestScope": "Exact UTF-8 bytes of tests/performance/interaction-performance-fixtures-v1.json as committed, including LF line endings and the final newline",
   "fixtureDigest": "e5ec85bad1e7eabd8c2674572afbebc1ff531ea8d90a2ac48b1c1ad2793041b2",
   "profileDigestAlgorithm": "sha256",
   "profileDigestScope": "UTF-8 bytes of the complete top-level profile object with only profileDigest omitted, serialized as recursively key-sorted compact JSON with no trailing newline",
-  "profileDigest": "a1ad3b69f3f790b8461b87187ce599e9d41b0d7f4e48778b127b7140bb56ea61",
+  "profileDigest": "7b22053c70eb08480d84ca6a34714b45538210838d0e27550aa6ac4f80637119",
   "contractBindings": {
     "digestAlgorithm": "sha256",
     "digestScope": "Exact UTF-8 file bytes as committed, including LF line endings and the final newline",
@@ -19,7 +19,7 @@
     },
     "coreContract": {
       "path": "specs/003-develop-ui/contracts/core-api-v1.openapi.yaml",
-      "digest": "74eb81eed70e24183862bd187ab9f9bfa778d2992efeae54b397e2d36df19497"
+      "digest": "ecd043b615b2edbeb2b9e206d5989c1495b8981ed47a578bd36edcac917bdb1b"
     }
   },
   "execution": {

@@ -8,7 +8,7 @@ The companion provisioning skill creates these resources in one non-production r
 - Azure Container Registry
 - Log Analytics workspace
 - nine workload identities and one-to-one federated credentials
-- separate Jenkins publisher/deployer identities and exact ACR/AKS/Reader/evidence assignments
+- the GitHub Actions publisher identity and exact ACR/evidence assignments
 - AKS kubelet exact-ACR `AcrPull` role assignment (never a federated application identity)
 - AGC/private-core/Redis/PostgreSQL/Key Vault/evidence resources declared by the feature-003 state
 - Resource group

@@ -33,6 +33,7 @@ def test_evidence_schema_exposes_failure_diagnosis_and_automated_review_gate() -
         "automatedReview",
         "validationEvidence",
         "readiness",
+        "migration",
     } <= set(schema["required"])
     assert {"automationIdentity", "humanAction", "rollback"} <= set(schema["properties"])
     assert schema["properties"]["automatedReview"]["required"] == [

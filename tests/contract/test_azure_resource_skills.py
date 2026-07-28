@@ -9,9 +9,10 @@ INFRA = ROOT / "infra/azure"
 PROVISION = ROOT / ".agents/skills/provision-azure-app-resources"
 TEARDOWN = ROOT / ".agents/skills/teardown-azure-app-resources"
 WORKLOAD_IDENTITIES = (INFRA / "identity.tf").read_text()
-DELIVERY_IDENTITIES = (INFRA / "jenkins-agent-identities.tf").read_text()
+DELIVERY_IDENTITIES = (INFRA / "github-actions-identities.tf").read_text()
 IDENTITIES = WORKLOAD_IDENTITIES + DELIVERY_IDENTITIES
-ASSET_IDENTITIES = (PROVISION / "assets/terraform/jenkins-agent-identities.tf").read_text()
+ASSET_IDENTITIES = (PROVISION / "assets/terraform/github-actions-identities.tf").read_text()
+ASSET_EVIDENCE = (PROVISION / "assets/terraform/delivery-evidence-storage.tf").read_text()
 
 WORKLOADS = {
     "bff", "core", "lifecycle", "retention", "lab-revalidation", "migration",
@@ -42,27 +43,46 @@ def test_every_runtime_actor_has_one_exact_federated_subject_and_contract() -> N
             assert denial in source
 
 
-def test_ui_validator_publisher_deployer_and_kubelet_boundaries_are_explicit() -> None:
+def test_ui_validator_publisher_and_kubelet_boundaries_are_explicit() -> None:
     source = DELIVERY_IDENTITIES + (INFRA / "main.tf").read_text() + WORKLOAD_IDENTITIES
     assert re.search(r'ui\s*= \{ identity = "none"', source)
     assert re.search(r'validator\s*= \{ identity = "none"', source)
-    assert 'resource "azurerm_user_assigned_identity" "jenkins_publisher"' in source
-    assert 'resource "azurerm_user_assigned_identity" "jenkins_deployer"' in source
+    assert 'resource "azurerm_user_assigned_identity" "github_actions_publisher"' in source
     assert 'role_definition_name = "AcrPush"' in source
-    assert 'role_definition_name = "Azure Kubernetes Service RBAC Writer"' in source
-    assert 'role_definition_name = "Reader"' in source
+    assert 'role_definition_name = "Azure Kubernetes Service RBAC Writer"' not in DELIVERY_IDENTITIES
     assert "terraform-state" in source and "key-vault-secret" in source
     assert "redis-data" in source and "postgresql-data" in source
     assert "application-pod-assumption" in source and "federation" in source
     assert "system-assigned" not in source
 
 
+def test_provisioning_asset_federates_the_publisher_to_the_protected_environment() -> None:
+    variables = (PROVISION / "assets/terraform/variables.tf").read_text()
+    assert 'resource "azurerm_federated_identity_credential" "github_actions_publisher"' in ASSET_IDENTITIES
+    assert "https://token.actions.githubusercontent.com" in ASSET_IDENTITIES
+    assert "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher" in ASSET_IDENTITIES
+    assert "@${var.github_repository_owner_id}" not in ASSET_IDENTITIES
+    assert "@${var.github_repository_id}" not in ASSET_IDENTITIES
+    for variable_name in (
+        "github_repository",
+        "github_repository_owner_id",
+        "github_repository_id",
+        "github_actions_environment",
+    ):
+        assert f'variable "{variable_name}"' in variables
+
+
 def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() -> None:
     source = (INFRA / "delivery-evidence-storage.tf").read_text()
     assert source.count('condition_version  = "2.0"') == 2
-    for stage in ("validation", "build", "scan", "publish", "pre-promotion", "promotion", "migration", "core", "bff", "ui", "verify", "rollback", "final"):
+    for stage in ("validation", "build", "scan", "publish", "pre-promotion"):
+        assert f'"{stage}"' in source
+    for stage in ("migration", "sync", "verification", "rollback", "final"):
         assert f'"{stage}"' in source
     assert "deliveries/${var.environment}/*/${stage}/*" in source
+    assert 'resource "azurerm_role_assignment" "operator_evidence_prefix"' in source
+    assert "local.operator_evidence_condition" in source
+    assert "local.effective_delivery_operators_group_object_id" in source
     assert "blobs/add/action" in source and "blobs/write" in source and "blobs/read" in source
     assert "blobs/delete" in source and "blobs/tags/write" in source
     assert "listKeys/action" in source
@@ -71,6 +91,15 @@ def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() 
     assert "delivery_operators_group_object_id" in source
     assert "security_reviewers_group_object_id" in source
     assert 'principal_type       = "Group"' in source
+
+
+def test_provisioning_asset_preserves_the_post_sync_evidence_writer() -> None:
+    for stage in ("migration", "sync", "verification", "rollback", "final"):
+        assert f'"{stage}"' in ASSET_EVIDENCE
+    assert 'resource "azurerm_role_assignment" "operator_evidence_prefix"' in ASSET_EVIDENCE
+    assert "var.delivery_operators_group_object_id" in ASSET_EVIDENCE
+    assert "local.operator_evidence_condition" in ASSET_EVIDENCE
+    assert "deployer_evidence" not in ASSET_EVIDENCE
 
 
 def test_provision_skill_and_assets_describe_complete_three_service_agc_topology() -> None:
@@ -82,7 +111,7 @@ def test_provision_skill_and_assets_describe_complete_three_service_agc_topology
     for term in ("BFF", "core", "lifecycle", "ALB Controller", "gateway certificate/DNS", "PostgreSQL", "Key Vault"):
         assert term in combined
     assert "legacy Ingress" in combined and "identityless" in combined
-    assert "jenkins-agent-identities.tf" in bootstrap and "delivery-evidence-storage.tf" in bootstrap
+    assert "github-actions-identities.tf" in bootstrap and "delivery-evidence-storage.tf" in bootstrap
     assert "gateway/$gateway" in url and 'echo "https://$address/"' in url
     assert "nginx" not in url.lower() and "service/$service" not in url
 
@@ -94,8 +123,7 @@ def test_teardown_requires_identity_state_parity_and_never_uses_group_delete() -
     for workload in WORKLOADS:
         assert workload in script or "required_workloads" in script
     for address in (
-        "jenkins_publisher", "jenkins_deployer", "publisher_exact_acr_push",
-        "deployer_exact_aks_writer", "deployer_target_rg_reader", "kubelet_exact_acr_pull",
+        "github_actions_publisher", "publisher_exact_acr_push", "kubelet_exact_acr_pull",
     ):
         assert address in script
     assert "recover/import state before destroy" in script
@@ -129,5 +157,5 @@ def test_skill_assets_preserve_exact_alb_gateway_kubelet_and_ui_denial_contracts
     assert 'role_definition_name = "AcrPull"' in main_asset
     assert "azurerm_container_registry.app.id" in main_asset
     teardown = (TEARDOWN / "scripts/teardown.sh").read_text()
-    for actor in WORKLOADS | {"jenkins_publisher", "jenkins_deployer", "kubelet_exact_acr_pull"}:
+    for actor in WORKLOADS | {"github_actions_publisher", "github_actions_deployer", "kubelet_exact_acr_pull"}:
         assert actor in teardown or "required_workloads" in teardown

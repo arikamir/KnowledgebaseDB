@@ -33,18 +33,30 @@ spec:
         gitops.knowledgebase.io/release-manifest: deploy/argocd/environments/{{.environment}}/release.json
     spec:
       project: career-agent
-      source:
-        repoURL: https://github.com/arikamir/KnowledgebaseDB.git
-        targetRevision: main
-        path: deploy/k8s/overlays/argocd-nonprod
-        kustomize:
-          # The source manifests deliberately keep platform placeholders. The
-          # release declaration supplies immutable service images at render
-          # time; no mutable tag can become the deployment identity.
-          images:
-            - 'career-agent/ui={{.services.ui.image}}'
-            - 'career-agent/bff={{.services.bff.image}}'
-            - 'career-agent/core={{.services.core.image}}'
+      sources:
+        - repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+          targetRevision: main
+          path: deploy/k8s/overlays/argocd-nonprod
+          kustomize:
+            # The source manifests deliberately keep platform placeholders. The
+            # release declaration supplies immutable service images at render
+            # time; no mutable tag can become the deployment identity.
+            images:
+              - 'career-agent/ui={{.services.ui.image}}'
+              - 'career-agent/bff={{.services.bff.image}}'
+              - 'career-agent/core={{.services.core.image}}'
+        - repoURL: https://github.com/arikamir/KnowledgebaseDB.git
+          targetRevision: main
+          path: deploy/k8s/overlays/argocd-nonprod-migration
+          helm:
+            # The PreSync Job runs the migration entrypoint from the exact Core
+            # digest before Argo CD is allowed to update any service workload.
+            # generateName gives each Argo retry a fresh retained evidence
+            # object; the full source revision authenticates every attempt.
+            releaseName: core-migration-hook
+            valuesObject:
+              image: '{{.services.core.image}}'
+              sourceRevision: '{{.sourceRevision}}'
       destination:
         server: https://kubernetes.default.svc
         namespace: career-agent

@@ -19,8 +19,51 @@ def test_release_workflow_and_application_manifests_remain_least_privilege() -> 
         assert "kubeconfig" not in text
 
 
+def test_release_tooling_uses_immutable_maintainer_setup_actions() -> None:
+    workflow = (ROOT / ".github/workflows/delivery.yml").read_text()
+    assert "aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514" in workflow
+    assert "anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610" in workflow
+    assert "version: v0.70.0" in workflow
+    assert "syft-version: v1.18.1" in workflow
+    assert "curl -sSfL https://raw.githubusercontent.com/aquasecurity" not in workflow
+
+
+def test_publisher_federation_uses_github_emitted_subject_and_retains_ids_as_metadata() -> None:
+    identities = (ROOT / "infra/azure/github-actions-identities.tf").read_text()
+    outputs = (ROOT / "infra/azure/outputs.tf").read_text()
+    variables = (ROOT / "infra/azure/variables.tf").read_text()
+    documentation = (ROOT / "docs/github-actions-azure.md").read_text()
+    assert "github_repository_owner_id" in variables
+    assert "github_repository_id" in variables
+    for variable_name in ("github_repository", "github_repository_owner_id", "github_repository_id"):
+        variable_block = variables.split(f'variable "{variable_name}"', 1)[1].split("\n}", 1)[0]
+        assert "\n  default" not in variable_block
+    assert "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher" in identities
+    assert "@${var.github_repository_owner_id}" not in identities
+    assert "@${var.github_repository_id}" not in identities
+    assert "owner_id      = var.github_repository_owner_id" in outputs
+    assert "repository_id = var.github_repository_id" in outputs
+    assert ":environment:infrastructure-plan" not in identities
+    assert ":environment:infrastructure-apply" not in identities
+    assert "github_actions_plan" not in identities
+    assert "Directory.ReadWrite.All" not in identities
+    assert "Application.ReadWrite.All" not in identities
+    assert "repo:arikamir/KnowledgebaseDB:environment:nonprod-publisher" in documentation
+    assert "numeric owner and\nrepository ids are retained as reviewed receipt metadata" in documentation.lower()
+
+
 def test_argocd_application_set_has_no_platform_paths() -> None:
     text = (ROOT / "deploy/argocd/applicationset.yaml").read_text().lower()
     assert "infra/" not in text
     assert "gateway" not in text
     assert "namespace.yaml" not in text
+
+
+def test_migration_controller_can_complete_jobs_without_other_resource_mutation() -> None:
+    rbac = (ROOT / "deploy/k8s/base/migration/gitops-rbac.yaml").read_text()
+    assert 'resources: ["jobs"]' in rbac
+    assert 'verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]' in rbac
+    boundary = (ROOT / "deploy/k8s/base/migration/argocd-boundary-policy.yaml").read_text()
+    assert "object.kind == 'Job'" in boundary
+    assert "oldObject.kind == 'Job'" in boundary
+    assert "knowledgebase.io/migration-guardrails: enforced" in boundary

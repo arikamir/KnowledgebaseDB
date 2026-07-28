@@ -12,7 +12,8 @@ versioned release bundle, and writes immutable image digests plus evidence to a
 release declaration. CI opens or updates a bot-branch pull request; a verified
 current-head automated-review status from an approved identity and protected `main` are mandatory before
 merge. Argo CD's ApplicationSet reads only the reviewed non-production
-declaration and generates an application-only Application. Argo CD reconciles
+declaration and generates an Application with a bounded Core migration
+`PreSync` source followed by the service source. Argo CD reconciles
 Git-based rollback, drift, and health; a direct Argo CD UI/CLI rollback is never
 authoritative. Terraform and platform bootstrap own AKS, namespaces, gateways,
 identities, Entra OIDC/RBAC configuration, and the out-of-band
@@ -24,10 +25,10 @@ identities, Entra OIDC/RBAC configuration, and the out-of-band
 **Primary Dependencies**: Argo CD ApplicationSet controller, Argo CD `Application`/`AppProject` CRDs, Kubernetes Kustomize, GitHub Actions and pull-request automation, Azure Container Registry, Microsoft Entra OIDC/RBAC  
 **Storage**: Protected GitHub `main` for desired state; ACR for immutable OCI images; existing protected evidence storage; Azure Key Vault references and the namespace-scoped `career-agent-acr-pull` secret for runtime/registry access; no new application database  
 **Testing**: `jq`, `bash -n`, JSON Schema checks, `kubectl kustomize`, focused `pytest` contract tests, workflow static checks, and environment-gated Argo CD/Kubernetes tests with elapsed-time evidence  
-**Target Platform**: Existing AKS non-production cluster in UAE North, namespace `career-agent`; platform prerequisites and the registry pull secret are provisioned independently by Terraform/platform bootstrap  
+**Target Platform**: Existing AKS non-production cluster in UAE North, namespaces `career-agent` and `career-migrations`; platform prerequisites, migration guardrails, and the registry pull secret are provisioned independently by Terraform/platform bootstrap
 **Project Type**: Multi-service web application with GitOps delivery configuration and separate Azure infrastructure and application-release workflows  
 **Performance Goals**: At least 95% of valid releases reach declared state within 10 minutes of protected merge; an operator can identify failed-release next action within two minutes; drift is detected within five minutes  
-**Constraints**: Application release must not invoke Terraform, obtain AKS write credentials, or mutate cluster-scoped/platform resources; images are ACR `@sha256` digests; desired state contains no credentials; only verified protected SemVer tags can start a release; approved current-head automated review and branch protection are required; release versions cannot be reused for another source revision; namespace, gateway, and `career-agent-acr-pull` must already exist
+**Constraints**: Application release must not invoke Terraform, obtain AKS write credentials, or mutate cluster-scoped/platform resources; the bounded migration hook must use the exact Core digest and succeed before service rollout; destination-scoped admission must deny non-Job Argo CD mutations in `career-migrations`; images are ACR `@sha256` digests; desired state contains no credentials; only verified protected SemVer tags can start a release; approved current-head automated review and branch protection are required; release versions cannot be reused for another source revision; namespaces, migration guardrails, gateway, and `career-agent-acr-pull` must already exist
 **Scale/Scope**: Three services (UI, BFF, Core), one non-production environment initially, one generated Argo `Application`, one fixed registry-secret reference, and explicit separately reviewed expansion for later environments
 
 ## Constitution Check
@@ -79,8 +80,9 @@ deploy/argocd/
 └── environments/nonprod/release.json
 
 deploy/k8s/
-├── base/{ui,bff,core}/
-└── overlays/argocd-nonprod/   # application-only overlay and pull-secret ref
+├── base/{ui,bff,core,migration}/
+├── overlays/argocd-nonprod/             # service overlay and pull-secret ref
+└── overlays/argocd-nonprod-migration/   # exact-Core-digest PreSync Job
 
 config/
 ├── argocd-release.schema.json
@@ -103,11 +105,12 @@ scripts/ci/
 └── check-release-version-uniqueness.sh
 
 scripts/azure/
-└── apply-argocd-rbac.sh       # platform-owned OIDC/RBAC bootstrap
+├── apply-argocd-rbac.sh       # platform-owned OIDC/RBAC bootstrap
+└── run-infrastructure-lifecycle.sh # private-network Terraform plan/apply
 
 .github/workflows/
 ├── delivery.yml               # publish and reviewed desired-state PR
-├── infrastructure.yml        # Terraform-only workflow
+├── infrastructure.yml        # identityless Terraform validation
 └── rollback.yml               # reviewed declaration-reversion workflow
 
 infra/azure/                   # Terraform-owned platform and identities
@@ -119,8 +122,8 @@ docs/argocd-entra.md
 ```
 
 **Structure Decision**: Preserve the existing three-service and Terraform
-layout. Keep desired-state and application-only manifests under `deploy/argocd`
-and `deploy/k8s/overlays/argocd-nonprod`; keep validation/contracts in `config`,
+layout. Keep desired-state, service, and bounded migration-hook manifests under
+`deploy/argocd` and `deploy/k8s/overlays`; keep validation/contracts in `config`,
 `scripts/ci`, and `tests`. The namespace, gateway, platform controllers,
 Terraform state, and `career-agent-acr-pull` secret remain outside the generated
 Application's resource set.

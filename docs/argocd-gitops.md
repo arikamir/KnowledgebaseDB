@@ -3,8 +3,9 @@
 Argo CD is the application release controller for the non-production AKS
 cluster. It is intentionally not an infrastructure controller:
 
-1. Platform Operations provisions the AKS cluster, the `argocd` and
-   `career-agent` namespaces, workload identities, the gateway, and the
+1. Platform Operations provisions the AKS cluster, the `argocd`,
+   `career-agent`, and `career-migrations` namespaces, workload identities,
+   migration admission guardrails/runtime configuration, the gateway, and the
    namespace-scoped `career-agent-acr-pull` imagePullSecret through Terraform
    and the platform bootstrap process.
 2. CI publishes the UI, BFF, and Core images to ACR, verifies the protected
@@ -16,17 +17,21 @@ cluster. It is intentionally not an infrastructure controller:
    declaration is merged to GitHub `main`; missing or stale review status blocks
    the merge.
 4. The `career-agent-services` ApplicationSet discovers that declaration and
-   generates an Argo CD `Application` for the application-only Kustomize
-   overlay.
+   generates one Argo CD `Application` with two sources. A bounded `PreSync`
+   Job runs the expand-only migration entrypoint from the exact Core digest in
+   `career-migrations`; only after it succeeds may Argo CD reconcile the UI,
+   BFF, and Core service overlay in `career-agent`.
 
 The application workflow never obtains AKS write credentials, runs Terraform,
 or applies platform manifests. Infrastructure workflow changes are separately
 approved and must not publish or deploy application images.
 
-`.github/workflows/infrastructure.yml` owns Terraform plan/apply and emits a
-platform scope artifact. `.github/workflows/delivery.yml` owns image publication
-and the bot-branch desired-state pull request. `.github/workflows/rollback.yml`
-only prepares a reviewed Git declaration reversion. This ownership boundary is
+`.github/workflows/infrastructure.yml` owns credential-free Terraform
+validation. `scripts/azure/run-infrastructure-lifecycle.sh` owns reviewed
+plan/apply on the private-network platform runner and emits the platform scope
+artifact. `.github/workflows/delivery.yml` owns image publication and the
+bot-branch desired-state pull request. `.github/workflows/rollback.yml` only
+prepares a reviewed Git declaration reversion. This ownership boundary is
 checked by `tests/contract/test_gitops_workflow_boundaries.py`.
 
 ## AKS operator connectivity
@@ -43,11 +48,12 @@ metadata and the kubeconfig refresh command. Do not widen the API to
 The `career-agent-acr-pull` Secret is platform-owned. The application overlay
 references its name, but Argo CD does not create or manage its credential data.
 
-The ApplicationSet generates an Argo CD `Application` for the application-only Kustomize
-overlay. It does not manage Terraform, the AKS namespace, Application
-Gateway, private load balancer, cluster controllers, or other platform
-resources. `CreateNamespace=false` is deliberate: a missing namespace is a
-platform readiness failure, not an application release opportunity.
+The ApplicationSet generates an Argo CD `Application` from a service source and
+a migration-hook source. It does not manage Terraform, namespaces, Application
+Gateway, private load balancer, cluster controllers, migration identity,
+admission policy, or other platform resources. `CreateNamespace=false` is
+deliberate: a missing namespace or migration prerequisite is a platform
+readiness failure, not an application release opportunity.
 
 Platform bootstrap remains responsible for materializing the reviewed,
 non-secret runtime identifiers and Key Vault references consumed by the
@@ -92,9 +98,17 @@ APPLY=true scripts/azure/apply-argocd-rbac.sh
 ```
 
 The Argo CD service account used for this installation must be allowed to
-create Applications only in the `career-agent` AppProject. The project allows
-only namespaced application resource kinds and has no cluster-resource
-whitelist.
+create Applications only in the `career-agent` AppProject. The project has no
+cluster-resource whitelist. Because AppProject kind allowlists span every
+destination, the platform-owned `core-migration-argocd-boundary-v1` admission
+policy independently denies every non-Job create, update, or delete attempted
+by the Argo CD application controller in `career-migrations`.
+Before installing the migration base, the platform renderer must resolve
+`POSTGRES_PRIVATE_ENDPOINT_IP` and `ENTRA_TOKEN_ENDPOINT_CIDR`. The latter is a
+reviewed HTTPS egress range derived from the current Azure
+`AzureActiveDirectory` service tag and maintained with the platform network
+configuration; it is the only public token-exchange path admitted for the
+migration workload identity.
 
 ## Release declaration
 
@@ -126,7 +140,7 @@ actionable failure reason and next action with diagnosis visibility (target: two
 minutes), and drift detection (target: five minutes).
 
 Use `scripts/ci/collect-argocd-evidence.sh` after a release or reconciliation
-to produce a schema-v2 record linking the CI run, desired-state revision, generated Application, image
+to produce a schema-v3 record linking the CI run, desired-state revision, generated Application, image
 digests, readiness result, automated-review status, and timing fields. Failed syncs must
 include an affected service and next action. `scripts/ci/prepare-gitops-rollback.sh`
 creates an auditable rollback intent; only the resulting reviewed PR changes
@@ -141,6 +155,30 @@ independently retained release or rollback scope artifact; mismatched receipts
 are rejected. The collector uses `gh` with an authenticated GitHub token to
 recheck the PR head, `ai/review` status, and approved review or exact-marker
 reaction before writing the retained record.
+Pass the release-scoped `core-migration-*` PreSync Job name as
+`--migration-job` and a protected artifact path as `--migration-log-output`.
+If Argo fails before Kubernetes creates the generated Job, pass the literal
+`--migration-job not-created`; the collector accepts that sentinel only for a
+non-successful sync and records a null Job name without invoking `kubectl`.
+The collector verifies the release identity and writes only the structured
+status, safe reason, and available before/after schema-head lines plus their
+SHA-256. Failed, incomplete, and not-created hooks remain recordable; only a
+successful sync requires a completed migration and approved final head. Argo
+leaves a created hook in place; delete it only after both evidence artifacts
+have been uploaded and retention has been confirmed.
+The migration source is a Helm chart whose `generateName` creates a fresh
+retained Job for each bounded Argo retry. Every attempt carries the full
+release source revision annotation, which the collector authenticates along
+with the exact Core digest; retrying never requires deleting prior evidence.
+Members of the Delivery Operations group are the least-privilege post-sync
+writers. After collecting the redacted record and migration log artifact, sign
+in to Azure with that Entra identity and publish each artifact with
+`scripts/ci/publish-evidence.sh`, using only the `migration`, `sync`,
+`verification`, `rollback`, or `final` stage matching the record. The
+conditioned role cannot write CI/pre-promotion prefixes, list or delete blobs,
+change retention, or alter authorization. Security Reviewers remain
+reader-only. Confirm both immutable upload receipts before deleting a retained
+migration Job.
 
 ## Azure Entra access
 

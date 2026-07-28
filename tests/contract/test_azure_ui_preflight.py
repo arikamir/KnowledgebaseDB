@@ -32,7 +32,7 @@ def test_jit_platform_scopes_separate_graph_consent_and_negative_privilege_are_f
         assert scope in bootstrap
     assert 'role=="Privileged Role Administrator"' in bootstrap
     assert ".consentApprover.objectId!=.actorObjectId" in bootstrap
-    for denied in ("Global Administrator", "Owner", "Jenkins principal", "standing privilege", "unrelated app/data/resource access"):
+    for denied in ("Global Administrator", "Owner", "GitHub Actions principal", "standing privilege", "unrelated app/data/resource access"):
         assert denied in bootstrap
     assert 'parse(auth["activatedAt"]) <= now < parse(auth["expiresAt"])' in bootstrap
     assert "timedelta(days=7)" in bootstrap
@@ -83,9 +83,9 @@ def test_canonical_digest_detects_add_remove_rename_mode_and_content_drift(tmp_p
     assert remove == rename and remove != add
 
 
-def test_preflight_denies_jenkins_terraform_state_and_requires_aks_gateway_acr_capacity_and_target_rg_reader_contracts():
+def test_preflight_denies_github_actions_terraform_state_and_requires_aks_gateway_acr_capacity_and_target_rg_reader_contracts():
     preflight = source("scripts/azure/preflight-ui-platform.sh")
-    identities = source("infra/azure/jenkins-agent-identities.tf")
+    identities = source("infra/azure/github-actions-identities.tf")
     main = source("infra/azure/main.tf")
     agc = source("infra/azure/application-gateway-for-containers.tf")
     assert 'terraformStateRead:false' in preflight and 'subscriptionWideRead:false' in preflight

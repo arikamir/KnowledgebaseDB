@@ -10,7 +10,7 @@ jq -e '
   keys==["activatedAt","actorObjectId","consentApprover","denied","expiresAt","roles","schemaVersion"] and .schemaVersion==1 and
   (.roles|sort)==(["Application Administrator","Contributor:application-rg","Network Contributor:named-shared-network","Private DNS Zone Contributor:named-zones","ProviderQuotaRead:allowlisted","Role Based Access Control Administrator:application-rg","Storage Blob Data Contributor:state-container"]|sort) and
   (.consentApprover|keys==["objectId","role"] and .role=="Privileged Role Administrator") and .consentApprover.objectId!=.actorObjectId and
-  (.denied|sort)==(["Global Administrator","Owner","Jenkins principal","standing privilege","unrelated app/data/resource access"]|sort)
+  (.denied|sort)==(["Global Administrator","Owner","GitHub Actions principal","standing privilege","unrelated app/data/resource access"]|sort)
 ' "$AUTHORIZATION" >/dev/null || { printf 'bootstrap: invalid JIT authorization\n' >&2; exit 1; }
 jq -e 'keys==["capacity","capturedAt","expiresAt","providers","quotas","schemaVersion"] and .schemaVersion==1 and (.providers|type=="object") and (.quotas|type=="object") and (.capacity|type=="object")' "$ATTESTATION" >/dev/null || exit 1
 python3 - "$AUTHORIZATION" "$ATTESTATION" <<'PY'

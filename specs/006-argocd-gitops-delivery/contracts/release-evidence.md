@@ -15,8 +15,8 @@ GitHub Actions run
 
 ## Required evidence fields
 
-- schema version `2` (the version that introduces the vendor-neutral
-  `automatedReview` record)
+- schema version `3` (the version that adds retained Argo migration evidence
+  to the vendor-neutral `automatedReview` record)
 - CI run ID and repository/branch
 - event type (`release`, `sync`, or `rollback`) and actor type (`automation` or `human`)
 - source revision and release version
@@ -30,6 +30,8 @@ GitHub Actions run
 - protected source tag, normalized release version, and approved automated-review result
 - readiness result and elapsed-time fields for merge-to-sync, failure
   diagnosis, and drift detection
+- retained migration Job name/status, exact release image, target, before/after
+  schema heads, and the path and SHA-256 of the redacted structured migration log
 
 The evidence record MUST include an `automationIdentity` when `actorType` is
 `automation`, or a `humanAction` identity record when `actorType` is `human`.
@@ -50,6 +52,25 @@ result, reason, and outcome. A failed rollout MUST include
 `nextActionVisibleAt` are required when measuring the two-minute diagnosis
 criterion. Evidence collectors MUST reject credential-shaped values before
 upload.
+
+The Argo PreSync migration hook MUST use `generateName`, bind every attempt to
+the full source revision through a rendered annotation, and MUST NOT set a
+successful-hook deletion policy or TTL. This gives each bounded Argo retry a
+fresh Job without deleting evidence from earlier attempts. The collector MUST
+authenticate a retained Job against that revision, the release's exact Core
+digest, and the approved target, then persist only its structured status, safe
+reason, and available before/after head log lines.
+Failed, incomplete, and not-created migration outcomes MUST remain recordable;
+only a successful sync requires `Complete=True` and the approved final head.
+When Argo fails before creating the generated Job, the collector MUST accept
+the explicit `not-created` sentinel only for a non-successful sync and MUST
+record a null Job name without fabricating or querying a Kubernetes object.
+Cleanup is a separate, explicit operator action after both evidence files have
+been uploaded to the protected evidence store. The Delivery Operations group
+MUST retain a conditioned exact-path writer for the `migration`, `sync`,
+`verification`, `rollback`, and `final` prefixes. That role MUST NOT write
+CI/pre-promotion prefixes, list or delete blobs, change retention, or alter
+authorization; read-only and security-review groups remain unable to publish.
 
 Evidence is uploaded to the existing protected delivery evidence store or GitHub
 Actions artifacts according to retention policy. Logs must redact tokens,

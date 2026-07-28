@@ -39,25 +39,34 @@ def test_namespace_and_migrator_identity_are_dedicated() -> None:
     assert account["automountServiceAccountToken"] is False
 
 
-def test_deployer_rbac_has_only_the_exact_job_observation_surface() -> None:
-    role, binding = documents("deployer-rbac.yaml")
+def test_gitops_rbac_has_only_the_exact_job_observation_surface() -> None:
+    role, binding = documents("gitops-rbac.yaml")
     assert role["metadata"]["namespace"] == "career-migrations"
     assert role["rules"] == [
-        {"apiGroups": ["batch"], "resources": ["jobs"], "verbs": ["create", "get", "watch", "delete"]},
+        {
+            "apiGroups": ["batch"],
+            "resources": ["jobs"],
+            "verbs": ["create", "get", "list", "watch", "update", "patch", "delete"],
+        },
         {"apiGroups": [""], "resources": ["pods"], "verbs": ["get", "list", "watch"]},
         {"apiGroups": [""], "resources": ["pods/log"], "verbs": ["get"]},
     ]
-    assert binding["subjects"] == [{
+    assert binding["roleRef"] == {
         "apiGroup": "rbac.authorization.k8s.io",
-        "kind": "Group",
-        "name": "jenkins-azure-aci-deployer",
+        "kind": "Role",
+        "name": role["metadata"]["name"],
+    }
+    assert binding["subjects"] == [{
+        "kind": "ServiceAccount",
+        "name": "argocd-application-controller",
+        "namespace": "argocd",
     }]
     serialized = json.dumps(role["rules"])
     for denied in ("pods/exec", "pods/attach", "pods/portforward", "secrets", "configmaps", "serviceaccounts"):
         assert denied not in serialized
 
 
-def test_only_migrator_jobs_can_reach_postgresql_and_dns() -> None:
+def test_only_migrator_jobs_can_reach_postgresql_dns_and_entra_token_exchange() -> None:
     policy = document("network-policy.yaml")
     assert policy["metadata"]["namespace"] == "career-migrations"
     assert policy["spec"]["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "core-migration"}
@@ -67,6 +76,8 @@ def test_only_migrator_jobs_can_reach_postgresql_and_dns() -> None:
     assert egress[0]["ports"] == [{"port": 53, "protocol": "UDP"}, {"port": 53, "protocol": "TCP"}]
     assert egress[1]["ports"] == [{"port": 5432, "protocol": "TCP"}]
     assert egress[1]["to"] == [{"ipBlock": {"cidr": "${POSTGRES_PRIVATE_ENDPOINT_IP}/32"}}]
+    assert egress[2]["ports"] == [{"port": 443, "protocol": "TCP"}]
+    assert egress[2]["to"] == [{"ipBlock": {"cidr": "${ENTRA_TOKEN_ENDPOINT_CIDR}"}}]
 
 
 def test_job_template_is_bounded_nonprivileged_and_expand_only() -> None:
@@ -90,7 +101,15 @@ def test_job_template_is_bounded_nonprivileged_and_expand_only() -> None:
     assert container["args"] == ["upgrade", "$(MIGRATION_TARGET)"]
     assert container["env"] == [
         {"name": "MIGRATION_TARGET", "value": "${MIGRATION_TARGET}"},
-        {"name": "DATABASE_URL", "value": "${MIGRATION_DATABASE_URL}"},
+        {
+            "name": "DATABASE_URL",
+            "valueFrom": {
+                "configMapKeyRef": {
+                    "name": "core-migration-policy-v1",
+                    "key": "databaseUrl",
+                },
+            },
+        },
     ]
     assert container["securityContext"] == {
         "allowPrivilegeEscalation": False,
@@ -118,17 +137,39 @@ def test_admission_policy_makes_runner_image_target_and_sandbox_non_overridable(
         "backoffLimit == 1", "ttlSecondsAfterFinished == 300", "envFrom",
         "hostNetwork", "hostPID", "hostIPC", "hostPath", "privileged",
         "allowPrivilegeEscalation", "readOnlyRootFilesystem", "MIGRATION_TARGET",
-        "DATABASE_URL", "params.data.databaseUrl",
+        "DATABASE_URL",
+        "core-migration-policy-v1", "configMapKeyRef",
     ):
         assert required in expressions
+
+
+def test_admission_policy_limits_argocd_to_job_mutations_in_migration_namespace() -> None:
+    policy, binding = documents("argocd-boundary-policy.yaml")
+    assert policy["spec"]["failurePolicy"] == "Fail"
+    assert policy["spec"]["matchConstraints"]["resourceRules"] == [{
+        "apiGroups": ["*"],
+        "apiVersions": ["*"],
+        "operations": ["CREATE", "UPDATE", "DELETE"],
+        "resources": ["*"],
+        "scope": "Namespaced",
+    }]
+    expression = policy["spec"]["validations"][0]["expression"]
+    assert "system:serviceaccount:argocd:argocd-application-controller" in expression
+    assert "request.operation == 'DELETE'" in expression
+    assert "oldObject.kind == 'Job'" in expression
+    assert "object.kind == 'Job'" in expression
+    assert binding["spec"]["validationActions"] == ["Deny"]
+    assert binding["spec"]["matchResources"]["namespaceSelector"]["matchLabels"] == {
+        "knowledgebase.io/migration-guardrails": "enforced",
+    }
 
 
 def test_kustomization_installs_guardrails_but_not_a_migration_job() -> None:
     kustomization = document("kustomization.yaml")
     assert set(kustomization["resources"]) == {
-        "namespace.yaml", "service-account.yaml", "deployer-rbac.yaml",
+        "namespace.yaml", "service-account.yaml", "gitops-rbac.yaml",
         "network-policy.yaml", "policy-parameters.yaml",
-        "validating-admission-policy.yaml",
+        "validating-admission-policy.yaml", "argocd-boundary-policy.yaml",
     }
     assert "job-template.yaml" not in kustomization["resources"]
 

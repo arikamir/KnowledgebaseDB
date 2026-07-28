@@ -69,7 +69,7 @@ def test_bootstrap_dry_run_requires_exact_jit_scope_and_never_emits_manifest(tmp
         "schemaVersion": 1, "activatedAt": (now-timedelta(minutes=5)).isoformat().replace("+00:00","Z"), "expiresAt": (now+timedelta(hours=1)).isoformat().replace("+00:00","Z"), "actorObjectId": "operator-1",
         "consentApprover": {"objectId": "security-approver-1", "role": "Privileged Role Administrator"},
         "roles": ["Application Administrator", "Contributor:application-rg", "Network Contributor:named-shared-network", "Private DNS Zone Contributor:named-zones", "ProviderQuotaRead:allowlisted", "Role Based Access Control Administrator:application-rg", "Storage Blob Data Contributor:state-container"],
-        "denied": ["Global Administrator", "Owner", "Jenkins principal", "standing privilege", "unrelated app/data/resource access"],
+        "denied": ["Global Administrator", "Owner", "GitHub Actions principal", "standing privilege", "unrelated app/data/resource access"],
     }))
     attestation = tmp_path / "attestation.json"
     attestation.write_text(json.dumps({"schemaVersion": 1, "capturedAt": (now-timedelta(minutes=5)).isoformat().replace("+00:00","Z"), "expiresAt": (now+timedelta(days=6)).isoformat().replace("+00:00","Z"), "providers": {}, "quotas": {}, "capacity": {}}))

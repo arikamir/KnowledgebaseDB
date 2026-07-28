@@ -1,16 +1,20 @@
 # Implementation Plan: DevOps Career Agent UI
 
+> The delivery implementation in this historical plan is superseded by feature
+> 006. The authoritative path is GitHub Actions build/scan/ACR publication plus
+> reviewed Argo CD GitOps reconciliation, with no local controller or direct
+> pipeline deployer.
+
 **Branch**: `003-develop-ui` | **Date**: 2026-07-11 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/003-develop-ui/spec.md`
 
 ## CI/CD orchestration decision (2026-07-18)
 
-GitHub Actions supersedes Jenkins as the CI/CD orchestrator. The authoritative
-workflows are `.github/workflows/ci.yml` and
-`.github/workflows/delivery.yml`, using GitHub OIDC federation to the existing
-least-privilege Azure delivery identities. Jenkinsfile, controller-audit, and
-`scripts/jenkins/` assets are retained only as historical migration artifacts;
-they are not required by the delivery path.
+GitHub Actions supersedes the retired CI controller as the CI/CD orchestrator.
+The authoritative workflows are `.github/workflows/ci.yml` and
+`.github/workflows/delivery.yml`. Delivery uses GitHub OIDC federation to the
+least-privilege ACR publisher identity and opens a reviewed GitOps pull request;
+Argo CD alone reconciles that desired state to AKS.
 
 ## Summary
 
@@ -25,14 +29,9 @@ schema and deterministic fixtures keep every user story independently testable;
 per-service HPA, disruption, and topology policies keep those services
 independently scalable and observable.
 
-Jenkins at `http://localhost:8080` orchestrates delivery through its existing
-Azure cloud `azure`. Ephemeral publisher and deployer ACI agents use separate
-managed identities. Repository scripts classify changes, validate and publish
-only affected images, promote immutable digests, record evidence, and perform
-attempt-wide rollback of every attempt-mutated service from a reverse-ordered
-mutation journal. Compatibility and
-evidence gates fail closed before an incompatible or unaudited mutation reaches
-the environment.
+Historical delivery sections below describe the superseded local controller and
+ACI-agent design. They are retained only as feature-003 decision history and are
+not implementation authority.
 
 ## Technical Context
 
@@ -46,7 +45,7 @@ MSAL cache material in Azure Managed Redis; core stores relational learning and
 identity data in Azure Database for PostgreSQL Flexible Server; SQLite is local
 development only; delivery evidence uses dedicated Azure Blob Storage
 **Testing**: Vitest, Playwright, pytest, contract tests, integration tests,
-container tests, AKS manifest/routing tests, Jenkins pipeline tests, Azure RBAC
+container tests, AKS manifest/routing tests, GitHub Actions pipeline tests, Azure RBAC
 negative tests, and pilot usability verification
 **Target Platform**: Latest two stable major releases of Chrome, Edge, Firefox,
 and Safari/WebKit, using the frozen Windows 11/current-and-previous-macOS,
@@ -98,14 +97,14 @@ context, and [research.md](./research.md).
 *GATE: Must pass before Phase 0 research. Re-checked after Phase 1 design.*
 
 - [x] Spec, plan, and tasks describe the same three-service learning UI and
-      Jenkins/Azure delivery outcome.
+      GitHub Actions/Azure delivery outcome.
 - [x] Four user stories are independently testable and priority ordered; US1 is
       the pre-release MVP. A named minimum-foundation gate provides only the
       shared identity, contract, persistence, and shell capabilities required
       by US1; story-specific and protected-release infrastructure remains in
       explicit later gates and does not block the US1 demonstration.
 - [x] Research resolves service boundaries, identity, persistence, Azure,
-      Jenkins, evidence, and lab-governance decisions.
+      GitHub Actions, evidence, and lab-governance decisions.
 - [x] Tests precede or accompany implementation and cover each story plus
       security, retention, concurrency, accessibility, and deployment.
 - [x] Contracts, quickstart, operations guidance, and agent context are included.
@@ -142,7 +141,7 @@ specs/003-develop-ui/
 |   |-- core-api-v1.digest
 |   |-- core-api-v1.openapi.yaml
 |   |-- implementation-readiness-contract.md
-|   |-- jenkins-delivery-contract.md
+|   |-- github-actions-delivery-contract.md
 |   |-- learning-ui-contract.md
 |   `-- supported-guidance-topics-v1.yaml
 `-- tasks.md
@@ -151,7 +150,7 @@ specs/003-develop-ui/
 ### Source Code (repository root)
 
 ```text
-Jenkinsfile
+.github/workflows/delivery.yml
 
 ui/
 |-- Dockerfile
@@ -251,8 +250,8 @@ config/
 `-- supported-guidance-topics.schema.json
 
 docs/
-|-- jenkins-azure-cloud.md
-|-- jenkins-credential-manager.md
+|-- github_actions-azure-cloud.md
+|-- github_actions-credential-manager.md
 `-- operations-ui.md
 
 tests/
@@ -303,7 +302,7 @@ infra/azure/
 |-- entra-machine-registrations.tf
 |-- entra-app-roles.tf
 |-- entra-lifecycle-permissions.tf
-|-- jenkins-agent-identities.tf
+|-- github-actions-identities.tf
 |-- application-gateway-for-containers.tf
 |-- gateway-certificates.tf
 |-- gateway-dns.tf
@@ -345,12 +344,11 @@ scripts/azure/
 |-- finalize-ui-platform.sh
 |-- compute-platform-configuration-digest.sh
 |-- preflight-ui-platform.sh
-|-- validate-delivery-identities.sh
 |-- get-application-url.sh
 |-- rotate-gateway-certificate.sh
 `-- rotate-bff-client-certificate.sh
 
-scripts/jenkins/
+scripts/github_actions/
 |-- install-controller-audit-plugin.groovy
 |-- configure-validator-agent.groovy
 |-- configure-publisher-deployer-agents.groovy
@@ -364,9 +362,9 @@ scripts/jenkins/
 |-- configure-credential-manager.groovy
 `-- rotate-cloud-credential.sh
 
-jenkins-controller-audit-plugin/
+github_actions-controller-audit-plugin/
 |-- pom.xml
-`-- src/main/java/io/knowledgebasedb/jenkins/audit/
+`-- src/main/java/io/knowledgebasedb/github_actions/audit/
     |-- ControllerAuditAction.java
     `-- ControllerAuditRunListener.java
 
@@ -378,7 +376,7 @@ jenkins-controller-audit-plugin/
 **Structure Decision**: Keep UI, BFF, and core independently buildable at the
 repository root. Keep environment-neutral Kubernetes manifests under
 `deploy/k8s/base`, Azure bindings under `deploy/k8s/overlays/aks-nonprod`, and
-Terraform under `infra/azure`. Jenkins remains thin and calls versioned scripts.
+Terraform under `infra/azure`. GitHub Actions remains thin and calls versioned scripts.
 
 ## Phase 0: Research Decisions
 
@@ -408,7 +406,7 @@ Phase 0 is complete in [research.md](./research.md). Key decisions are:
 - UI/BFF and BFF/core versions negotiate capabilities before state-changing
   operations, and repository dependency checks prevent presentation or
   composition changes from importing core business code.
-- Jenkins uses existing cloud `azure` and distinct ephemeral publisher/deployer
+- The retired CI controller used cloud `azure` and distinct ephemeral publisher/deployer
   ACI templates rather than controller-held delivery credentials. An
   identityless `azure-aci-validator` template handles all-ref non-Azure
   validation; unprotected refs are confined to that template.
@@ -436,7 +434,7 @@ Detailed behavior is defined in [auth-ui-contract.md](./contracts/auth-ui-contra
 [core-api-v1.openapi.yaml](./contracts/core-api-v1.openapi.yaml),
 [implementation-readiness-contract.md](./contracts/implementation-readiness-contract.md),
 [learning-ui-contract.md](./contracts/learning-ui-contract.md), and
-[jenkins-delivery-contract.md](./contracts/jenkins-delivery-contract.md).
+[github-actions-delivery-contract.md](./contracts/github-actions-delivery-contract.md).
 
 Every FR/SC implementation, verification, and retained-evidence obligation is
 mapped in [requirements-traceability.md](./requirements-traceability.md); CI
@@ -550,13 +548,13 @@ service account.
 
 ### Azure topology
 
-Platform Operations, never Jenkins, runs the reviewed Terraform bootstrap with
+Platform Operations, never GitHub Actions, runs the reviewed Terraform bootstrap with
 an interactive Entra identity. `backend.tf` uses Azure Storage remote state and
 blob-lease locking; `versions.tf`, `providers.tf`, and the committed lock file pin
 both AzureRM and AzureAD providers. The external bootstrap provisions/imports
 Key Vault, Managed Redis, PostgreSQL, monitoring, Workload Identities,
 Application Gateway for Containers, DNS/certificates, Entra registrations and
-administrator consent, Jenkins delivery identities, data-plane principals, and
+administrator consent, GitHub Actions delivery identities, data-plane principals, and
 evidence storage. Platform Operations also installs the pinned ALB Controller
 and the cluster-admin-owned migration namespace/RBAC/admission guardrails.
 `bootstrap-ui-platform.sh` and `bootstrap-data-principals.sh` never emit the
@@ -569,7 +567,7 @@ schema-validated, non-secret reviewed
 digest, tenant/subscription/resource-group, resource IDs, identity IDs, and
 origins plus controller and migration-policy attestations. It also records
 provider-registration and quota/capacity attestations
-that expire after seven days. Jenkins has no Terraform apply/import permission and blocks protected
+that expire after seven days. GitHub Actions has no Terraform apply/import permission and blocks protected
 delivery when that manifest is missing, stale, or inconsistent with live
 resources and exact ACI template bindings.
 
@@ -601,7 +599,7 @@ The finalization script records assignment IDs, activation/expiry, operator and
 separate consent-approver object IDs, scopes, plan digest, and negative checks in
 the manifest without secrets. It fails for standing/excess scope, one person
 attempting both app change and Graph-consent approval, `Owner`/`Global
-Administrator`, state access outside the container, or any Jenkins principal.
+Administrator`, state access outside the container, or any GitHub Actions principal.
 
 The existing AKS resource in `infra/azure/main.tf` enables OIDC and Workload
 Identity and disables the legacy `web_app_routing` add-on. A pinned ALB
@@ -639,7 +637,7 @@ the certificate without exposing its private key, and answers HTTPS health
 probes. Machine app-role authentication remains mandatory after network and TLS
 validation. Kubernetes default-deny policies allow only declared service hops.
 
-After external finalization, Jenkins validates manifest/schema/repository digest on
+After external finalization, GitHub Actions validates manifest/schema/repository digest on
 the identityless validator. On a protected ref, the deployer template then uses
 its narrowly scoped control-plane `Reader` grant on the target resource group
 (with no Terraform-state or data-plane read) to compare manifest IDs/tags with
@@ -727,7 +725,7 @@ days and has no production SLA. The exact pilot targets are:
 | PostgreSQL | RPO at most five minutes and RTO at most four hours through continuous backup/PITR with seven-day retention; restore remains closed until retention catch-up and owner/access checks pass. |
 | Redis sessions | Durable-session RPO is intentionally excluded; session loss may require sign-in but cannot lose core learning data. RTO is at most 60 minutes and restored state must pass key/version validation. |
 | Delivery evidence | RPO 0 after immutable-version acceptance and RTO at most four hours; delivery remains stopped while evidence access or completeness is unavailable. |
-| Jenkins controller audit | RPO 0 after a two-copy fsync and RTO at most four hours for replicated-store restore plus queue/run, webhook, and Azure-evidence reconciliation. Protected scheduling remains blocked until every accepted orphan is terminal and every post-mutation orphan has verified rollback or approved recovery. |
+| retired CI controller audit | RPO 0 after a two-copy fsync and RTO at most four hours for replicated-store restore plus queue/run, webhook, and Azure-evidence reconciliation. Protected scheduling remains blocked until every accepted orphan is terminal and every post-mutation orphan has verified rollback or approved recovery. |
 | Telemetry and labs | Telemetry may lose at most five minutes or 1,000 safe envelopes per process and is non-authoritative. External labs have no provider RTO/RPO; validation runs every 20 hours (never older than 24 hours) and a report triggers validation within 15 minutes. |
 | Regional disaster recovery | Cross-region Entra/Azure managed-service failover and provider SLA commitments are excluded from this pilot; dependency behavior still fails closed. |
 
@@ -753,22 +751,22 @@ freshness gate:
 |---|---|---|---|
 | Entra tenant/apps/scopes/roles/consent/groups/issuer | Identity/Security Operations | Within 24 hours before pilot and after every identity/config change | Block sign-in, machine traffic, and protected delivery. |
 | Approved machine clients/private networks | Security Reviewers and Platform Operations | Manifest attestation at most seven days old plus live DNS/TLS/denial probe on verification day | Block the affected machine consumer. |
-| External bootstrap and final reviewed manifest | Platform Operations | Plan/state/assignment/controller/migration/provider/quota/capacity evidence at most seven days old; compare live target-RG resources on every protected build | Block protected publication/promotion; Jenkins never repairs or reads Terraform state. |
+| External bootstrap and final reviewed manifest | Platform Operations | Plan/state/assignment/controller/migration/provider/quota/capacity evidence at most seven days old; compare live target-RG resources on every protected build | Block protected publication/promotion; GitHub Actions never repairs or reads Terraform state. |
 | AKS/ACR and platform controls | Platform Operations | Live capacity/OIDC/Workload-Identity/ALB/PDB/HPA/topology/private-DNS/migration/legacy-ingress preflight within 15 minutes of promotion | Block promotion before mutation. |
-| Jenkins controller/cloud `azure` | Platform Operations | Scheduled daily and every protected build; provisioning principal must have at least 30 valid days | Quarantine protected builds; only safe identityless validation may continue. |
+| retired CI controller/cloud `azure` | Platform Operations | Scheduled daily and every protected build; provisioning principal must have at least 30 valid days | Quarantine protected builds; only safe identityless validation may continue. |
 | ACI validator/publisher/deployer | Platform Operations | Smoke after credential/template change and within 24 hours before protected release | Block the affected lane with no local/fallback agent. |
 | Redis/PostgreSQL/Key Vault/CSI/Gateway/Monitor/evidence | Platform Operations with Application Operations | Live identity, denial, readiness, version, immutable-write, and exporter checks within 15 minutes of pilot opening and protected release | Do not open the pilot or promote. |
 | Lab providers/references | Learning Content Operations and Security Reviewers | Dual-approval policy and complete validation at most 24 hours old | Do not publish/display the affected reference. |
 | Pilot population | Product/UX Research | Frozen single-participant PoC allocation/consent/script/facilitator evidence within seven days of the participant | Do not begin the exploratory PoC. |
 | Supported browsers/assistive technology | Product/UX Research and Application Operations | Exact version/matrix smoke on verification day; release evidence at most 30 days old | Block UI release evidence until the frozen matrix passes. |
 
-### Jenkins delivery strategy
+### GitHub Actions delivery strategy
 
 The controller at `http://localhost:8080` uses existing cloud `azure`.
 Before `node`, agent allocation, checkout, or workspace creation, a globally
 trusted administrator-installed controller plugin from a pinned protected
 revision and verified artifact digest invokes a `RunListener` independently of
-repository Jenkinsfiles/shared libraries, creates the pending controller
+repository .github/workflows/delivery.ymls/shared libraries, creates the pending controller
 `RunAction` on run start, and owns monotonic updates, restart recovery,
 retention, and exactly-once finalization. Omitting or shadowing an audit call in
 SCM cannot bypass it. Repository scripts may request allowed stage transitions
@@ -828,7 +826,7 @@ irreversible mutation cannot enter automatic promotion; it requires a separate
 operator-approved recovery plan. Database contract migrations are never
 automatically reversed.
 
-Manual rebuild-all or recovery requires a configured Jenkins Delivery Recovery
+Manual rebuild-all or recovery requires a configured GitHub Actions Delivery Recovery
 Operator and a distinct Platform Operations approver; neither path bypasses
 ordinary identity, compatibility, evidence, or lock gates. Pre-mutation
 application failures notify Application/Delivery Operations, platform failures
@@ -836,7 +834,7 @@ notify Platform/Delivery Operations, evidence failures also notify Security
 Reviewers, and any post-mutation or rollback failure pages Application and
 Platform Operations with 15-minute acknowledgement and 30-minute incident-
 commander escalation. The full notification/result matrix is normative in the
-Jenkins delivery contract.
+GitHub Actions delivery contract.
 
 For a selected core schema change, the protected sequence is: schema
 compatibility gate, accepted pre-mutation evidence, then
@@ -861,19 +859,19 @@ restored digest, schema heads, and required operator recovery. If migration
 itself fails, promotion stops, the database is quarantined for operator repair,
 and no core image mutation occurs.
 
-### Jenkins provisioning credential lifecycle
+### GitHub Actions provisioning credential lifecycle
 
-Platform Operations owns the service principal used only by Jenkins cloud
+Platform Operations owns the service principal used only by retired controller cloud
 `azure` for ACI lifecycle and identity attachment. It has no ACR push or AKS
 deployment permission. Rotation occurs at least every 90 days with alerts at
 30, 14, and 7 days. Missing/unreadable expiry or fewer than 30 valid days places
 cloud `azure` in quarantine: protected-branch Azure stages cannot request a new
-agent. Developer-local validation remains available, but Jenkins has no local or
-controller-agent fallback; ordinary Jenkins validation resumes only when the
+agent. Developer-local validation remains available, but GitHub Actions has no local or
+controller-agent fallback; ordinary GitHub Actions validation resumes only when the
 identityless ACI validator can be provisioned. The local rotation procedure
-uses a dedicated Jenkins credential-manager identity that can update only the
+uses a dedicated GitHub Actions credential-manager identity that can update only the
 stable Azure cloud credential entry and cannot configure jobs, run builds, or
-read unrelated credentials. It uses the localhost Jenkins API, CSRF crumb, and
+read unrelated credentials. It uses the localhost GitHub Actions API, CSRF crumb, and
 protected standard-input or file-descriptor secret handoff. Secrets never enter
 arguments, environment variables, logs, or retained files. Normal rotation
 validates the identityless validator plus the publisher and deployer templates
@@ -891,7 +889,7 @@ minimal, authoritative controller-lifecycle `RunAction` audit attempt, which is
 explicitly non-authoritative as delivery evidence, without allocating an
 executor or workspace and appends lifecycle events for `started`, `agent_requested`,
 `agent_connected`, `evidence_active`, and exactly one terminal state of
-`succeeded`, `failed`, or `aborted`. The listener runs even when the Jenkinsfile
+`succeeded`, `failed`, or `aborted`. The listener runs even when the .github/workflows/delivery.yml
 contains no audit call or attempts to shadow repository/library symbols. Every exit path closes the attempt with
 timestamps and the failed stage. Once an authenticated agent starts, the record
 is copied into the authoritative evidence set; a pre-agent failure remains in
@@ -960,9 +958,9 @@ Implementation is decomposed in [tasks.md](./tasks.md):
    three-service container environment without claiming a protected release.
 4. Complete each story's explicit additional prerequisites and deliver US2 skill
    guidance, US3 focused learning/review, and US4 progress review independently.
-5. Complete the remaining Azure, lifecycle, lab, Jenkins, evidence, operational,
+5. Complete the remaining Azure, lifecycle, lab, GitHub Actions, evidence, operational,
    and pilot foundations required for the complete release.
-6. Complete Jenkins/Azure delivery, security, evidence, operational, and pilot
+6. Complete GitHub Actions/Azure delivery, security, evidence, operational, and pilot
    verification.
 
 Tests are defined before or alongside implementation. Only the named

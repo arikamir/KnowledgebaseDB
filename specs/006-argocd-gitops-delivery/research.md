@@ -28,17 +28,24 @@ and prevents an unreviewed environment from being discovered accidentally.
 <https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/>
 and <https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/applicationset-specification/>.
 
-## Decision 2: Restrict the generated application to workload resources
+## Decision 2: Restrict the generated application to services and one migration hook
 
-**Decision**: Create a dedicated `AppProject` and Kustomize overlay containing
-only the UI, BFF, and Core bases. The generated `Application` targets namespace
-`career-agent`; `CreateNamespace=false`; cluster-scoped resources and unrelated
-platform paths are excluded.
+**Decision**: Create a dedicated `AppProject` with a service source containing
+the UI, BFF, and Core bases and a separate source containing one bounded Core
+`PreSync` migration Job. The generated `Application` targets the existing
+`career-agent` and `career-migrations` namespaces; `CreateNamespace=false`;
+cluster-scoped resources and unrelated platform paths are excluded.
 
 **Rationale**: Namespace, gateways, private load balancers, platform controllers,
-identities, and Terraform resources are infrastructure-owned. An allowlist plus
-an application-only source path makes the boundary enforceable both in the
-repository and at the Argo CD API.
+identities, migration admission/runtime configuration, and Terraform resources
+are infrastructure-owned. An allowlist plus restricted service and
+migration-hook source paths makes the boundary enforceable both in the
+repository and at the Argo CD API. Argo CD hooks provide a fail-closed sequence:
+the expand-only migration from the exact release Core digest completes before
+service Deployments are reconciled. Since AppProject resource allowlists apply
+to every destination, a platform-owned admission policy additionally denies
+all non-Job mutations by the Argo CD application controller in
+`career-migrations`.
 
 **Alternatives considered**:
 

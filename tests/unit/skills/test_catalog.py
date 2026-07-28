@@ -7,7 +7,7 @@ def test_catalog_loads_seeded_topics():
     catalog = SkillCatalog.load()
 
     names = catalog.topic_names()
-    assert "Jenkins" in names
+    assert "GitHub Actions" in names
     assert "Kubernetes" in names
     assert len(names) == len(set(names))
 

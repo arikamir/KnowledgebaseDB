@@ -28,7 +28,7 @@ As a platform operator, I want infrastructure provisioning and application relea
 **Acceptance Scenarios**:
 
 1. **Given** the platform is already provisioned, **When** an application release is requested, **Then** the release workflow changes only application workloads and configuration and does not plan, apply, or delete infrastructure resources.
-2. **Given** an infrastructure change is requested, **When** the infrastructure workflow runs, **Then** it produces a reviewable infrastructure plan and does not deploy a new application image as a side effect.
+2. **Given** an infrastructure change is requested, **When** identityless validation passes and the private-network infrastructure lifecycle runner executes, **Then** it produces a reviewable infrastructure plan and does not deploy a new application image as a side effect.
 3. **Given** either workflow fails, **When** an operator reviews its result, **Then** the workflow identifies its own scope, actor, inputs, outcome, and evidence without relying on the other workflow's logs.
 
 ### User Story 2 - Reconcile CI artifacts through Argo CD (Priority: P1)
@@ -102,7 +102,7 @@ As a delivery operator, I want to authenticate through the organization's Azure 
 - **FR-006**: Argo CD MUST watch the main branch of the GitHub repository and reconcile the selected environment without requiring a manual workload mutation.
 - **FR-006a**: Application release changes MUST enter the GitHub `main` branch through a CI-created or CI-updated pull request, a verified required automated-review status, and the repository's branch-protection controls; the merge gate MUST accept only an approved automated reviewer whose review targets the current pull-request head, including a head-bound positive no-finding reaction or bot-authored no-finding result naming the reviewed commit, and MUST reject an absent, stale, unapproved, or unsuccessful review/status. Argo CD MUST NOT use a separate unreviewed desired-state repository as its release source.
 - **FR-006b**: An Argo CD ApplicationSet MUST discover the reviewed non-production release declaration from GitHub `main` and generate the application release resource from that declaration.
-- **FR-006c**: The generated application release resource MUST target only the UI, BFF, and Core application overlay; it MUST NOT manage the cluster namespace, gateway, private load balancer, Terraform resources, or other platform-owned resources.
+- **FR-006c**: The generated application release resource MUST target the UI, BFF, and Core service overlay plus one bounded `PreSync` Core migration Job; it MUST NOT manage cluster namespaces, migration identity/admission/runtime configuration, gateway, private load balancer, Terraform resources, or other platform-owned resources. The migration Job MUST use the exact declared Core digest and complete successfully before any service Deployment changes. A platform-owned destination-scoped admission policy MUST deny every non-Job mutation attempted by the Argo CD application controller in `career-migrations`.
 - **FR-007**: Releases MUST use immutable image digests; mutable tags alone MUST NOT be accepted as the deployment identity.
 - **FR-007a**: Platform bootstrap MUST provision the namespace-scoped registry `imagePullSecret` named `career-agent-acr-pull` out of band before the first application sync; application manifests MAY reference that fixed name but MUST NOT create it or contain its credential data.
 - **FR-008**: A release MUST be rejected when any required service artifact, digest, compatibility check, or evidence record is missing or invalid.
@@ -125,7 +125,7 @@ As a delivery operator, I want to authenticate through the organization's Azure 
 
 ### Key Entities
 
-- **Infrastructure Stack**: The Azure resources, cluster prerequisites, identities, networking, secrets, and policies managed by the infrastructure workflow.
+- **Infrastructure Stack**: The Azure resources, cluster prerequisites, identities, networking, secrets, and policies validated by the infrastructure workflow and managed by the private-network lifecycle runner.
 - **Release Bundle**: The CI-produced package of immutable service image references, source revision, contract/version metadata, validation evidence, and release identity.
 - **Release Declaration**: The Git-tracked, SemVer 2.0.0 environment record consumed by the ApplicationSet, binding the UI, BFF, and Core immutable image references to one source revision.
 - **Release Version**: The SemVer 2.0.0 version assigned to a release bundle, including optional prerelease and build metadata and its ordering rules.

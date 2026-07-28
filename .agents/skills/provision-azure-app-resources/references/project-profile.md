@@ -28,7 +28,7 @@ Non-secret values belong in Kubernetes configuration. `DATABASE_URL` is sensitiv
 
 ## Default scope
 
-Provision the resource group, ACR, AKS, AGC/private-core/data services, evidence stores, monitoring, all nine one-to-one workload identities, distinct Jenkins publisher/deployer identities, and exact RBAC. Keep UI and validator identityless.
+Provision the resource group, ACR, AKS, AGC/private-core/data services, evidence stores, monitoring, all nine one-to-one workload identities, the GitHub Actions publisher identity, and exact RBAC. Keep UI and validator identityless; Argo CD owns application deployment.
 
 Exclude by default:
 

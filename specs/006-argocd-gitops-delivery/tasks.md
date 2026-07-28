@@ -32,6 +32,8 @@ cannot target platform-owned resources.
 - [X] T008 [P] Add the application-only Kustomize overlay and patch UI, BFF, and Core pod specs to reference `career-agent-acr-pull` without creating or embedding secret data in `deploy/k8s/overlays/argocd-nonprod/kustomization.yaml` and `deploy/k8s/overlays/argocd-nonprod/application-images.yaml`.
 - [X] T009 [P] Restrict the Argo CD source repository, destination namespace, cluster-resource whitelist, and namespace-resource allowlist in `deploy/argocd/project.yaml`.
 - [X] T010 [P] Configure the fixed `main` Git file generator, missing-key failure mode, immutable image substitutions, application-only overlay, automated sync policy, and no-namespace-creation rule in `deploy/argocd/applicationset.yaml`.
+- [X] T010a [P] Add the bounded `career-migrations` `PreSync` Job as a second Application source, using the exact release Core digest and platform-owned migration guardrails so schema expansion must succeed before service rollout.
+- [X] T010b [P] Enforce the migration destination independently of the AppProject's shared kind allowlist by denying every non-Job Argo CD mutation in `career-migrations` with a platform-owned admission policy.
 - [X] T011 [P] Extend `tests/contract/test_argocd_application_set.py` to assert the fixed release path, three digest substitutions, `career-agent-acr-pull` reference, AppProject restrictions, and absence of gateway/namespace/platform resources.
 - [X] T012 Run `scripts/ci/validate-release-bundle.sh`, `scripts/ci/validate-gitops-release.sh`, `kubectl kustomize deploy/argocd`, `kubectl kustomize deploy/k8s/overlays/argocd-nonprod`, and the focused contract tests; record the expected output in `specs/006-argocd-gitops-delivery/quickstart.md`.
 
@@ -40,10 +42,11 @@ cannot target platform-owned resources.
 **Goal**: Make infrastructure provisioning and application release independently
 executable, reviewable, and permission-bounded workflows.
 
-**Independent Test**: Run the infrastructure workflow with a Terraform plan
-input and the application workflow with a release declaration input; verify that
-the former is the only workflow able to change Azure/platform resources and the
-latter never obtains AKS/Terraform credentials or applies platform manifests.
+**Independent Test**: Run identityless infrastructure validation, use the
+private-network lifecycle runner with a Terraform plan input, and run the
+application workflow with a release declaration input; verify that only the
+private runner can change Azure/platform resources and application delivery
+never obtains AKS/Terraform credentials or applies platform manifests.
 
 ### Tests for User Story 1
 
@@ -52,15 +55,16 @@ latter never obtains AKS/Terraform credentials or applies platform manifests.
 
 ### Implementation for User Story 1
 
-- [X] T015 [US1] Create the independently approved infrastructure plan/apply workflow with Terraform-only permissions, plan artifacts, environment gates, and explicit prohibition on build/publish/promote/deploy application-image steps in `.github/workflows/infrastructure.yml`.
+- [X] T015 [US1] Create identityless infrastructure validation in `.github/workflows/infrastructure.yml` plus the independently approved private-network Terraform plan/apply runner `scripts/azure/run-infrastructure-lifecycle.sh`, with plan artifacts, an explicit apply gate, and no build/publish/promote/deploy application-image steps.
 - [X] T016 [US1] Refactor `.github/workflows/delivery.yml` so application publication and desired-state PR creation do not run `az aks get-credentials`, `scripts/ci/promote.sh`, Terraform, or platform bootstrap commands.
 - [X] T017 [US1] Configure GitHub OIDC publisher permissions, least-privilege bot-branch/PR write permissions, application-release environment protection, and no infrastructure-admin access for the application job in `.github/workflows/delivery.yml` and `docs/github-actions-azure.md`.
-- [X] T018 [US1] Add separate scope/evidence output for infrastructure and application workflows, including actor, source revision, environment, outcome, and artifact links, in `.github/workflows/infrastructure.yml` and `.github/workflows/delivery.yml`.
+- [X] T018 [US1] Add separate scope/evidence output for private infrastructure lifecycle and application workflows, including actor, source revision, environment, outcome, and artifact links, in `scripts/azure/run-infrastructure-lifecycle.sh` and `.github/workflows/delivery.yml`.
 - [X] T019 [US1] Verify the split workflows with boundary tests that reject both application-to-infrastructure mutation and infrastructure-to-application image publication/deployment, plus a dry-run change-plan fixture in `scripts/ci/detect-changes.sh` and `tests/contract/test_gitops_workflow_boundaries.py`.
 
-**Checkpoint**: US1 is complete when the two workflows can run independently,
-their permissions and evidence are distinct, and application delivery cannot
-mutate Azure or platform resources.
+**Checkpoint**: US1 is complete when validation, private infrastructure
+lifecycle, and application delivery run independently, their permissions and
+evidence are distinct, and application delivery cannot mutate Azure or platform
+resources.
 
 ## Phase 4: User Story 2 - Reconcile CI artifacts through Argo CD (Priority: P1) 🎯 MVP
 

@@ -33,6 +33,7 @@ cd "$ROOT"
 mkdir -p "$OUTPUT_DIR"
 command -v jq >/dev/null 2>&1 || { echo "run-gitops-tests: jq is required" >&2; exit 2; }
 command -v kubectl >/dev/null 2>&1 || { echo "run-gitops-tests: kubectl is required" >&2; exit 2; }
+command -v helm >/dev/null 2>&1 || { echo "run-gitops-tests: helm is required" >&2; exit 2; }
 
 echo "== GitOps release validation =="
 scripts/ci/validate-gitops-release.sh
@@ -41,6 +42,12 @@ scripts/ci/validate-release-bundle.sh tests/contract/fixtures/gitops/valid-relea
 echo "== Kustomize rendering =="
 kubectl kustomize deploy/argocd > "$OUTPUT_DIR/argocd-render.yaml"
 kubectl kustomize deploy/k8s/overlays/argocd-nonprod > "$OUTPUT_DIR/application-render.yaml"
+core_image="$(jq -r '.services.core.image' deploy/argocd/environments/nonprod/release.json)"
+source_revision="$(jq -r '.sourceRevision' deploy/argocd/environments/nonprod/release.json)"
+helm template core-migration-hook deploy/k8s/overlays/argocd-nonprod-migration \
+  --set-string "image=$core_image" \
+  --set-string "sourceRevision=$source_revision" \
+  > "$OUTPUT_DIR/migration-render.yaml"
 
 echo "== Static readiness =="
 scripts/ci/check-gitops-platform-ready.sh --mode static --output "$OUTPUT_DIR/readiness-static.json"

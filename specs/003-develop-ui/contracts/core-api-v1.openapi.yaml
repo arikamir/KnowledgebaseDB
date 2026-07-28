@@ -742,7 +742,7 @@ components:
           const: 1.0.0
         guidance_topic_catalog_version:
           type: string
-          const: 1.0.0
+          const: 2.0.0
         enabled_features:
           type: array
           items:

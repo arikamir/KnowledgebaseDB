@@ -116,7 +116,6 @@ def test_writer_reader_manager_and_reconciler_authority_is_separated() -> None:
     assert "listKeys/action" in writer
     assert "blobs/list" not in writer
     assert "publisher_evidence_condition" in storage
-    assert "deployer_evidence_condition" in storage
     assert "Storage Blob Data Reader" in storage
 
     manager = block(
@@ -152,7 +151,7 @@ def test_authorization_contract_records_cross_prefix_and_cross_role_denials() ->
         assert required in authorization
     storage = source()
     assert "deliveries/${var.environment}/*/${stage}/*" in storage
-    assert "environment-prefix-evidence" in (ROOT / "infra/azure/jenkins-agent-identities.tf").read_text()
+    assert "environment-prefix-evidence" in (ROOT / "infra/azure/github-actions-identities.tf").read_text()
 
 
 def inventory(tmp_path: Path) -> Path:

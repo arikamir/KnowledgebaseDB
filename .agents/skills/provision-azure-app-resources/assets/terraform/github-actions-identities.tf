@@ -22,7 +22,6 @@ locals {
     ui        = { identity = "none", allowed = [], denied = ["azure-token", "workload-identity", "acr", "aks", "evidence"] }
     validator = { identity = "none", allowed = [], denied = ["azure-token", "acr-push", "aks-mutate", "evidence-write", "terraform"] }
     publisher = { identity = "user-assigned", allowed = ["exact-acr-push", "environment-prefix-evidence-create-and-exact-verify"], denied = ["aks", "target-rg-reader", "terraform-state", "key-vault-secret", "redis-data", "postgresql-data", "evidence-list-delete-overwrite"] }
-    deployer  = { identity = "user-assigned", allowed = ["exact-aks-deploy", "target-rg-reader", "environment-prefix-evidence-create-and-exact-verify"], denied = ["acr-push-delete-import-admin", "terraform-state", "key-vault-secret", "redis-data", "postgresql-data", "evidence-list-delete-overwrite"] }
     kubelet   = { identity = "aks-kubelet-non-federatable", allowed = ["exact-acr-pull"], denied = ["acr-push-delete-import-admin", "role-assignment", "federation", "application-pod-assumption"] }
   }
 }
@@ -41,14 +40,8 @@ resource "azurerm_federated_identity_credential" "workload" {
   audience  = ["api://AzureADTokenExchange"]
   subject   = each.value
 }
-resource "azurerm_user_assigned_identity" "jenkins_publisher" {
-  name                = "id-${local.stem}-jenkins-publisher"
-  location            = azurerm_resource_group.app.location
-  resource_group_name = azurerm_resource_group.app.name
-  tags                = local.tags
-}
-resource "azurerm_user_assigned_identity" "jenkins_deployer" {
-  name                = "id-${local.stem}-jenkins-deployer"
+resource "azurerm_user_assigned_identity" "github_actions_publisher" {
+  name                = "id-${local.stem}-github-actions-publisher"
   location            = azurerm_resource_group.app.location
   resource_group_name = azurerm_resource_group.app.name
   tags                = local.tags
@@ -56,17 +49,15 @@ resource "azurerm_user_assigned_identity" "jenkins_deployer" {
 resource "azurerm_role_assignment" "publisher_exact_acr_push" {
   scope                = azurerm_container_registry.app.id
   role_definition_name = "AcrPush"
-  principal_id         = azurerm_user_assigned_identity.jenkins_publisher.principal_id
+  principal_id         = azurerm_user_assigned_identity.github_actions_publisher.principal_id
 }
-resource "azurerm_role_assignment" "deployer_exact_aks_writer" {
-  scope                = azurerm_kubernetes_cluster.app.id
-  role_definition_name = "Azure Kubernetes Service RBAC Writer"
-  principal_id         = azurerm_user_assigned_identity.jenkins_deployer.principal_id
-}
-resource "azurerm_role_assignment" "deployer_target_rg_reader" {
-  scope                = azurerm_resource_group.app.id
-  role_definition_name = "Reader"
-  principal_id         = azurerm_user_assigned_identity.jenkins_deployer.principal_id
+resource "azurerm_federated_identity_credential" "github_actions_publisher" {
+  name                = "github-actions-publisher-${var.environment}"
+  resource_group_name = azurerm_resource_group.app.name
+  parent_id           = azurerm_user_assigned_identity.github_actions_publisher.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repository}:environment:${var.github_actions_environment}-publisher"
 }
 output "workload_identity_manifest" { value = { for name, identity in azurerm_user_assigned_identity.workload : name => { resource_id = identity.id, client_id = identity.client_id, principal_id = identity.principal_id, subject = local.workload_identity_subjects[name], contract = local.workload_identity_contract[name] } } }
-output "jenkins_delivery_identity_manifest" { value = { publisher = { resource_id = azurerm_user_assigned_identity.jenkins_publisher.id, client_id = azurerm_user_assigned_identity.jenkins_publisher.client_id }, deployer = { resource_id = azurerm_user_assigned_identity.jenkins_deployer.id, client_id = azurerm_user_assigned_identity.jenkins_deployer.client_id }, validator = null, ui = null, contract = local.delivery_identity_contract } }
+output "github_actions_delivery_identity_manifest" { value = { publisher = { resource_id = azurerm_user_assigned_identity.github_actions_publisher.id, client_id = azurerm_user_assigned_identity.github_actions_publisher.client_id, subject = azurerm_federated_identity_credential.github_actions_publisher.subject }, issuer = "https://token.actions.githubusercontent.com", audience = "api://AzureADTokenExchange", validator = null, ui = null, contract = local.delivery_identity_contract } }

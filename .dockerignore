@@ -23,7 +23,6 @@ bff/
 ui/
 deploy/
 docs/
-jenkins-controller-audit-plugin/
 coverage/
 htmlcov/
 build/

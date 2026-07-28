@@ -117,7 +117,7 @@ useful answer without needing a full roadmap first.
 - [x] T017 [US2] Implement topic guidance synthesis for a named skill area in
   `src/agent/skill_guidance_service.py`, returning the topic summary, current-
   level fit, practical next action, and common pitfalls for the requested skill
-- [x] T018 [P] [US2] Seed the initial skill content for Jenkins, Azure DevOps,
+- [x] T018 [P] [US2] Seed the initial skill content for GitHub Actions, Azure DevOps,
   GitLab CI, Kubernetes, ArgoCD, Helm, .NET, MSI, Advanced Installer, Windows,
   OpenShift, Linux, Docker, Docker Compose, certificates, Vault, Ansible,
   Terraform, VMware, AWS, MLOps, and SecOps in `src/knowledge/topics/`

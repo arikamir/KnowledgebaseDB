@@ -275,7 +275,7 @@ established response is returned.
 - **Migration Workload Identity**: bound only to the bounded in-cluster
   migration Job service account. It receives the PostgreSQL DDL/Alembic role and
   migration-only Key Vault access, but no Redis, application DML, lifecycle,
-  ACR-push, Azure-control-plane, or AKS-deployment permission. The Jenkins
+  ACR-push, Azure-control-plane, or AKS-deployment permission. The GitHub Actions
   deployer has only the dedicated-namespace Job/Pod/`pods/log` verbs and cannot
   alter the admission policy, assume this identity, or reach PostgreSQL.
 - **ALB Controller Workload Identity**: bound only to the pinned ALB Controller
@@ -314,13 +314,13 @@ established response is returned.
 - **UI service**: has no employee OAuth token, confidential-client credential,
   Redis/PostgreSQL permission, or application Workload Identity by default.
 
-Platform Operations uses an interactive Entra administrator outside Jenkins to
+Platform Operations uses an interactive Entra administrator outside GitHub Actions to
 bootstrap the Azure Managed Redis data-plane assignment plus the PostgreSQL
 Entra administrator and mutually exclusive core, lifecycle, retention, and
 migration principals/grants. Lifecycle receives only the unclaimed-retention-
 scheduling grants described above; retention receives only claim/process-due
 procedure execution. The reviewed bootstrap verifies cross-role denial and then
-disables Redis access-key and PostgreSQL password fallback. Jenkins may
+disables Redis access-key and PostgreSQL password fallback. GitHub Actions may
 validate these outcomes but may not create or grant the principals.
 
 AKS enables its OIDC issuer and Workload Identity. Each Kubernetes service

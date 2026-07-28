@@ -1,5 +1,5 @@
 schema_version: 1
-catalog_version: 1.0.0
+catalog_version: 2.0.0
 source_snapshot: src/knowledge/topics/topics.json
 normalization:
   trim_whitespace: true
@@ -9,10 +9,10 @@ normalization:
     - name
     - aliases
 topics:
-  - id: jenkins
-    name: Jenkins
+  - id: github-actions
+    name: GitHub Actions
     category: CI/CD orchestration
-    aliases: [jenkins pipeline, jenkins ci]
+    aliases: [github actions pipeline, github actions ci]
     status: active
   - id: azure-devops
     name: Azure DevOps

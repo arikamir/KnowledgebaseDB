@@ -12,7 +12,7 @@ def test_t194_verification_handoff_is_explicitly_pending_and_complete_in_scope()
     assert "T194 outcome: **not executed**" in text
     for required in (
         "Terraform apply/import", "ALB Controller", "Migration admission", "Every T176 identity",
-        "Jenkins controller", "T180", "T182", "T193", "T156", "PostgreSQL PITR",
+        "retired CI controller", "T180", "T182", "T193", "T156", "PostgreSQL PITR",
         "Redis session loss", "Immutable evidence zero-RPO", "monthly-close dry run",
     ):
         assert required.casefold() in text.casefold()
