@@ -167,6 +167,15 @@ The migration source is a Helm chart whose `generateName` creates a fresh
 retained Job for each bounded Argo retry. Every attempt carries the full
 release source revision annotation, which the collector authenticates along
 with the exact Core digest; retrying never requires deleting prior evidence.
+Members of the Delivery Operations group are the least-privilege post-sync
+writers. After collecting the redacted record and migration log artifact, sign
+in to Azure with that Entra identity and publish each artifact with
+`scripts/ci/publish-evidence.sh`, using only the `migration`, `sync`,
+`verification`, `rollback`, or `final` stage matching the record. The
+conditioned role cannot write CI/pre-promotion prefixes, list or delete blobs,
+change retention, or alter authorization. Security Reviewers remain
+reader-only. Confirm both immutable upload receipts before deleting a retained
+migration Job.
 
 ## Azure Entra access
 

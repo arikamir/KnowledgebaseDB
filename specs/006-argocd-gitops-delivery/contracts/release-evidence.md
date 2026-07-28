@@ -63,7 +63,11 @@ reason, and available before/after head log lines.
 Failed, incomplete, and not-created migration outcomes MUST remain recordable;
 only a successful sync requires `Complete=True` and the approved final head.
 Cleanup is a separate, explicit operator action after both evidence files have
-been uploaded to the protected evidence store.
+been uploaded to the protected evidence store. The Delivery Operations group
+MUST retain a conditioned exact-path writer for the `migration`, `sync`,
+`verification`, `rollback`, and `final` prefixes. That role MUST NOT write
+CI/pre-promotion prefixes, list or delete blobs, change retention, or alter
+authorization; read-only and security-review groups remain unable to publish.
 
 Evidence is uploaded to the existing protected delivery evidence store or GitHub
 Actions artifacts according to retention policy. Logs must redact tokens,

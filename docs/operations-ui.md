@@ -49,7 +49,10 @@ disposition evidence for 90 days and never delete promoted or held digests.
 ## Identity and certificate operations
 
 The validator and UI are identityless. The GitHub Actions publisher has only
-exact ACR push and its evidence prefix. No pipeline deployer identity exists.
+exact ACR push and its pre-promotion evidence prefixes. Delivery Operations
+has a separate exact-path writer limited to post-sync evidence stages; it
+cannot write pre-promotion evidence, list/delete blobs, or change retention.
+No pipeline deployer identity exists.
 The AKS kubelet has exact-registry `AcrPull`
 and cannot push, administer, federate, assign roles, or become an application
 pod identity. ALB Controller has only exact AGC-resource-group configuration and

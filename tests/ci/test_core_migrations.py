@@ -43,7 +43,11 @@ def test_gitops_rbac_has_only_the_exact_job_observation_surface() -> None:
     role, binding = documents("gitops-rbac.yaml")
     assert role["metadata"]["namespace"] == "career-migrations"
     assert role["rules"] == [
-        {"apiGroups": ["batch"], "resources": ["jobs"], "verbs": ["create", "get", "watch", "delete"]},
+        {
+            "apiGroups": ["batch"],
+            "resources": ["jobs"],
+            "verbs": ["create", "get", "list", "watch", "update", "patch", "delete"],
+        },
         {"apiGroups": [""], "resources": ["pods"], "verbs": ["get", "list", "watch"]},
         {"apiGroups": [""], "resources": ["pods/log"], "verbs": ["get"]},
     ]

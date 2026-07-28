@@ -54,3 +54,13 @@ def test_argocd_application_set_has_no_platform_paths() -> None:
     assert "infra/" not in text
     assert "gateway" not in text
     assert "namespace.yaml" not in text
+
+
+def test_migration_controller_can_complete_jobs_without_other_resource_mutation() -> None:
+    rbac = (ROOT / "deploy/k8s/base/migration/gitops-rbac.yaml").read_text()
+    assert 'resources: ["jobs"]' in rbac
+    assert 'verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]' in rbac
+    boundary = (ROOT / "deploy/k8s/base/migration/argocd-boundary-policy.yaml").read_text()
+    assert "object.kind == 'Job'" in boundary
+    assert "oldObject.kind == 'Job'" in boundary
+    assert "knowledgebase.io/migration-guardrails: enforced" in boundary

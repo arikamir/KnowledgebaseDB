@@ -72,10 +72,15 @@ def test_provisioning_asset_federates_the_publisher_to_the_protected_environment
 
 def test_evidence_grants_are_prefix_conditioned_and_exclude_mutation_surfaces() -> None:
     source = (INFRA / "delivery-evidence-storage.tf").read_text()
-    assert source.count('condition_version  = "2.0"') == 1
+    assert source.count('condition_version  = "2.0"') == 2
     for stage in ("validation", "build", "scan", "publish", "pre-promotion"):
         assert f'"{stage}"' in source
+    for stage in ("migration", "sync", "verification", "rollback", "final"):
+        assert f'"{stage}"' in source
     assert "deliveries/${var.environment}/*/${stage}/*" in source
+    assert 'resource "azurerm_role_assignment" "operator_evidence_prefix"' in source
+    assert "local.operator_evidence_condition" in source
+    assert "local.effective_delivery_operators_group_object_id" in source
     assert "blobs/add/action" in source and "blobs/write" in source and "blobs/read" in source
     assert "blobs/delete" in source and "blobs/tags/write" in source
     assert "listKeys/action" in source
