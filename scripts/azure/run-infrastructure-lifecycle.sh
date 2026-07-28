@@ -13,11 +13,11 @@ case "$action" in
   *) usage ;;
 esac
 
-repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 terraform_directory="$repository_root/infra/azure"
 artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-${TMPDIR:-/tmp}/knowledgebasedb-infrastructure}"
 mkdir -p "$artifact_directory"
-artifact_directory="$(cd "$artifact_directory" && pwd)"
+artifact_directory="$(cd "$artifact_directory" && pwd -P)"
 plan_path="$artifact_directory/platform.tfplan"
 receipt_path="$artifact_directory/platform.tfplan.receipt.json"
 scope_path="$artifact_directory/scope.json"
@@ -33,6 +33,8 @@ write_scope() {
       --arg revision "$current_revision" \
       --arg result "$result" \
       --arg action "$action" \
+      --arg backendTenantId "${TF_BACKEND_TENANT_ID:-}" \
+      --arg backendSubscriptionId "${TF_BACKEND_SUBSCRIPTION_ID:-}" \
       --arg backendResourceGroup "${TF_BACKEND_RESOURCE_GROUP:-}" \
       --arg backendStorageAccount "${TF_BACKEND_STORAGE_ACCOUNT:-}" \
       --arg backendContainer "${TF_BACKEND_CONTAINER:-}" \
@@ -41,7 +43,7 @@ write_scope() {
       --arg repository "${TF_VAR_github_repository:-}" \
       --arg ownerId "${TF_VAR_github_repository_owner_id:-}" \
       --arg repositoryId "${TF_VAR_github_repository_id:-}" \
-      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultName:$keyVaultName,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
+      '{workflow:"private-platform-lifecycle",actor:$actor,sourceRevision:$revision,environment:"infrastructure",changedResourceSet:["infra/azure"],result:$result,inputs:{action:$action,backend:{tenantId:$backendTenantId,subscriptionId:$backendSubscriptionId,resourceGroup:$backendResourceGroup,storageAccount:$backendStorageAccount,container:$backendContainer,key:$backendKey},keyVaultName:$keyVaultName,githubTrust:{repository:$repository,ownerId:$ownerId,repositoryId:$repositoryId}},evidenceLinks:["artifact://infrastructure/scope.json"]}' \
       > "$scope_path"
   else
     printf '{"workflow":"private-platform-lifecycle","result":"%s"}\n' "$result" > "$scope_path"
@@ -76,6 +78,8 @@ for command_name in az git jq mktemp shasum terraform; do
 done
 
 required_variables=(
+  TF_BACKEND_TENANT_ID
+  TF_BACKEND_SUBSCRIPTION_ID
   TF_BACKEND_RESOURCE_GROUP
   TF_BACKEND_STORAGE_ACCOUNT
   TF_BACKEND_CONTAINER
@@ -100,7 +104,12 @@ fi
 if [[ "$action" == "plan" ]]; then
   rm -f "$plan_path" "$receipt_path"
 fi
-az account show --output none
+active_subscription_id="$(az account show --query id --output tsv)"
+active_tenant_id="$(az account show --query tenantId --output tsv)"
+if [[ "$active_subscription_id" != "$TF_BACKEND_SUBSCRIPTION_ID" || "$active_tenant_id" != "$TF_BACKEND_TENANT_ID" ]]; then
+  echo "active Azure CLI tenant/subscription does not match the required backend account" >&2
+  exit 1
+fi
 
 # For an established environment this proves both data-plane authorization and
 # private-network reachability. Initial creation has no vault to probe and
@@ -118,6 +127,8 @@ fi
 
 terraform -chdir="$terraform_directory" fmt -check -recursive
 terraform -chdir="$terraform_directory" init -reconfigure \
+  -backend-config="tenant_id=$TF_BACKEND_TENANT_ID" \
+  -backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID" \
   -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP" \
   -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
   -backend-config="container_name=$TF_BACKEND_CONTAINER" \

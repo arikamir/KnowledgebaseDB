@@ -58,10 +58,16 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert 'mv "$temporary_plan" "$plan_path"' in lifecycle
     assert 'mv "$temporary_receipt" "$receipt_path"' in lifecycle
     assert '${TMPDIR:-/tmp}/knowledgebasedb-infrastructure' in lifecycle
+    assert 'pwd -P' in lifecycle
     assert "artifacts must be stored outside the repository worktree" in lifecycle
     assert "umask 077" in lifecycle
     assert 'write_scope "$action-started"' in lifecycle
     assert "backendResourceGroup" in lifecycle
+    assert "TF_BACKEND_TENANT_ID" in lifecycle
+    assert "TF_BACKEND_SUBSCRIPTION_ID" in lifecycle
+    assert '-backend-config="tenant_id=$TF_BACKEND_TENANT_ID"' in lifecycle
+    assert '-backend-config="subscription_id=$TF_BACKEND_SUBSCRIPTION_ID"' in lifecycle
+    assert "active Azure CLI tenant/subscription does not match" in lifecycle
     assert "githubTrust" in lifecycle
     assert lifecycle.index('if [[ "$action" == "plan" ]]') < lifecycle.index("terraform -chdir=\"$terraform_directory\" plan")
     assert lifecycle.count("terraform -chdir=\"$terraform_directory\" plan") == 1

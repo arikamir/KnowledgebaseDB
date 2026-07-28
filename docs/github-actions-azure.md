@@ -102,5 +102,7 @@ Every plan/apply must provide the coupled trust tuple
 `TF_VAR_github_repository`, `TF_VAR_github_repository_owner_id`, and
 `TF_VAR_github_repository_id`. Obtain all three from the repository and its
 versioned OIDC `sub_claim_prefix`; none has a repository-specific Terraform
-default. Do not place a client secret, kubeconfig, registry password, or Azure
-access token in GitHub secrets.
+default. The private lifecycle also requires `TF_BACKEND_TENANT_ID` and
+`TF_BACKEND_SUBSCRIPTION_ID`, verifies they match the active Azure CLI account,
+and passes them explicitly to backend initialization. Do not place a client
+secret, kubeconfig, registry password, or Azure access token in GitHub secrets.
