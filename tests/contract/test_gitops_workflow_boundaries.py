@@ -59,7 +59,11 @@ def test_infrastructure_workflow_is_explicitly_platform_only() -> None:
     assert 'mktemp "$artifact_directory/.platform.tfplan.' in lifecycle
     assert 'mv "$temporary_plan" "$plan_path"' in lifecycle
     assert 'mv "$temporary_receipt" "$receipt_path"' in lifecycle
-    assert '${TMPDIR:-/tmp}/knowledgebasedb-infrastructure' in lifecycle
+    assert 'mktemp -d "${TMPDIR:-/tmp}/knowledgebasedb-infrastructure.' in lifecycle
+    assert "apply requires INFRASTRUCTURE_ARTIFACT_DIRECTORY" in lifecycle
+    assert "must not be a symbolic link" in lifecycle
+    assert "owned by the current user with mode 0700" in lifecycle
+    assert "infrastructure artifact directory: $artifact_directory" in lifecycle
     assert 'pwd -P' in lifecycle
     assert "artifacts must be stored outside the repository worktree" in lifecycle
     assert "umask 077" in lifecycle

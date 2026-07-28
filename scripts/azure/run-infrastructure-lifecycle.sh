@@ -13,11 +13,38 @@ case "$action" in
   *) usage ;;
 esac
 
+for command_name in id mktemp stat; do
+  command -v "$command_name" >/dev/null || {
+    echo "required command not found: $command_name" >&2
+    exit 1
+  }
+done
+
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 terraform_directory="$repository_root/infra/azure"
-artifact_directory="${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-${TMPDIR:-/tmp}/knowledgebasedb-infrastructure}"
-mkdir -p "$artifact_directory"
+if [[ -n "${INFRASTRUCTURE_ARTIFACT_DIRECTORY:-}" ]]; then
+  artifact_directory="$INFRASTRUCTURE_ARTIFACT_DIRECTORY"
+  if [[ -L "$artifact_directory" ]]; then
+    echo "infrastructure artifact directory must not be a symbolic link" >&2
+    exit 1
+  fi
+  mkdir -m 700 -p "$artifact_directory"
+else
+  if [[ "$action" == "apply" ]]; then
+    echo "apply requires INFRASTRUCTURE_ARTIFACT_DIRECTORY to identify the reviewed plan directory" >&2
+    exit 1
+  fi
+  artifact_directory="$(mktemp -d "${TMPDIR:-/tmp}/knowledgebasedb-infrastructure.XXXXXX")"
+fi
 artifact_directory="$(cd "$artifact_directory" && pwd -P)"
+artifact_directory_identity="$(
+  stat -f '%u:%Lp' "$artifact_directory" 2>/dev/null ||
+    stat -c '%u:%a' "$artifact_directory"
+)"
+if [[ "$artifact_directory_identity" != "$(id -u):700" ]]; then
+  echo "infrastructure artifact directory must be owned by the current user with mode 0700" >&2
+  exit 1
+fi
 plan_path="$artifact_directory/platform.tfplan"
 receipt_path="$artifact_directory/platform.tfplan.receipt.json"
 scope_path="$artifact_directory/scope.json"
@@ -73,7 +100,7 @@ case "$artifact_directory/" in
     ;;
 esac
 
-for command_name in az git jq mktemp shasum terraform; do
+for command_name in az git jq shasum terraform; do
   command -v "$command_name" >/dev/null || {
     echo "required command not found: $command_name" >&2
     exit 1
@@ -266,4 +293,5 @@ fi
 
 write_scope "$action-completed"
 
+echo "infrastructure artifact directory: $artifact_directory"
 echo "infrastructure $action completed from the private platform path"

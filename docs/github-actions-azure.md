@@ -24,9 +24,11 @@ Jenkins controller or ACI callback.
   private-data-plane gate. Initial
   creation before the managed vault exists additionally requires
   `INFRASTRUCTURE_BOOTSTRAP_APPROVED=true`. Saved plans default to the external
-  `${TMPDIR:-/tmp}/knowledgebasedb-infrastructure` directory and the script
-  rejects any artifact directory inside the repository because binary plans
-  can contain sensitive state-derived values.
+  a unique mode-`0700` directory under `${TMPDIR:-/tmp}`. Apply must set
+  `INFRASTRUCTURE_ARTIFACT_DIRECTORY` to that reviewed plan directory. The
+  script rejects symlinks, foreign-owned or permissive directories, and any
+  artifact directory inside the repository because binary plans can contain
+  sensitive state-derived values.
 - `.github/workflows/rollback.yml` restores a previous release declaration in
   a reviewed pull request; it does not call the Argo CD API directly.
 - Application release triggers are protected `v*` tags only. The workflow
