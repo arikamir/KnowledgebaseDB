@@ -21,6 +21,7 @@ env/
 build/
 dist/
 site/
+/artifacts/
 
 # Node.js
 node_modules/
