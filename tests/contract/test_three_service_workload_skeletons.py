@@ -33,6 +33,16 @@ def test_ui_bff_and_core_are_independent_digest_pinned_workloads_and_services() 
     assert "deployment.yaml" not in root and "service.yaml" not in root
 
 
+def test_backends_enforce_numeric_non_root_runtime_identities() -> None:
+    for name, runtime_id in (("bff", 1000), ("core", 10001)):
+        deployment = document(f"{name}/deployment.yaml")
+        pod = deployment["spec"]["template"]["spec"]
+        container_security = pod["containers"][0]["securityContext"]
+        assert pod["securityContext"]["runAsNonRoot"] is True
+        assert container_security["runAsUser"] == runtime_id
+        assert container_security["runAsGroup"] == runtime_id
+
+
 def test_dependency_readiness_is_replica_local_and_service_selector_driven() -> None:
     for name, dependencies in {
         "bff": ("redis", "tenant-jwks", "session-key", "bff-client-certificate", "core-tls"),
